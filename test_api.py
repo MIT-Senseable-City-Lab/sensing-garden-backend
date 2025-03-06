@@ -10,6 +10,10 @@ from PIL import Image, ImageDraw
 import io
 import argparse
 from decimal import Decimal
+import sys
+
+# Add lambda/src to the Python path so we can import the schema
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
@@ -18,42 +22,65 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
-# Import configuration from separate file (excluded from git)
-try:
-    from config import API_ENDPOINT, API_KEY, AWS_REGION
+# Import configuration from separate file or environment variables
+def load_config():
+    try:
+        from config import API_ENDPOINT, API_KEY, AWS_REGION
+        
+        # Define the specific endpoints based on the base API_ENDPOINT
+        DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detections"
+        CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classifications"
+        
+    except ImportError:
+        # Fallback to environment variables if config file doesn't exist
+        API_ENDPOINT = os.environ.get("SENSING_GARDEN_API_ENDPOINT")
+        API_KEY = os.environ.get("SENSING_GARDEN_API_KEY")
+        AWS_REGION = os.environ.get("SENSING_GARDEN_AWS_REGION", "us-east-1")
+        
+        # Use the specific endpoints from Terraform output
+        DETECTION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/detections"
+        CLASSIFICATION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/classifications"
+        
+        if not API_KEY:
+            raise ValueError(
+                "API configuration not found. Either create a config.py file or "
+                "set the following environment variables:\n"
+                "- SENSING_GARDEN_API_KEY\n"
+                "- SENSING_GARDEN_AWS_REGION (optional)"
+            )
     
-    # Define the specific endpoints based on the base API_ENDPOINT
-    DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detections"
-    CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classifications"
-    
-    print(f"Using API endpoints from config:")
-    print(f"  Base API: {API_ENDPOINT}")
+    print(f"Using API endpoints:")
     print(f"  Detection API: {DETECTION_API_ENDPOINT}")
     print(f"  Classification API: {CLASSIFICATION_API_ENDPOINT}")
     
-except ImportError:
-    # Fallback to environment variables if config file doesn't exist
-    import os
-    API_ENDPOINT = os.environ.get("SENSING_GARDEN_API_ENDPOINT")
-    API_KEY = os.environ.get("SENSING_GARDEN_API_KEY")
-    AWS_REGION = os.environ.get("SENSING_GARDEN_AWS_REGION", "us-east-1")
-    
-    # Use the specific endpoints from Terraform output
-    DETECTION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/detections"
-    CLASSIFICATION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/classifications"
-    
-    if not API_KEY:
-        raise ValueError(
-            "API configuration not found. Either create a config.py file or "
-            "set the following environment variables:\n"
-            "- SENSING_GARDEN_API_KEY\n"
-            "- SENSING_GARDEN_AWS_REGION (optional)"
-        )
+    return {
+        'api_key': API_KEY,
+        'aws_region': AWS_REGION,
+        'detection_endpoint': DETECTION_API_ENDPOINT,
+        'classification_endpoint': CLASSIFICATION_API_ENDPOINT
+    }
+
+# Load configuration
+config = load_config()
+API_KEY = config['api_key']
+AWS_REGION = config['aws_region']
+DETECTION_API_ENDPOINT = config['detection_endpoint']
+CLASSIFICATION_API_ENDPOINT = config['classification_endpoint']
 
 # Define constants
 DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 IMAGES_BUCKET = 'sensing-garden-images'
+
+# Load schema
+def load_schema():
+    """Load the schema from the lambda/src directory"""
+    schema_path = os.path.join(os.path.dirname(__file__), 'lambda/src/schema.json')
+    with open(schema_path, 'r') as f:
+        return json.load(f)
+
+# Get schema
+SCHEMA = load_schema()
 
 # Create a test image
 def create_test_image():
@@ -70,39 +97,69 @@ def create_test_image():
     # Encode as base64
     return base64.b64encode(img_byte_arr).decode('utf-8')
 
-def test_detection():
-    # Create test payload for detection
-    detection_payload = {
-        "device_id": device_id,
-        "model_id": model_id,
-        "timestamp": timestamp,
-        "image": create_test_image()
-    }
+def create_test_payload(request_type):
+    """Create a test payload based on schema requirements"""
+    payload = {}
     
-    print(f"Testing DETECTION with device_id: {device_id}, model_id: {model_id}")
+    # Add required fields from schema
+    for field in SCHEMA['api'][request_type]['required']:
+        if field == 'device_id':
+            payload[field] = device_id
+        elif field == 'model_id':
+            payload[field] = model_id
+        elif field == 'image':
+            payload[field] = create_test_image()
+        elif request_type == 'classification_request':
+            if field == 'family':
+                payload[field] = "Test Family"
+            elif field == 'genus':
+                payload[field] = "Test Genus"
+            elif field == 'species':
+                payload[field] = "Test Species"
+            elif field == 'family_confidence':
+                payload[field] = str(Decimal('0.92'))
+            elif field == 'genus_confidence':
+                payload[field] = str(Decimal('0.94'))
+            elif field == 'species_confidence':
+                payload[field] = str(Decimal('0.90'))
     
-    # Send request to API
+    # Add optional fields
+    payload['timestamp'] = timestamp
+    
+    return payload
+
+def test_api_endpoint(endpoint_type):
+    """Test an API endpoint (detection or classification)"""
+    # Determine which endpoint and table to use
+    is_detection = endpoint_type == 'detection'
+    request_type = 'detection_request' if is_detection else 'classification_request'
+    endpoint = DETECTION_API_ENDPOINT if is_detection else CLASSIFICATION_API_ENDPOINT
+    table_name = DETECTIONS_TABLE if is_detection else CLASSIFICATIONS_TABLE
+    s3_prefix = 'detections' if is_detection else 'classifications'
+    
+    # Create payload and send request
+    payload = create_test_payload(request_type)
+    print(f"\n\nTesting {endpoint_type.upper()} with device_id: {device_id}, model_id: {model_id}")
+    
     headers = {
         "Content-Type": "application/json",
         "x-api-key": API_KEY
     }
     
-    # Use the specific detection endpoint from Terraform output
-    detection_endpoint = DETECTION_API_ENDPOINT
-    print(f"\n1. Sending detection request to API: {detection_endpoint}")
-    response = requests.post(detection_endpoint, json=detection_payload, headers=headers)
+    print(f"\n1. Sending {endpoint_type} request to API: {endpoint}")
+    response = requests.post(endpoint, json=payload, headers=headers)
     
     print(f"Response status code: {response.status_code}")
     print(f"Response body: {response.text}")
     
     # Check if successful
     if response.status_code == 200:
-        print("\n✅ Detection API request successful!")
+        print(f"\n✅ {endpoint_type.capitalize()} API request successful!")
         
         # Verify data in DynamoDB
-        print("\n2. Checking DynamoDB for stored detection data...")
+        print(f"\n2. Checking DynamoDB for stored {endpoint_type} data...")
         dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-        table = dynamodb.Table(DETECTIONS_TABLE)
+        table = dynamodb.Table(table_name)
         
         try:
             db_response = table.get_item(
@@ -113,26 +170,26 @@ def test_detection():
             )
             
             if 'Item' in db_response:
-                print("✅ Detection data found in DynamoDB!")
+                print(f"✅ {endpoint_type.capitalize()} data found in DynamoDB!")
                 print(f"DynamoDB item: {json.dumps(db_response['Item'], indent=2, cls=DecimalEncoder)}")
             else:
-                print("❌ Detection data not found in DynamoDB")
+                print(f"❌ {endpoint_type.capitalize()} data not found in DynamoDB")
         except Exception as e:
             print(f"❌ Error checking DynamoDB: {str(e)}")
         
         # Check S3 for the image
-        print("\n3. Checking S3 for uploaded detection image...")
+        print(f"\n3. Checking S3 for uploaded {endpoint_type} image...")
         s3 = boto3.client('s3', region_name=AWS_REGION)
         
         try:
             # List objects in the bucket with the device_id prefix
             s3_response = s3.list_objects_v2(
                 Bucket=IMAGES_BUCKET,
-                Prefix=f"detections/{device_id}"
+                Prefix=f"{s3_prefix}/{device_id}"
             )
             
             if 'Contents' in s3_response and len(s3_response['Contents']) > 0:
-                print("✅ Detection image found in S3!")
+                print(f"✅ {endpoint_type.capitalize()} image found in S3!")
                 for obj in s3_response['Contents']:
                     print(f"S3 object: {obj['Key']}, Size: {obj['Size']} bytes")
                     # Generate a presigned URL for viewing the image
@@ -143,96 +200,21 @@ def test_detection():
                     )
                     print(f"Image URL (valid for 1 hour): {url}")
             else:
-                print("❌ Detection image not found in S3")
+                print(f"❌ {endpoint_type.capitalize()} image not found in S3")
         except Exception as e:
             print(f"❌ Error checking S3: {str(e)}")
     else:
-        print(f"❌ Detection API request failed with status code: {response.status_code}")
+        print(f"❌ {endpoint_type.capitalize()} API request failed with status code: {response.status_code}")
+    
     return response.status_code == 200
+
+def test_detection():
+    """Test the detection API endpoint"""
+    return test_api_endpoint('detection')
 
 def test_classification():
-    # Create test payload for classification with additional fields
-    classification_payload = {
-        "device_id": device_id,
-        "model_id": model_id,
-        "timestamp": timestamp,
-        "image": create_test_image(),
-        "genus": "Test Genus",
-        "family": "Test Family",
-        "species": "Test Species",
-        "confidence": str(Decimal('0.95'))  # Convert to string for JSON serialization
-    }
-    
-    print(f"\n\nTesting CLASSIFICATION with device_id: {device_id}, model_id: {model_id}")
-    
-    # Send request to API
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY
-    }
-    
-    # Use the specific classification endpoint from Terraform output
-    classification_endpoint = CLASSIFICATION_API_ENDPOINT
-    print(f"\n1. Sending classification request to API: {classification_endpoint}")
-    response = requests.post(classification_endpoint, json=classification_payload, headers=headers)
-
-    print(f"Response status code: {response.status_code}")
-    print(f"Response body: {response.text}")
-    
-    # Check if successful
-    if response.status_code == 200:
-        print("\n✅ Classification API request successful!")
-        
-        # Verify data in DynamoDB
-        print("\n2. Checking DynamoDB for stored classification data...")
-        dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-        table = dynamodb.Table(CLASSIFICATIONS_TABLE)
-        
-        try:
-            db_response = table.get_item(
-                Key={
-                    'device_id': device_id,
-                    'timestamp': timestamp
-                }
-            )
-            
-            if 'Item' in db_response:
-                print("✅ Classification data found in DynamoDB!")
-                print(f"DynamoDB item: {json.dumps(db_response['Item'], indent=2, cls=DecimalEncoder)}")
-            else:
-                print("❌ Classification data not found in DynamoDB")
-        except Exception as e:
-            print(f"❌ Error checking DynamoDB: {str(e)}")
-        
-        # Check S3 for the image
-        print("\n3. Checking S3 for uploaded classification image...")
-        s3 = boto3.client('s3', region_name=AWS_REGION)
-        
-        try:
-            # List objects in the bucket with the device_id prefix
-            s3_response = s3.list_objects_v2(
-                Bucket=IMAGES_BUCKET,
-                Prefix=f"classifications/{device_id}"
-            )
-            
-            if 'Contents' in s3_response and len(s3_response['Contents']) > 0:
-                print("✅ Classification image found in S3!")
-                for obj in s3_response['Contents']:
-                    print(f"S3 object: {obj['Key']}, Size: {obj['Size']} bytes")
-                    # Generate a presigned URL for viewing the image
-                    url = s3.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': IMAGES_BUCKET, 'Key': obj['Key']},
-                        ExpiresIn=3600
-                    )
-                    print(f"Image URL (valid for 1 hour): {url}")
-            else:
-                print("❌ Classification image not found in S3")
-        except Exception as e:
-            print(f"❌ Error checking S3: {str(e)}")
-    else:
-        print(f"❌ Classification API request failed with status code: {response.status_code}")
-    return response.status_code == 200
+    """Test the classification API endpoint"""
+    return test_api_endpoint('classification')
 
 
 if __name__ == "__main__":
