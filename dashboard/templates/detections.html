@@ -25,9 +25,9 @@
                 <td>{{ item.model_id }}</td>
                 <td>{{ item.formatted_time }}</td>
                 <td>
-                    {% if item.s3_image_link %}
-                    <a href="{{ item.s3_image_link }}" target="_blank">
-                        <img src="{{ item.s3_image_link }}" class="img-thumbnail" style="max-width: 100px;">
+                    {% if item.image_link %}
+                    <a href="{{ item.image_link }}" target="_blank">
+                        <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
                     </a>
                     {% else %}
                     No image

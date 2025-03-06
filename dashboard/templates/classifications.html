@@ -14,6 +14,8 @@
                 <th>Device ID</th>
                 <th>Model ID</th>
                 <th>Timestamp</th>
+                <th>Family</th>
+                <th>Genus</th>
                 <th>Species</th>
                 <th>Confidence</th>
                 <th>Image</th>
@@ -26,12 +28,18 @@
                 <td>{{ item.device_id }}</td>
                 <td>{{ item.model_id }}</td>
                 <td>{{ item.formatted_time }}</td>
+                <td>{{ item.family }}</td>
+                <td>{{ item.genus }}</td>
                 <td>{{ item.species }}</td>
-                <td>{{ item.confidence }}</td>
                 <td>
-                    {% if item.s3_image_link %}
-                    <a href="{{ item.s3_image_link }}" target="_blank">
-                        <img src="{{ item.s3_image_link }}" class="img-thumbnail" style="max-width: 100px;">
+                    Family: {{ item.family_confidence }}<br>
+                    Genus: {{ item.genus_confidence }}<br>
+                    Species: {{ item.species_confidence }}
+                </td>
+                <td>
+                    {% if item.image_link %}
+                    <a href="{{ item.image_link }}" target="_blank">
+                        <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
                     </a>
                     {% else %}
                     No image

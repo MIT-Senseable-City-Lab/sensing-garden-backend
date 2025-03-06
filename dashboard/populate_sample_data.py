@@ -114,8 +114,7 @@ def create_detection_data(num_items=5):
             'device_id': device_id,
             'model_id': model_id,
             'timestamp': timestamp,
-            's3_image_link': s3_image_link,
-            's3_crop_image_link': ''
+            'image_link': s3_image_link
         }
         
         try:
@@ -144,11 +143,13 @@ def create_classification_data(num_items=5):
             'device_id': device_id,
             'model_id': model_id,
             'timestamp': timestamp,
-            's3_image_link': s3_image_link,
-            'genus': plant['genus'],
+            'image_link': s3_image_link,
             'family': plant['family'],
+            'genus': plant['genus'],
             'species': plant['species'],
-            'confidence': Decimal(str(round(random.uniform(0.75, 0.99), 2)))
+            'family_confidence': Decimal(str(round(random.uniform(0.75, 0.99), 2))),
+            'genus_confidence': Decimal(str(round(random.uniform(0.75, 0.99), 2))),
+            'species_confidence': Decimal(str(round(random.uniform(0.75, 0.99), 2)))
         }
         
         try:
