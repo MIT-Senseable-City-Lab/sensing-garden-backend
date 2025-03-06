@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Sensing Garden Dashboard - Home{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <h1 class="display-4">Welcome to the Sensing Garden Dashboard</h1>
+    <p class="lead">This dashboard allows you to view data stored in your DynamoDB tables.</p>
+    <hr class="my-4">
+    <p>Choose one of the following options to view your data:</p>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Detections</h5>
+                    <p class="card-text">View sensor detection data including images and metadata.</p>
+                    <a href="{{ url_for('detections') }}" class="btn btn-primary">View Detections</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Classifications</h5>
+                    <p class="card-text">View plant classification data including species information.</p>
+                    <a href="{{ url_for('classifications') }}" class="btn btn-primary">View Classifications</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Models</h5>
+                    <p class="card-text">View information about the ML models used for detection and classification.</p>
+                    <a href="{{ url_for('models') }}" class="btn btn-primary">View Models</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

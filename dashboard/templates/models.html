@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Sensing Garden Dashboard - Models{% endblock %}
+
+{% block content %}
+<h1>ML Models</h1>
+<p>Showing the models data from DynamoDB.</p>
+
+{% if items %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Timestamp</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.type }}</td>
+                <td>{{ item.formatted_time }}</td>
+                <td>
+                    <a href="{{ url_for('view_item', table_name='models', device_id=item.id, timestamp=item.timestamp) }}" class="btn btn-sm btn-info">View Details</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No model data found. You may need to populate the models table.
+</div>
+{% endif %}
+{% endblock %}

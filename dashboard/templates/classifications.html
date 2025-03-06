@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Sensing Garden Dashboard - Classifications{% endblock %}
+
+{% block content %}
+<h1>Plant Classifications</h1>
+<p>Showing the most recent classification data from DynamoDB.</p>
+
+{% if items %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Device ID</th>
+                <th>Model ID</th>
+                <th>Timestamp</th>
+                <th>Species</th>
+                <th>Confidence</th>
+                <th>Image</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.device_id }}</td>
+                <td>{{ item.model_id }}</td>
+                <td>{{ item.formatted_time }}</td>
+                <td>{{ item.species }}</td>
+                <td>{{ item.confidence }}</td>
+                <td>
+                    {% if item.s3_image_link %}
+                    <a href="{{ item.s3_image_link }}" target="_blank">
+                        <img src="{{ item.s3_image_link }}" class="img-thumbnail" style="max-width: 100px;">
+                    </a>
+                    {% else %}
+                    No image
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('view_item', table_name='sensor_classifications', device_id=item.device_id, timestamp=item.timestamp) }}" class="btn btn-sm btn-info">View Details</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No classification data found. Try running the test script to generate some data.
+</div>
+{% endif %}
+{% endblock %}
