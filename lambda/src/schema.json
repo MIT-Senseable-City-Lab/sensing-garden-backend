@@ -1,0 +1,26 @@
+{
+    "sensor_detections": {
+        "device_id": "string",
+        "timestamp": "string",
+        "model_id": "string",
+        "s3_image_link": "string",
+        "s3_crop_image_link": "string"
+    },
+    "sensor_classifications": {
+        "device_id": "string",
+        "timestamp": "string",
+        "model_id": "string",
+        "s3_image_link": "string",
+        "genus": "string",
+        "family": "string",
+        "species": "string",
+        "confidence": "float"
+    },
+    "models": {
+        "id": "string",
+        "timestamp": "string",
+        "version": "string",
+        "description": "string",
+        "type": "string"
+    }
+}
