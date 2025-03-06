@@ -5,20 +5,26 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/../lambda/deployment_package.zip"
 }
 
-resource "aws_lambda_function" "write_data" {
-  function_name    = "write-data-function"
+# Lambda function for detections
+resource "aws_lambda_function" "detection_function" {
+  function_name    = "detection-function"
   role            = aws_iam_role.lambda_exec.arn
-  handler         = "handler.handler"
+  handler         = "handler.detection"
   runtime         = "python3.9"
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout         = 10
-  environment {
-    variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.sensor_detections.name
-      S3_BUCKET_NAME = aws_s3_bucket.sensor_images.id
-    }
-  }
+}
+
+# Lambda function for classifications
+resource "aws_lambda_function" "classification_function" {
+  function_name    = "classification-function"
+  role            = aws_iam_role.lambda_exec.arn
+  handler         = "handler.classification"
+  runtime         = "python3.9"
+  filename        = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  timeout         = 10
 }
 
 resource "aws_iam_role" "lambda_exec" {
@@ -54,11 +60,20 @@ resource "aws_iam_policy_attachment" "lambda_s3_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
-# Permission for API Gateway to invoke Lambda
-resource "aws_lambda_permission" "api_gateway" {
-  statement_id  = "AllowAPIGatewayInvoke"
+# Permission for API Gateway to invoke Detection Lambda
+resource "aws_lambda_permission" "api_gateway_detection" {
+  statement_id  = "AllowAPIGatewayInvokeDetection"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.write_data.function_name
+  function_name = aws_lambda_function.detection_function.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/data"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/detections"
+}
+
+# Permission for API Gateway to invoke Classification Lambda
+resource "aws_lambda_permission" "api_gateway_classification" {
+  statement_id  = "AllowAPIGatewayInvokeClassification"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.classification_function.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classifications"
 }

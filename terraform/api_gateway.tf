@@ -27,16 +27,37 @@ resource "aws_apigatewayv2_stage" "default" {
   }
 }
 
-resource "aws_apigatewayv2_integration" "lambda" {
+# Integration for detections
+resource "aws_apigatewayv2_integration" "detection_lambda" {
   api_id           = aws_apigatewayv2_api.http_api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.write_data.invoke_arn
+  integration_uri  = aws_lambda_function.detection_function.invoke_arn
+  integration_method = "POST"
+  payload_format_version = "2.0"
 }
 
-resource "aws_apigatewayv2_route" "post_data" {
+# Integration for classifications
+resource "aws_apigatewayv2_integration" "classification_lambda" {
+  api_id           = aws_apigatewayv2_api.http_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.classification_function.invoke_arn
+  integration_method = "POST"
+  payload_format_version = "2.0"
+}
+
+# Route for detections
+resource "aws_apigatewayv2_route" "post_detections" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /data"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  route_key = "POST /detections"
+  target    = "integrations/${aws_apigatewayv2_integration.detection_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# Route for classifications
+resource "aws_apigatewayv2_route" "post_classifications" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /classifications"
+  target    = "integrations/${aws_apigatewayv2_integration.classification_lambda.id}"
   authorization_type = "NONE"
 }
 

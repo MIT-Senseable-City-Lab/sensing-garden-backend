@@ -6,9 +6,14 @@ output "api_gateway_url" {
   description = "Base URL for API Gateway"
 }
 
-output "api_endpoint" {
-  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/data"
-  description = "Full URL for the data endpoint"
+output "detection_api_endpoint" {
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/detections"
+  description = "Full URL for the detections endpoint"
+}
+
+output "classification_api_endpoint" {
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/classifications"
+  description = "Full URL for the classifications endpoint"
 }
 
 output "api_key" {
@@ -40,13 +45,23 @@ output "models_table_name" {
 }
 
 # Lambda outputs
-output "lambda_function_name" {
-  value       = aws_lambda_function.write_data.function_name
-  description = "Name of the Lambda function"
+output "detection_lambda_function_name" {
+  value       = aws_lambda_function.detection_function.function_name
+  description = "Name of the detection Lambda function"
 }
 
-# Direct Lambda invocation example
-output "lambda_invoke_command" {
-  value       = "aws lambda invoke --function-name ${aws_lambda_function.write_data.function_name} --payload '{\"device_id\":\"device123\",\"model_id\":\"model456\",\"image\":\"base64_data\"}' response.json"
-  description = "Example command to invoke Lambda directly"
+output "classification_lambda_function_name" {
+  value       = aws_lambda_function.classification_function.function_name
+  description = "Name of the classification Lambda function"
+}
+
+# Direct Lambda invocation examples
+output "detection_lambda_invoke_command" {
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.detection_function.function_name} --payload '{\"device_id\":\"device123\",\"model_id\":\"model456\",\"image\":\"base64_data\"}' response.json"
+  description = "Example command to invoke detection Lambda directly"
+}
+
+output "classification_lambda_invoke_command" {
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.classification_function.function_name} --payload '{\"device_id\":\"device123\",\"model_id\":\"model456\",\"image\":\"base64_data\",\"genus\":\"Test Genus\",\"family\":\"Test Family\",\"species\":\"Test Species\",\"confidence\":0.95}' response.json"
+  description = "Example command to invoke classification Lambda directly"
 }
