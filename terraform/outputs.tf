@@ -12,7 +12,7 @@ output "api_endpoint" {
 }
 
 output "api_key" {
-  value       = aws_apigatewayv2_api_key.api_key.value
+  value       = aws_api_gateway_api_key.api_key.value
   description = "API key for authentication"
   sensitive   = true
 }
