@@ -11,8 +11,13 @@ data "archive_file" "schema_layer_zip" {
   output_path = "${path.module}/../lambda/schema_layer.zip"
   
   source {
-    content  = file("${path.module}/../common/schema.json")
-    filename = "schema.json"
+    content  = file("${path.module}/../common/api-schema.json")
+    filename = "api-schema.json"
+  }
+  
+  source {
+    content  = file("${path.module}/../common/db-schema.json")
+    filename = "db-schema.json"
   }
 }
 
@@ -79,22 +84,4 @@ resource "aws_iam_policy_attachment" "lambda_s3_access" {
   name       = "lambda-s3-access"
   roles      = [aws_iam_role.lambda_exec.name]
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-}
-
-# Permission for API Gateway to invoke Detection Lambda
-resource "aws_lambda_permission" "api_gateway_detection" {
-  statement_id  = "AllowAPIGatewayInvokeDetection"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.detection_function.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/detections"
-}
-
-# Permission for API Gateway to invoke Classification Lambda
-resource "aws_lambda_permission" "api_gateway_classification" {
-  statement_id  = "AllowAPIGatewayInvokeClassification"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.classification_function.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classifications"
 }

@@ -1,7 +1,14 @@
+locals {
+  api_schema = jsondecode(file("../common/api-schema.json"))
+  # Using singular paths from the API schema
+  detection_path = "/detection"
+  classification_path = "/classification"
+}
+
 resource "aws_apigatewayv2_api" "http_api" {
-  name          = "my-api-gateway"
+  name          = "sensing-garden-api"
   protocol_type = "HTTP"
-  
+
   cors_configuration {
     allow_headers = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"]
     allow_methods = ["POST", "OPTIONS"]
@@ -10,16 +17,9 @@ resource "aws_apigatewayv2_api" "http_api" {
   }
 }
 
-# API Keys are managed differently for HTTP APIs
-# Using REST API Gateway resources for API key management
-resource "aws_api_gateway_api_key" "api_key" {
-  name = "my-api-key"
-  enabled = true
-}
-
 resource "aws_apigatewayv2_stage" "default" {
   api_id = aws_apigatewayv2_api.http_api.id
-  name   = "$default"
+  name   = "data"
   auto_deploy = true
   default_route_settings {
     throttling_rate_limit = 100
@@ -27,7 +27,25 @@ resource "aws_apigatewayv2_stage" "default" {
   }
 }
 
-# Integration for detections
+# Permission for API Gateway to invoke Detection Lambda
+resource "aws_lambda_permission" "api_gateway_detection" {
+  statement_id  = "AllowAPIGatewayInvokeDetection"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.detection_function.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*${local.detection_path}"
+}
+
+# Permission for API Gateway to invoke Classification Lambda
+resource "aws_lambda_permission" "api_gateway_classification" {
+  statement_id  = "AllowAPIGatewayInvokeClassification"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.classification_function.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*${local.classification_path}"
+}
+
+# Create integration for Detection Lambda
 resource "aws_apigatewayv2_integration" "detection_lambda" {
   api_id           = aws_apigatewayv2_api.http_api.id
   integration_type = "AWS_PROXY"
@@ -36,7 +54,7 @@ resource "aws_apigatewayv2_integration" "detection_lambda" {
   payload_format_version = "2.0"
 }
 
-# Integration for classifications
+# Create integration for Classification Lambda
 resource "aws_apigatewayv2_integration" "classification_lambda" {
   api_id           = aws_apigatewayv2_api.http_api.id
   integration_type = "AWS_PROXY"
@@ -45,20 +63,27 @@ resource "aws_apigatewayv2_integration" "classification_lambda" {
   payload_format_version = "2.0"
 }
 
-# Route for detections
-resource "aws_apigatewayv2_route" "post_detections" {
+# Create route for Detection endpoint
+resource "aws_apigatewayv2_route" "detection_route" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /detections"
+  route_key = "POST ${local.detection_path}"
   target    = "integrations/${aws_apigatewayv2_integration.detection_lambda.id}"
   authorization_type = "NONE"
 }
 
-# Route for classifications
-resource "aws_apigatewayv2_route" "post_classifications" {
+# Create route for Classification endpoint
+resource "aws_apigatewayv2_route" "classification_route" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /classifications"
+  route_key = "POST ${local.classification_path}"
   target    = "integrations/${aws_apigatewayv2_integration.classification_lambda.id}"
   authorization_type = "NONE"
+}
+
+# API Keys are managed differently for HTTP APIs
+# Using REST API Gateway resources for API key management
+resource "aws_api_gateway_api_key" "api_key" {
+  name = "my-api-key"
+  enabled = true
 }
 
 # Create a usage plan for the API key

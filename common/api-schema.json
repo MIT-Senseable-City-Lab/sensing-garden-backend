@@ -1,0 +1,124 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Sensing Garden API",
+        "description": "API for sensor detection and classification",
+        "version": "0.0.1"
+    },
+    "paths": {
+        "/detection": {
+            "post": {
+                "summary": "Submit a detection request",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DetectionData"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Detection processed successfully"
+                    }
+                }
+            }
+        },
+        "/classification": {
+            "post": {
+                "summary": "Submit a classification request",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClassificationData"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Classification processed successfully"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "DetectionData": {
+                "type": "object",
+                "required": [
+                    "device_id",
+                    "model_id",
+                    "image"
+                ],
+                "properties": {
+                    "device_id": {
+                        "type": "string"
+                    },
+                    "model_id": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "image": {
+                        "type": "string",
+                        "description": "Base64 encoded image"
+                    }
+                }
+            },
+            "ClassificationData": {
+                "type": "object",
+                "required": [
+                    "device_id",
+                    "model_id",
+                    "image",
+                    "family",
+                    "genus",
+                    "species",
+                    "family_confidence",
+                    "genus_confidence",
+                    "species_confidence"
+                ],
+                "properties": {
+                    "device_id": {
+                        "type": "string"
+                    },
+                    "model_id": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "image": {
+                        "type": "string",
+                        "description": "Base64 encoded image"
+                    },
+                    "family": {
+                        "type": "string"
+                    },
+                    "genus": {
+                        "type": "string"
+                    },
+                    "species": {
+                        "type": "string"
+                    },
+                    "family_confidence": {
+                        "type": "number"
+                    },
+                    "genus_confidence": {
+                        "type": "number"
+                    },
+                    "species_confidence": {
+                        "type": "number"
+                    }
+                }
+            }
+        }
+    }
+}

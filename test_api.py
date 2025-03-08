@@ -22,14 +22,31 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
-# Import configuration from separate file or environment variables
+# Load schema
+def load_schema():
+    """Load the schema from the common directory"""
+    schema_path = os.path.join(os.path.dirname(__file__), 'common/api-schema.json')
+    with open(schema_path, 'r') as f:
+        return json.load(f)
+
+# Get schema
+SCHEMA = load_schema()
+print("Schema loaded successfully.")
+print("Schema keys:", SCHEMA.keys())
+
+# Use hardcoded endpoints to match the API schema
+DETECTION_PATH = '/detection'
+CLASSIFICATION_PATH = '/classification'
+print(f"Using API paths: {DETECTION_PATH} and {CLASSIFICATION_PATH}")
+
+# Load configuration
 def load_config():
     try:
         from config import API_ENDPOINT, API_KEY, AWS_REGION
         
         # Define the specific endpoints based on the base API_ENDPOINT
-        DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detections"
-        CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classifications"
+        DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/')}{DETECTION_PATH}"
+        CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/')}{CLASSIFICATION_PATH}"
         
     except ImportError:
         # Fallback to environment variables if config file doesn't exist
@@ -38,8 +55,9 @@ def load_config():
         AWS_REGION = os.environ.get("SENSING_GARDEN_AWS_REGION", "us-east-1")
         
         # Use the specific endpoints from Terraform output
-        DETECTION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/detections"
-        CLASSIFICATION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/classifications"
+        # Include the 'data' stage name in the API URL path
+        DETECTION_API_ENDPOINT = f"https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/data{DETECTION_PATH}"
+        CLASSIFICATION_API_ENDPOINT = f"https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/data{CLASSIFICATION_PATH}"
         
         if not API_KEY:
             raise ValueError(
@@ -73,22 +91,6 @@ CLASSIFICATIONS_TABLE = 'sensor_classifications'
 IMAGES_BUCKET = 'sensing-garden-images'
 MODELS_TABLE = 'models'
 
-# Load schema
-def load_schema():
-    """Load the schema from the common directory"""
-    schema_path = os.path.join(os.path.dirname(__file__), 'common/schema.json')
-    with open(schema_path, 'r') as f:
-        return json.load(f)
-
-# Get schema
-try:
-    SCHEMA = load_schema()
-    print("Schema loaded successfully.")
-    print("Schema keys:", SCHEMA.keys())
-except KeyError as e:
-    print(f"Error loading schema: Missing key {str(e)}")
-    sys.exit(1)
-
 # Create a test image
 def create_test_image():
     # Create a simple image with text
@@ -110,7 +112,7 @@ def create_test_payload(request_type):
     
     # Add required fields from schema
     try:
-        api_schema = SCHEMA['properties']['api']['properties'][request_type]
+        api_schema = SCHEMA['components']['schemas'][request_type]
         for field in api_schema['required']:
             if field == 'device_id':
                 payload[field] = device_id
@@ -118,7 +120,7 @@ def create_test_payload(request_type):
                 payload[field] = model_id
             elif field == 'image':
                 payload[field] = create_test_image()
-            elif request_type == 'classification_request':
+            elif request_type == 'ClassificationData':
                 if field == 'family':
                     payload[field] = "Test Family"
                 elif field == 'genus':
@@ -144,7 +146,7 @@ def test_api_endpoint(endpoint_type):
     """Test an API endpoint (detection or classification)"""
     # Determine which endpoint and table to use
     is_detection = endpoint_type == 'detection'
-    request_type = 'detection_request' if is_detection else 'classification_request'
+    request_type = 'DetectionData' if is_detection else 'ClassificationData'
     endpoint = DETECTION_API_ENDPOINT if is_detection else CLASSIFICATION_API_ENDPOINT
     table_name = DETECTIONS_TABLE if is_detection else CLASSIFICATIONS_TABLE
     s3_prefix = 'detections' if is_detection else 'classifications'

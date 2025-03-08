@@ -1,9 +1,10 @@
 import json
 import base64
 import boto3
+import os
 from datetime import datetime
 from decimal import Decimal
-from dynamodb import store_detection_data, store_classification_data, _load_schema
+from dynamodb import store_detection_data, store_classification_data
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
@@ -19,7 +20,51 @@ s3 = boto3.client('s3')
 IMAGES_BUCKET = "sensing-garden-images"
 
 # Load the schema once
-SCHEMA = _load_schema()
+try:
+    # In Lambda environment, we expect the schema to be in /opt/schema/api-schema.json
+    # or in the local directory structure
+    if os.path.exists('/opt/schema/api-schema.json'):
+        API_SCHEMA_PATH = '/opt/schema/api-schema.json'
+        print(f"Loading schema from Lambda layer: {API_SCHEMA_PATH}")
+    else:
+        # Fallback to local path calculation for testing
+        API_SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'common', 'api-schema.json')
+        print(f"Loading schema from local path: {API_SCHEMA_PATH}")
+    
+    with open(API_SCHEMA_PATH, 'r') as f:
+        API_SCHEMA = json.load(f)
+    print(f"API Schema loaded successfully with keys: {list(API_SCHEMA.keys())}")
+except Exception as e:
+    print(f"Error loading API schema: {str(e)}")
+    # Provide default minimal schema for error recovery
+    API_SCHEMA = {
+        "components": {
+            "schemas": {
+                "DetectionData": {
+                    "required": ["device_id", "model_id", "image"],
+                    "properties": {
+                        "device_id": {"type": "string"},
+                        "model_id": {"type": "string"},
+                        "image": {"type": "string"}
+                    }
+                },
+                "ClassificationData": {
+                    "required": ["device_id", "model_id", "image"],
+                    "properties": {
+                        "device_id": {"type": "string"},
+                        "model_id": {"type": "string"},
+                        "image": {"type": "string"},
+                        "family": {"type": "string"},
+                        "genus": {"type": "string"},
+                        "species": {"type": "string"},
+                        "family_confidence": {"type": "number"},
+                        "genus_confidence": {"type": "number"},
+                        "species_confidence": {"type": "number"}
+                    }
+                }
+            }
+        }
+    }
 
 def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     """Upload base64 encoded image to S3"""
@@ -51,7 +96,7 @@ def _parse_request(event):
 
 def _validate_api_request(body, request_type):
     """Validate API request against schema"""
-    api_schema = SCHEMA['properties']['api']['properties'][request_type]
+    api_schema = API_SCHEMA['components']['schemas'][request_type]
     
     # Check required fields
     missing_fields = [field for field in api_schema['required'] if field not in body]
@@ -115,7 +160,7 @@ def _process_request(event, context, request_type, data_type, store_function):
         }
         
         # Add additional fields for classification
-        if request_type == 'classification_request':
+        if request_type == 'ClassificationData':
             for field in ['family', 'genus', 'species', 'family_confidence', 'genus_confidence', 'species_confidence']:
                 if field in body:
                     # Convert confidence values to Decimal for DynamoDB
@@ -137,17 +182,32 @@ def _process_request(event, context, request_type, data_type, store_function):
                 
         return result
         
+    except KeyError as e:
+        error_message = f"Missing key in request: {str(e)}"
+        print(error_message)
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': error_message})
+        }
+    except ValueError as e:
+        error_message = f"Value error: {str(e)}"
+        print(error_message)
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': error_message})
+        }
     except Exception as e:
-        print(f"Error processing {request_type}: {str(e)}")
+        error_message = f"Error processing {request_type}: {str(e)}"
+        print(error_message)
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)
+            'body': json.dumps({'error': error_message}, cls=DecimalEncoder)
         }
 
 def detection(event, context):
     """Lambda handler for processing sensor detections"""
-    return _process_request(event, context, 'detection_request', 'detections', store_detection_data)
+    return _process_request(event, context, 'DetectionData', 'detections', store_detection_data)
 
 def classification(event, context):
     """Lambda handler for processing plant classifications"""
-    return _process_request(event, context, 'classification_request', 'classifications', store_classification_data)
+    return _process_request(event, context, 'ClassificationData', 'classifications', store_classification_data)

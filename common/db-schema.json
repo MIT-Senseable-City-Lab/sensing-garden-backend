@@ -1,0 +1,69 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "sensor_detections": {
+            "type": "object",
+            "required": [
+                "device_id",
+                "timestamp",
+                "model_id",
+                "image_key",
+                "image_bucket"
+            ],
+            "properties": {
+                "device_id": { "type": "string" },
+                "timestamp": { "type": "string" },
+                "model_id": { "type": "string" },
+                "image_key": { "type": "string" },
+                "image_bucket": { "type": "string" }
+            }
+        },
+        "sensor_classifications": {
+            "type": "object",
+            "required": [
+                "device_id",
+                "timestamp",
+                "model_id",
+                "image_key",
+                "image_bucket",
+                "family",
+                "genus",
+                "species",
+                "family_confidence",
+                "genus_confidence",
+                "species_confidence"
+            ],
+            "properties": {
+                "device_id": { "type": "string" },
+                "timestamp": { "type": "string" },
+                "model_id": { "type": "string" },
+                "image_key": { "type": "string" },
+                "image_bucket": { "type": "string" },
+                "family": { "type": "string" },
+                "genus": { "type": "string" },
+                "species": { "type": "string" },
+                "family_confidence": { "type": "number" },
+                "genus_confidence": { "type": "number" },
+                "species_confidence": { "type": "number" }
+            }
+        },
+        "models": {
+            "type": "object",
+            "required": [
+                "id",
+                "timestamp",
+                "version",
+                "description",
+                "type"
+            ],
+            "properties": {
+                "id": { "type": "string" },
+                "timestamp": { "type": "string" },
+                "version": { "type": "string" },
+                "description": { "type": "string" },
+                "type": { "type": "string" }
+            }
+        }
+    }
+}

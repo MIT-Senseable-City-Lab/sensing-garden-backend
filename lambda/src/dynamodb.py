@@ -69,11 +69,13 @@ def _load_schema():
         }
 
 # Load the schema once
-SCHEMA = _load_schema()
+DB_SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'common', 'db-schema.json')
+with open(DB_SCHEMA_PATH, 'r') as f:
+    DB_SCHEMA = json.load(f)
 
 def _validate_data(data, table_type):
     """Generic validation function for both detection and classification data"""
-    db_schema = SCHEMA['properties']['db']['properties'][table_type]
+    db_schema = DB_SCHEMA['properties'][table_type]
     
     # Check required fields
     missing_fields = [field for field in db_schema['required'] if field not in data]
