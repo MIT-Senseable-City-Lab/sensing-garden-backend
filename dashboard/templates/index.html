@@ -1,19 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Sensing Garden Dashboard - Home{% endblock %}
+{% block title %}Sensing Garden{% endblock %}
 
 {% block content %}
 <div class="jumbotron">
-    <h1 class="display-4">Welcome to the Sensing Garden Dashboard</h1>
-    <p class="lead">This dashboard allows you to view data stored in your DynamoDB tables.</p>
+    <h1 class="display-4">Sensing Garden</h1>
     <hr class="my-4">
-    <p>Choose one of the following options to view your data:</p>
     <div class="row">
         <div class="col-md-6 mb-3">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">View Device</h5>
-                    <p class="card-text">Select a device to view its detection and classification data.</p>
+                    <h5 class="card-title">Select Device</h5>
+                    <p class="card-text">Select a device to view its data and update its model.</p>
                     <form
                         onsubmit="window.location.href='/view_device/' + document.getElementById('deviceSelect').value; return false;">
                         <div class="form-group">
@@ -26,15 +24,6 @@
                         </div>
                         <button type="submit" class="btn btn-primary">View Device</button>
                     </form>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">View Models</h5>
-                    <p class="card-text">View information about the ML models used for detection and classification.</p>
-                    <a href="{{ url_for('view_models') }}" class="btn btn-primary">View Models</a>
                 </div>
             </div>
         </div>

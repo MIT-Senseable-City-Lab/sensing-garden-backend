@@ -1,6 +1,6 @@
 {% macro render_table(table_id, items, headers, download_url) %}
 <div class="table-responsive">
-    <button onclick="downloadCSV('{{ download_url }}')" class="btn btn-secondary mb-2">Download CSV</button>
+    <button onclick="window.open('{{ download_url }}', '_blank')" class="btn btn-secondary mb-2">Download CSV</button>
     <table id="{{ table_id }}" class="table table-striped">
         <thead>
             <tr>
@@ -39,7 +39,7 @@
     });
 
     function downloadCSV(url) {
-        window.location.href = url;
+        window.open(url, '_blank');
     }
 </script>
 {% endmacro %}

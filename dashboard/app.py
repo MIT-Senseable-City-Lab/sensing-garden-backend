@@ -138,8 +138,8 @@ def view_item(table_name, device_id, timestamp):
                           table_name=table_name,
                           json_item=json.dumps(item_to_dict(item), indent=2))
 
-@app.route('/download_csv/<table_name>/<device_id>', defaults={'device_id': None})
-@app.route('/download_csv/<table_name>')
+@app.route('/download_csv/<table_name>', defaults={'device_id': None})
+@app.route('/download_csv/<table_name>/<device_id>')
 def download_csv(table_name, device_id):
     """Download table data as CSV"""
     if table_name not in TABLE_MAPPING:
@@ -147,17 +147,34 @@ def download_csv(table_name, device_id):
 
     items = scan_table(TABLE_MAPPING[table_name])
     if device_id:
-        items = [item for item in items if item['device_id'] == device_id]
+        items = [item for item in items if item.get('device_id') == device_id]
 
-    # Create CSV
+    if not items:
+        return "No data available", 404
+
+    # Get all possible fieldnames
+    fieldnames = set()
+    for item in items:
+        fieldnames.update(item.keys())
+    fieldnames = sorted(fieldnames)
+
     csv_data = io.StringIO()
-    writer = csv.DictWriter(csv_data, fieldnames=items[0].keys())
+    writer = csv.DictWriter(csv_data, fieldnames=fieldnames, extrasaction='ignore')
     writer.writeheader()
-    writer.writerows(items)
+    
+    for item in items:
+        # Flatten nested structures
+        flat_item = {}
+        for key, value in item.items():
+            if isinstance(value, (dict, list)):
+                flat_item[key] = json.dumps(value)
+            else:
+                flat_item[key] = value
+        writer.writerow(flat_item)
 
-    # Return CSV response
     response = make_response(csv_data.getvalue())
-    response.headers['Content-Disposition'] = f'attachment; filename={table_name}.csv'
+    file_name = f"{table_name}_{device_id}_{datetime.now().isoformat()}.csv" if device_id else f"{table_name}_{datetime.now().isoformat()}.csv"
+    response.headers['Content-Disposition'] = f'attachment; filename={file_name}'
     response.headers['Content-Type'] = 'text/csv'
     return response
 
