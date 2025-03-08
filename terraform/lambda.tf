@@ -5,6 +5,25 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/../lambda/deployment_package.zip"
 }
 
+# Create an archive for the schema layer
+data "archive_file" "schema_layer_zip" {
+  type        = "zip"
+  output_path = "${path.module}/../lambda/schema_layer.zip"
+  
+  source {
+    content  = file("${path.module}/../common/schema.json")
+    filename = "schema.json"
+  }
+}
+
+# Create Lambda layer with the schema
+resource "aws_lambda_layer_version" "schema_layer" {
+  layer_name = "schema-layer"
+  filename   = data.archive_file.schema_layer_zip.output_path
+  source_code_hash = data.archive_file.schema_layer_zip.output_base64sha256
+  compatible_runtimes = ["python3.9"]
+}
+
 # Lambda function for detections
 resource "aws_lambda_function" "detection_function" {
   function_name    = "detection-function"
@@ -14,6 +33,7 @@ resource "aws_lambda_function" "detection_function" {
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout         = 10
+  layers          = [aws_lambda_layer_version.schema_layer.arn]
 }
 
 # Lambda function for classifications
@@ -25,6 +45,7 @@ resource "aws_lambda_function" "classification_function" {
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout         = 10
+  layers          = [aws_lambda_layer_version.schema_layer.arn]
 }
 
 resource "aws_iam_role" "lambda_exec" {

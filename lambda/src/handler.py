@@ -21,10 +21,11 @@ IMAGES_BUCKET = "sensing-garden-images"
 # Load the schema once
 SCHEMA = _load_schema()
 
-def _upload_image_to_s3(image_data, device_id, data_type):
+def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     """Upload base64 encoded image to S3"""
     # Decode base64 image and upload to S3
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    if timestamp is None:
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
     s3_key = f"{data_type}/{device_id}/{timestamp}.jpg"
     
     s3.put_object(
@@ -34,7 +35,9 @@ def _upload_image_to_s3(image_data, device_id, data_type):
         ContentType='image/jpeg'
     )
     
-    return f"https://{IMAGES_BUCKET}.s3.amazonaws.com/{s3_key}"
+    # Store the S3 key rather than a direct URL
+    # We'll generate presigned URLs when needed
+    return s3_key
 
 def _parse_request(event):
     """Parse the incoming request from API Gateway or direct invocation"""
@@ -67,6 +70,22 @@ def _validate_api_request(body, request_type):
     
     return True, ""
 
+def generate_presigned_url(s3_key, expiration=3600):
+    """Generate a presigned URL for accessing an S3 object"""
+    try:
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': IMAGES_BUCKET,
+                'Key': s3_key
+            },
+            ExpiresIn=expiration
+        )
+        return url
+    except Exception as e:
+        print(f"Error generating presigned URL: {str(e)}")
+        return None
+
 def _process_request(event, context, request_type, data_type, store_function):
     """Generic request processor for both detection and classification"""
     try:
@@ -79,15 +98,20 @@ def _process_request(event, context, request_type, data_type, store_function):
                 'body': json.dumps({'error': f"Invalid request: {error_message}"})
             }
         
-        # Upload image to S3
-        s3_image_link = _upload_image_to_s3(body['image'], body['device_id'], data_type)
+        # Generate consistent timestamp for both S3 and DynamoDB
+        timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        iso_timestamp = datetime.utcnow().isoformat()
         
-        # Prepare base data for DynamoDB
+        # Upload image to S3 and get the S3 key using the same timestamp
+        s3_key = _upload_image_to_s3(body['image'], body['device_id'], data_type, timestamp_str)
+        
+        # Prepare base data for DynamoDB using the timestamp we already generated
         dynamo_data = {
             'device_id': body['device_id'],
             'model_id': body['model_id'],
-            'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
-            'image_link': s3_image_link
+            'timestamp': body.get('timestamp', iso_timestamp),
+            'image_key': s3_key,  # Store the S3 key instead of a direct URL
+            'image_bucket': IMAGES_BUCKET  # Store the bucket name for future reference
         }
         
         # Add additional fields for classification

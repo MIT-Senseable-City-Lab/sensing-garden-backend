@@ -11,7 +11,8 @@
                         "device_id",
                         "timestamp",
                         "model_id",
-                        "image_link"
+                        "image_key",
+                        "image_bucket"
                     ],
                     "properties": {
                         "device_id": {
@@ -23,7 +24,10 @@
                         "model_id": {
                             "type": "string"
                         },
-                        "image_link": {
+                        "image_key": {
+                            "type": "string"
+                        },
+                        "image_bucket": {
                             "type": "string"
                         }
                     }
@@ -34,7 +38,8 @@
                         "device_id",
                         "timestamp",
                         "model_id",
-                        "image_link",
+                        "image_key",
+                        "image_bucket",
                         "family",
                         "genus",
                         "species",
@@ -52,7 +57,10 @@
                         "model_id": {
                             "type": "string"
                         },
-                        "image_link": {
+                        "image_key": {
+                            "type": "string"
+                        },
+                        "image_bucket": {
                             "type": "string"
                         },
                         "family": {

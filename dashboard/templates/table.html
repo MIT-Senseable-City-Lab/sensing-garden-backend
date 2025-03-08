@@ -23,7 +23,20 @@
             {% for item in items %}
             <tr>
                 {% for header in headers %}
-                <td>{{ item[header] }}</td>
+                <td>
+                    {% if header == 'image_url' and item.image_url %}
+                        <a href="{{ item.image_url }}" target="_blank">
+                            <img src="{{ item.image_url }}" class="img-fluid" style="max-height: 100px;">
+                        </a>
+                    {% elif header in ['image_key', 'image_bucket'] %}
+                        {{ item[header] }}
+                        {% if header == 'image_key' and item.image_url %}
+                            <a href="{{ item.image_url }}" target="_blank" class="btn btn-sm btn-outline-primary ml-2">View</a>
+                        {% endif %}
+                    {% else %}
+                        {{ item[header] }}
+                    {% endif %}
+                </td>
                 {% endfor %}
             </tr>
             {% endfor %}

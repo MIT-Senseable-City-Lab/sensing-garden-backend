@@ -29,6 +29,10 @@ app = Flask(__name__)
 # Configure AWS
 aws_region = os.environ.get('AWS_REGION', 'us-east-1')
 dynamodb = boto3.resource('dynamodb', region_name=aws_region)
+s3_client = boto3.client('s3', region_name=aws_region)
+
+# S3 bucket name for all image data
+IMAGES_BUCKET = os.environ.get('IMAGES_BUCKET', 'sensing-garden-images')
 
 # Load schema
 root_dir = Path(__file__).parent.parent
@@ -72,16 +76,39 @@ def item_to_dict(item):
             item[key] = list(value)
     return item
 
-# Helper function to format timestamps in items
-def format_timestamps(items):
-    """Format timestamps for display in all items"""
+def generate_presigned_url(bucket_name, object_key, expiration=3600):
+    """Generate a presigned URL for an S3 object"""
+    try:
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': bucket_name,
+                'Key': object_key
+            },
+            ExpiresIn=expiration
+        )
+        return url
+    except Exception as e:
+        print(f"Error generating presigned URL: {str(e)}")
+        return None
+
+# Helper function to format timestamps and generate image URLs
+def format_items(items):
+    """Format timestamps and generate image URLs for display in all items"""
     for item in items:
+        # Format timestamps
         if 'timestamp' in item:
             try:
                 dt = datetime.fromisoformat(item['timestamp'])
                 item['formatted_time'] = dt.strftime('%Y-%m-%d %H:%M:%S')
             except ValueError:
                 item['formatted_time'] = item['timestamp']
+        
+        # Generate presigned URLs for images
+        if 'image_key' in item and 'image_bucket' in item:
+            # Generate presigned URL using the key and bucket
+            item['image_url'] = generate_presigned_url(item['image_bucket'], item['image_key'])
+    
     return items
 
 # Helper function to scan a DynamoDB table
@@ -90,7 +117,7 @@ def scan_table(table_name):
     table = dynamodb.Table(table_name)
     response = table.scan()
     items = response.get('Items', [])
-    return format_timestamps(items)
+    return format_items(items)
 
 @app.route('/')
 def index():

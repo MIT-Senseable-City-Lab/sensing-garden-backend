@@ -18,12 +18,55 @@ DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 
 def _load_schema():
-    """Load the JSON schema for validation from the common directory"""
-    # Navigate up from lambda/src to the common directory
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    schema_path = os.path.join(base_dir, 'common', 'schema.json')
-    with open(schema_path, 'r') as f:
-        return json.load(f)
+    """Load the JSON schema for validation from a relative path"""
+    try:
+        # First try to look for schema in the deployed Lambda environment
+        schema_path = os.path.join('/opt', 'schema.json')
+        if os.path.exists(schema_path):
+            with open(schema_path, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Could not load schema from Lambda layer: {str(e)}")
+    
+    try:
+        # Fall back to loading from common directory during local development
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        schema_path = os.path.join(base_dir, 'common', 'schema.json')
+        with open(schema_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Could not load schema from common directory: {str(e)}")
+        # As a last resort, return a basic schema
+        return {
+            "properties": {
+                "db": {
+                    "properties": {
+                        "sensor_detections": {
+                            "required": ["device_id", "timestamp", "model_id", "image_key", "image_bucket"],
+                            "properties": {}
+                        },
+                        "sensor_classifications": {
+                            "required": ["device_id", "timestamp", "model_id", "image_key", "image_bucket", 
+                                       "family", "genus", "species", "family_confidence", "genus_confidence", "species_confidence"],
+                            "properties": {}
+                        }
+                    }
+                },
+                "api": {
+                    "properties": {
+                        "detection_request": {
+                            "required": ["device_id", "model_id", "image"],
+                            "properties": {}
+                        },
+                        "classification_request": {
+                            "required": ["device_id", "model_id", "image", "family", "genus", "species", 
+                                        "family_confidence", "genus_confidence", "species_confidence"],
+                            "properties": {}
+                        }
+                    }
+                }
+            }
+        }
 
 # Load the schema once
 SCHEMA = _load_schema()

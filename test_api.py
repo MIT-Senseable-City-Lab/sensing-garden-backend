@@ -75,8 +75,8 @@ MODELS_TABLE = 'models'
 
 # Load schema
 def load_schema():
-    """Load the schema from the lambda/src directory"""
-    schema_path = os.path.join(os.path.dirname(__file__), 'lambda/src/schema.json')
+    """Load the schema from the common directory"""
+    schema_path = os.path.join(os.path.dirname(__file__), 'common/schema.json')
     with open(schema_path, 'r') as f:
         return json.load(f)
 
@@ -194,25 +194,39 @@ def test_api_endpoint(endpoint_type):
         s3 = boto3.client('s3', region_name=AWS_REGION)
         
         try:
-            # List objects in the bucket with the device_id prefix
-            s3_response = s3.list_objects_v2(
-                Bucket=IMAGES_BUCKET,
-                Prefix=f"{s3_prefix}/{device_id}"
-            )
-            
-            if 'Contents' in s3_response and len(s3_response['Contents']) > 0:
-                print(f"✅ {endpoint_type.capitalize()} image found in S3!")
-                for obj in s3_response['Contents']:
-                    print(f"S3 object: {obj['Key']}, Size: {obj['Size']} bytes")
+            # Get the image_key from the DynamoDB record
+            if 'Item' in db_response and 'image_key' in db_response['Item']:
+                image_key = db_response['Item']['image_key']
+                
+                try:
+                    # Check if the specific object exists
+                    s3.head_object(Bucket=IMAGES_BUCKET, Key=image_key)
+                    print(f"✅ Found exact image in S3 with key: {image_key}")
+                    
                     # Generate a presigned URL for viewing the image
                     url = s3.generate_presigned_url(
                         'get_object',
-                        Params={'Bucket': IMAGES_BUCKET, 'Key': obj['Key']},
+                        Params={'Bucket': IMAGES_BUCKET, 'Key': image_key},
                         ExpiresIn=3600
                     )
                     print(f"Image URL (valid for 1 hour): {url}")
+                    print(f"✅ S3 object key matches DynamoDB image_key: {image_key}")
+                except Exception as e:
+                    print(f"❌ Error: Image with key {image_key} not found in S3 bucket: {str(e)}")
+                    
+                    # If exact key not found, list objects with the device prefix
+                    print("\nListing other objects with the same device prefix:")
+                    s3_response = s3.list_objects_v2(
+                        Bucket=IMAGES_BUCKET,
+                        Prefix=f"{s3_prefix}/{device_id}",
+                        MaxKeys=5  # Limit to avoid long output
+                    )
+                    
+                    if 'Contents' in s3_response and len(s3_response['Contents']) > 0:
+                        for obj in s3_response['Contents']:
+                            print(f"S3 object: {obj['Key']}, Size: {obj['Size']} bytes")
             else:
-                print(f"❌ {endpoint_type.capitalize()} image not found in S3")
+                print(f"❌ No image_key found in the DynamoDB item")
         except Exception as e:
             print(f"❌ Error checking S3: {str(e)}")
     else:

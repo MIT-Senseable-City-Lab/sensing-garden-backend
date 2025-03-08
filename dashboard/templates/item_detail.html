@@ -51,10 +51,10 @@
                 </dl>
             </div>
             <div class="col-md-6">
-                {% if item.s3_image_link %}
+                {% if item.image_url %}
                 <h5>Image</h5>
-                <a href="{{ item.s3_image_link }}" target="_blank">
-                    <img src="{{ item.s3_image_link }}" class="img-fluid image-preview">
+                <a href="{{ item.image_url }}" target="_blank">
+                    <img src="{{ item.image_url }}" class="img-fluid image-preview">
                 </a>
                 {% endif %}
             </div>
