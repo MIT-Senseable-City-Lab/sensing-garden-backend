@@ -18,15 +18,19 @@ DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 
 def _load_schema():
-    """Load the JSON schema for validation"""
-    schema_path = os.path.join(os.path.dirname(__file__), 'schema.json')
+    """Load the JSON schema for validation from the common directory"""
+    # Navigate up from lambda/src to the common directory
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    schema_path = os.path.join(base_dir, 'common', 'schema.json')
     with open(schema_path, 'r') as f:
         return json.load(f)
 
+# Load the schema once
+SCHEMA = _load_schema()
+
 def _validate_data(data, table_type):
     """Generic validation function for both detection and classification data"""
-    schema = _load_schema()
-    db_schema = schema['db'][table_type]
+    db_schema = SCHEMA['properties']['db']['properties'][table_type]
     
     # Check required fields
     missing_fields = [field for field in db_schema['required'] if field not in data]
@@ -44,8 +48,8 @@ def _validate_data(data, table_type):
                 print(f"Field {field} should be a string, got {type(value)}")
                 return False
                 
-            # Float validation and conversion to Decimal
-            elif field_type == 'float':
+            # Number validation and conversion to Decimal
+            elif field_type == 'number':
                 try:
                     if not isinstance(value, Decimal):
                         if isinstance(value, str):

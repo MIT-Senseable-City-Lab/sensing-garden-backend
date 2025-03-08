@@ -71,7 +71,7 @@ CLASSIFICATION_API_ENDPOINT = config['classification_endpoint']
 DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 IMAGES_BUCKET = 'sensing-garden-images'
-MODELS_TABLE = 'sensor_models'
+MODELS_TABLE = 'models'
 
 # Load schema
 def load_schema():
@@ -81,7 +81,13 @@ def load_schema():
         return json.load(f)
 
 # Get schema
-SCHEMA = load_schema()
+try:
+    SCHEMA = load_schema()
+    print("Schema loaded successfully.")
+    print("Schema keys:", SCHEMA.keys())
+except KeyError as e:
+    print(f"Error loading schema: Missing key {str(e)}")
+    sys.exit(1)
 
 # Create a test image
 def create_test_image():
@@ -103,27 +109,32 @@ def create_test_payload(request_type):
     payload = {}
     
     # Add required fields from schema
-    for field in SCHEMA['api'][request_type]['required']:
-        if field == 'device_id':
-            payload[field] = device_id
-        elif field == 'model_id':
-            payload[field] = model_id
-        elif field == 'image':
-            payload[field] = create_test_image()
-        elif request_type == 'classification_request':
-            if field == 'family':
-                payload[field] = "Test Family"
-            elif field == 'genus':
-                payload[field] = "Test Genus"
-            elif field == 'species':
-                payload[field] = "Test Species"
-            elif field == 'family_confidence':
-                payload[field] = str(Decimal('0.92'))
-            elif field == 'genus_confidence':
-                payload[field] = str(Decimal('0.94'))
-            elif field == 'species_confidence':
-                payload[field] = str(Decimal('0.90'))
-    
+    try:
+        api_schema = SCHEMA['properties']['api']['properties'][request_type]
+        for field in api_schema['required']:
+            if field == 'device_id':
+                payload[field] = device_id
+            elif field == 'model_id':
+                payload[field] = model_id
+            elif field == 'image':
+                payload[field] = create_test_image()
+            elif request_type == 'classification_request':
+                if field == 'family':
+                    payload[field] = "Test Family"
+                elif field == 'genus':
+                    payload[field] = "Test Genus"
+                elif field == 'species':
+                    payload[field] = "Test Species"
+                elif field == 'family_confidence':
+                    payload[field] = str(Decimal('0.92'))
+                elif field == 'genus_confidence':
+                    payload[field] = str(Decimal('0.94'))
+                elif field == 'species_confidence':
+                    payload[field] = str(Decimal('0.90'))
+    except KeyError as e:
+        print(f"Error creating payload: Missing key {str(e)}")
+        sys.exit(1)
+
     # Add optional fields
     payload['timestamp'] = timestamp
     
@@ -229,13 +240,25 @@ def add_models():
     models_table = dynamodb.Table(MODELS_TABLE)
 
     models = [
-        {'model_id': str(uuid.uuid4()), 'name': 'Model A', 'version': '1.0'},
-        {'model_id': str(uuid.uuid4()), 'name': 'Model B', 'version': '1.1'}
+        {
+            'id': str(uuid.uuid4()), 
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.0',
+            'description': 'Test Detection Model A',
+            'type': 'detection'
+        },
+        {
+            'id': str(uuid.uuid4()), 
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '1.1',
+            'description': 'Test Classification Model B',
+            'type': 'classification'
+        }
     ]
 
     for model in models:
         models_table.put_item(Item=model)
-        print(f"Added model: {model['name']} version {model['version']}")
+        print(f"Added model: {model['id']} version {model['version']} ({model['type']})")
 
 if __name__ == "__main__":
     # Example device_id to use for testing

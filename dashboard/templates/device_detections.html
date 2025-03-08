@@ -7,7 +7,8 @@
 {% block content %}
 <div class="container">
     <h2>Device {{ device_id }} Detections</h2>
-    {{ render_table('detectionsTable', detections, ['device_id', 'model_id', 'formatted_time', 'image_link'],
+    {% set display_fields = fields + ['formatted_time'] if 'formatted_time' not in fields else fields %}
+    {{ render_table('detectionsTable', detections, display_fields,
     url_for('download_csv', table_name='sensor_detections', device_id=device_id)) }}
 </div>
 {% endblock %}

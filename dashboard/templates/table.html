@@ -1,6 +1,16 @@
 {% macro render_table(table_id, items, headers, download_url) %}
+<!-- Controls outside of the table-responsive area -->
+<div class="mb-3">
+    <button onclick="window.open('{{ download_url }}', '_blank')" class="btn btn-secondary">Download CSV</button>
+</div>
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <div id="{{ table_id }}_length" class="dataTables_length"></div>
+    <div id="{{ table_id }}_info" class="dataTables_info"></div>
+</div>
+
+<!-- Table within scrollable area -->
 <div class="table-responsive">
-    <button onclick="window.open('{{ download_url }}', '_blank')" class="btn btn-secondary mb-2">Download CSV</button>
     <table id="{{ table_id }}" class="table table-striped">
         <thead>
             <tr>
@@ -20,22 +30,153 @@
         </tbody>
     </table>
 </div>
+
+<!-- Pagination outside of the table-responsive area -->
+<div class="mt-3">
+    <div id="{{ table_id }}_paginate" class="dataTables_paginate paging_simple_numbers"></div>
+</div>
 {% endmacro %}
 
 {% macro table_scripts(table_id) %}
+<style>
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .mb-3.d-flex {
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+    }
+</style>
 <script type="text/javascript">
+    // No search functions needed
+    // Ensure the document is fully loaded and jQuery is available
     document.addEventListener('DOMContentLoaded', function() {
+        // Check if jQuery and DataTable are available
+        if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined') {
+            console.error('jQuery or DataTable not loaded');
+            return;
+        }
+        
+        // Directly ensure the search input is connected to the right table
+        var searchInput = document.getElementById('{{ table_id }}_search_input');
+        if (searchInput) {
+            console.log('Search input found for {{ table_id }}');
+        } else {
+            console.error('Search input not found for {{ table_id }}');
+        }
         if ($.fn.DataTable.isDataTable('#{{ table_id }}')) {
             $('#{{ table_id }}').DataTable().destroy();
         }
         
-        $('#{{ table_id }}').DataTable({
+        console.log('Initializing DataTable for #{{ table_id }}');
+        // Initializing DataTable
+        // Initialize DataTable with custom DOM structure
+        var tableElement = $('#{{ table_id }}');
+        if (tableElement.length === 0) {
+            console.error('Table element #{{ table_id }} not found');
+            return;
+        }
+        // Add custom class for easier identification
+        tableElement.addClass('dt-table-{{ table_id }}');
+        
+        var table = tableElement.DataTable({
             paging: true,
-            searching: true,
+            searching: false,
             ordering: true,
             info: true,
-            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            // Basic DOM structure - just table
+            dom: 't',
+            // Basic callback when table is drawn
+            drawCallback: function() {
+                console.log('Table drawn');
+            },
+            // Move elements to our custom containers
+            initComplete: function() {
+                // No search input setup needed
+                
+                // Create and append length control
+                var lengthHtml = '<label>Show <select name="{{ table_id }}_length" aria-controls="{{ table_id }}" class="form-select form-select-sm">' +
+                                '<option value="10">10</option>' +
+                                '<option value="25">25</option>' +
+                                '<option value="50">50</option>' +
+                                '<option value="-1">All</option>' +
+                                '</select> entries</label>';
+                $('#{{ table_id }}_length').html(lengthHtml);
+                
+                // Connect length control to DataTable
+                $('#{{ table_id }}_length select').on('change', function() {
+                    table.page.len($(this).val()).draw();
+                });
+                
+                // Set up info display
+                var updateInfo = function() {
+                    var info = table.page.info();
+                    var infoText = 'Showing ' + (info.start + 1) + ' to ' + info.end + ' of ' + info.recordsDisplay + ' entries';
+                    if (info.recordsDisplay != info.recordsTotal) {
+                        infoText += ' (filtered from ' + info.recordsTotal + ' total entries)';
+                    }
+                    $('#{{ table_id }}_info').html(infoText);
+                };
+                
+                updateInfo();
+                table.on('draw', updateInfo);
+                
+                // Create pagination
+                var createPagination = function() {
+                    var info = table.page.info();
+                    var html = '<ul class="pagination">';
+                    
+                    // Previous button
+                    html += '<li class="paginate_button page-item previous ' + (info.page === 0 ? 'disabled' : '') + '">' +
+                           '<a href="#" class="page-link" data-page="prev">Previous</a></li>';
+                    
+                    // Page numbers
+                    var startPage = Math.max(0, info.page - 2);
+                    var endPage = Math.min(info.pages - 1, info.page + 2);
+                    
+                    if (startPage > 0) {
+                        html += '<li class="paginate_button page-item"><a href="#" class="page-link" data-page="0">1</a></li>';
+                        if (startPage > 1) html += '<li class="paginate_button page-item disabled"><a href="#" class="page-link">...</a></li>';
+                    }
+                    
+                    for (var i = startPage; i <= endPage; i++) {
+                        html += '<li class="paginate_button page-item ' + (i === info.page ? 'active' : '') + '">' +
+                               '<a href="#" class="page-link" data-page="' + i + '">' + (i + 1) + '</a></li>';
+                    }
+                    
+                    if (endPage < info.pages - 1) {
+                        if (endPage < info.pages - 2) html += '<li class="paginate_button page-item disabled"><a href="#" class="page-link">...</a></li>';
+                        html += '<li class="paginate_button page-item"><a href="#" class="page-link" data-page="' + (info.pages - 1) + '">' + info.pages + '</a></li>';
+                    }
+                    
+                    // Next button
+                    html += '<li class="paginate_button page-item next ' + (info.page === info.pages - 1 ? 'disabled' : '') + '">' +
+                           '<a href="#" class="page-link" data-page="next">Next</a></li>';
+                    
+                    html += '</ul>';
+                    $('#{{ table_id }}_paginate').html(html);
+                    
+                    // Add event handlers
+                    $('#{{ table_id }}_paginate .page-link').on('click', function(e) {
+                        e.preventDefault();
+                        var page = $(this).data('page');
+                        if (page === 'prev') {
+                            table.page('previous').draw('page');
+                        } else if (page === 'next') {
+                            table.page('next').draw('page');
+                        } else {
+                            table.page(page).draw('page');
+                        }
+                    });
+                };
+                
+                createPagination();
+                table.on('draw', createPagination);
+            }
         });
+        
+        // No search button handlers needed
     });
 
     function downloadCSV(url) {

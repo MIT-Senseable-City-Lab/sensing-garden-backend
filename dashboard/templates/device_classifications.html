@@ -7,9 +7,9 @@
 {% block content %}
 <div class="container">
     <h2>Device {{ device_id }} Classifications</h2>
-    {{ render_table('classificationsTable', classifications, ['device_id', 'model_id', 'formatted_time', 'family',
-    'genus', 'species', 'family_confidence', 'genus_confidence', 'species_confidence', 'image_link'],
-    url_for('download_csv', table_name='classifications', device_id=device_id)) }}
+    {% set display_fields = fields + ['formatted_time'] if 'formatted_time' not in fields else fields %}
+    {{ render_table('classificationsTable', classifications, display_fields,
+    url_for('download_csv', table_name='sensor_classifications', device_id=device_id)) }}
 </div>
 {% endblock %}
 

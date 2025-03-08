@@ -2,9 +2,11 @@ import csv
 import io
 import json
 import os
+import sys
 from datetime import datetime
 from decimal import Decimal
 from functools import wraps
+from pathlib import Path
 
 import boto3
 from dotenv import load_dotenv
@@ -28,7 +30,14 @@ app = Flask(__name__)
 aws_region = os.environ.get('AWS_REGION', 'us-east-1')
 dynamodb = boto3.resource('dynamodb', region_name=aws_region)
 
-# Table names
+# Load schema
+root_dir = Path(__file__).parent.parent
+schema_path = root_dir / 'common' / 'schema.json'
+
+with open(schema_path, 'r') as f:
+    SCHEMA = json.load(f)
+
+# Get table names from schema
 DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 MODELS_TABLE = 'models'
@@ -39,6 +48,19 @@ TABLE_MAPPING = {
     'classifications': CLASSIFICATIONS_TABLE,
     'models': MODELS_TABLE
 }
+
+# Get field names from schema
+def get_table_fields(table_name):
+    """Get required fields for a table from schema"""
+    if table_name in SCHEMA['properties']['db']['properties']:
+        return SCHEMA['properties']['db']['properties'][table_name]['required']
+    return []
+
+def get_table_properties(table_name):
+    """Get property definitions for a table from schema"""
+    if table_name in SCHEMA['properties']['db']['properties']:
+        return SCHEMA['properties']['db']['properties'][table_name]['properties']
+    return {}
 
 # Helper function to convert DynamoDB items to dict
 def item_to_dict(item):
@@ -83,26 +105,43 @@ def view_device(device_id):
     # Fetch detection and classification content for the selected device
     detections = scan_table(DETECTIONS_TABLE)
     classifications = scan_table(CLASSIFICATIONS_TABLE)
+    
+    # Get field names from schema
+    detection_fields = get_table_fields(DETECTIONS_TABLE)
+    classification_fields = get_table_fields(CLASSIFICATIONS_TABLE)
+    
     return render_template('device_content.html', 
                            device_id=device_id, 
-                           detections=[d for d in detections if d['device_id'] == device_id], 
-                           classifications=[c for c in classifications if c['device_id'] == device_id])
+                           detections=[d for d in detections if d['device_id'] == device_id],
+                           classifications=[c for c in classifications if c['device_id'] == device_id],
+                           detection_fields=detection_fields,
+                           classification_fields=classification_fields)
 
 @app.route('/view_device/<device_id>/detections')
 def view_device_detections(device_id):
     # Fetch detection content for the selected device
     detections = scan_table(DETECTIONS_TABLE)
+    
+    # Get field names from schema
+    detection_fields = get_table_fields(DETECTIONS_TABLE)
+    
     return render_template('device_detections.html', 
                            device_id=device_id, 
-                           detections=[d for d in detections if d['device_id'] == device_id])
+                           detections=[d for d in detections if d['device_id'] == device_id],
+                           fields=detection_fields)
 
 @app.route('/view_device/<device_id>/classifications')
 def view_device_classifications(device_id):
     # Fetch classification content for the selected device
     classifications = scan_table(CLASSIFICATIONS_TABLE)
+    
+    # Get field names from schema
+    classification_fields = get_table_fields(CLASSIFICATIONS_TABLE)
+    
     return render_template('device_classifications.html', 
                            device_id=device_id, 
-                           classifications=[c for c in classifications if c['device_id'] == device_id])
+                           classifications=[c for c in classifications if c['device_id'] == device_id],
+                           fields=classification_fields)
 
 @app.route('/view_models')
 def view_models():
@@ -114,8 +153,22 @@ def view_table(table_type):
     if table_type not in TABLE_MAPPING:
         return redirect(url_for('index'))
     
-    items = scan_table(TABLE_MAPPING[table_type])
-    return render_template(f'{table_type}.html', items=items)
+    table_name = TABLE_MAPPING[table_type]
+    items = scan_table(table_name)
+    
+    # Get field names from schema
+    fields = get_table_fields(table_name)
+    
+    # Handle special case for models table - map 'id' to 'model_id' for backwards compatibility
+    if table_name == MODELS_TABLE:
+        for item in items:
+            if 'id' in item and 'model_id' not in item:
+                item['model_id'] = item['id']
+    
+    return render_template(f'{table_type}.html', 
+                          items=items, 
+                          fields=fields,
+                          table_properties=get_table_properties(table_name))
 
 # For backward compatibility, keep the specific routes
 @app.route('/models')
@@ -125,17 +178,24 @@ def models():
 @app.route('/item/<table_name>/<device_id>/<timestamp>')
 def view_item(table_name, device_id, timestamp):
     table = dynamodb.Table(table_name)
-    response = table.get_item(
-        Key={
-            'device_id': device_id,
-            'timestamp': timestamp
-        }
-    )
+    
+    # Define the key fields based on the table
+    key_fields = {'device_id': device_id, 'timestamp': timestamp}
+    
+    # For models table, use 'id' instead of 'device_id'
+    if table_name == MODELS_TABLE:
+        key_fields = {'id': device_id, 'timestamp': timestamp}
+    
+    response = table.get_item(Key=key_fields)
     item = response.get('Item', {})
+    
+    # Get field names from schema for this table
+    fields = get_table_fields(table_name) if table_name in SCHEMA['properties']['db']['properties'] else []
     
     return render_template('item_detail.html', 
                           item=item, 
                           table_name=table_name,
+                          fields=fields,
                           json_item=json.dumps(item_to_dict(item), indent=2))
 
 @app.route('/download_csv/<table_name>', defaults={'device_id': None})

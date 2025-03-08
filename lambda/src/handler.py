@@ -18,6 +18,9 @@ s3 = boto3.client('s3')
 # S3 bucket name for all image data
 IMAGES_BUCKET = "sensing-garden-images"
 
+# Load the schema once
+SCHEMA = _load_schema()
+
 def _upload_image_to_s3(image_data, device_id, data_type):
     """Upload base64 encoded image to S3"""
     # Decode base64 image and upload to S3
@@ -45,8 +48,7 @@ def _parse_request(event):
 
 def _validate_api_request(body, request_type):
     """Validate API request against schema"""
-    schema = _load_schema()
-    api_schema = schema['api'][request_type]
+    api_schema = SCHEMA['properties']['api']['properties'][request_type]
     
     # Check required fields
     missing_fields = [field for field in api_schema['required'] if field not in body]
@@ -59,8 +61,8 @@ def _validate_api_request(body, request_type):
             field_type = api_schema['properties'][field]['type']
             if field_type == 'string' and not isinstance(value, str):
                 return False, f"Field {field} should be a string"
-            elif field_type == 'float' and not isinstance(value, (int, float, str)) or \
-                 field_type == 'float' and isinstance(value, str) and not value.replace('.', '', 1).isdigit():
+            elif field_type == 'number' and not isinstance(value, (int, float, str)) or \
+                 field_type == 'number' and isinstance(value, str) and not value.replace('.', '', 1).isdigit():
                 return False, f"Field {field} should be a number"
     
     return True, ""
