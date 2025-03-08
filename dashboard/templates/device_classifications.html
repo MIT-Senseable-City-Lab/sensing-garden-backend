@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Device {{ device_id }} Classifications{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Device {{ device_id }} Classifications</h2>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Device ID</th>
+                    <th>Model ID</th>
+                    <th>Timestamp</th>
+                    <th>Family</th>
+                    <th>Genus</th>
+                    <th>Species</th>
+                    <th>Confidence</th>
+                    <th>Image</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in classifications %}
+                <tr>
+                    <td>{{ item.device_id }}</td>
+                    <td>{{ item.model_id }}</td>
+                    <td>{{ item.formatted_time }}</td>
+                    <td>{{ item.family }}</td>
+                    <td>{{ item.genus }}</td>
+                    <td>{{ item.species }}</td>
+                    <td>
+                        Family: {{ item.family_confidence }}<br>
+                        Genus: {{ item.genus_confidence }}<br>
+                        Species: {{ item.species_confidence }}
+                    </td>
+                    <td>
+                        {% if item.image_link %}
+                        <a href="{{ item.image_link }}" target="_blank">
+                            <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
+                        </a>
+                        {% else %}
+                        No image
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('view_item', table_name='sensor_classifications', device_id=item.device_id, timestamp=item.timestamp) }}"
+                            class="btn btn-sm btn-info">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

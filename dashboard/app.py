@@ -1,11 +1,13 @@
-import os
-import boto3
-from flask import Flask, render_template, request, redirect, url_for
-from datetime import datetime
-from dotenv import load_dotenv
 import json
+import os
+from datetime import datetime
 from decimal import Decimal
 from functools import wraps
+
+import boto3
+from dotenv import load_dotenv
+from flask import Flask, redirect, render_template, request, url_for
+
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
@@ -58,16 +60,50 @@ def format_timestamps(items):
     return items
 
 # Helper function to scan a DynamoDB table
-def scan_table(table_name, limit=20):
+def scan_table(table_name):
     """Generic function to scan a DynamoDB table"""
     table = dynamodb.Table(table_name)
-    response = table.scan(Limit=limit)
+    response = table.scan()
     items = response.get('Items', [])
     return format_timestamps(items)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Fetch all device IDs from the detections table
+    table = dynamodb.Table(DETECTIONS_TABLE)
+    response = table.scan(ProjectionExpression='device_id')
+    device_ids = {item['device_id'] for item in response.get('Items', [])}
+    return render_template('index.html', device_ids=device_ids)
+
+@app.route('/view_device/<device_id>')
+def view_device(device_id):
+    # Fetch detection and classification content for the selected device
+    detections = scan_table(DETECTIONS_TABLE)
+    classifications = scan_table(CLASSIFICATIONS_TABLE)
+    return render_template('device_content.html', 
+                           device_id=device_id, 
+                           detections=[d for d in detections if d['device_id'] == device_id], 
+                           classifications=[c for c in classifications if c['device_id'] == device_id])
+
+@app.route('/view_device/<device_id>/detections')
+def view_device_detections(device_id):
+    # Fetch detection content for the selected device
+    detections = scan_table(DETECTIONS_TABLE)
+    return render_template('device_detections.html', 
+                           device_id=device_id, 
+                           detections=[d for d in detections if d['device_id'] == device_id])
+
+@app.route('/view_device/<device_id>/classifications')
+def view_device_classifications(device_id):
+    # Fetch classification content for the selected device
+    classifications = scan_table(CLASSIFICATIONS_TABLE)
+    return render_template('device_classifications.html', 
+                           device_id=device_id, 
+                           classifications=[c for c in classifications if c['device_id'] == device_id])
+
+@app.route('/view_models')
+def view_models():
+    return view_table('models')
 
 @app.route('/<table_type>')
 def view_table(table_type):
@@ -79,14 +115,6 @@ def view_table(table_type):
     return render_template(f'{table_type}.html', items=items)
 
 # For backward compatibility, keep the specific routes
-@app.route('/detections')
-def detections():
-    return view_table('detections')
-
-@app.route('/classifications')
-def classifications():
-    return view_table('classifications')
-
 @app.route('/models')
 def models():
     return view_table('models')
@@ -108,4 +136,4 @@ def view_item(table_name, device_id, timestamp):
                           json_item=json.dumps(item_to_dict(item), indent=2))
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5050)
+    app.run(debug=True, host='0.0.0.0', port=5052)
