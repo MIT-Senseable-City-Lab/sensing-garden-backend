@@ -1,0 +1,45 @@
+{% macro render_table(table_id, items, headers, download_url) %}
+<div class="table-responsive">
+    <button onclick="downloadCSV('{{ download_url }}')" class="btn btn-secondary mb-2">Download CSV</button>
+    <table id="{{ table_id }}" class="table table-striped">
+        <thead>
+            <tr>
+                {% for header in headers %}
+                <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                {% for header in headers %}
+                <td>{{ item[header] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro table_scripts(table_id) %}
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        if ($.fn.DataTable.isDataTable('#{{ table_id }}')) {
+            $('#{{ table_id }}').DataTable().destroy();
+        }
+        
+        $('#{{ table_id }}').DataTable({
+            paging: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]]
+        });
+    });
+
+    function downloadCSV(url) {
+        window.location.href = url;
+    }
+</script>
+{% endmacro %}

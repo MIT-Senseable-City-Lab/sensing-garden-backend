@@ -2,43 +2,16 @@
 
 {% block title %}Device {{ device_id }} Detections{% endblock %}
 
+{% from "table.html" import render_table, table_scripts %}
+
 {% block content %}
 <div class="container">
     <h2>Device {{ device_id }} Detections</h2>
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Device ID</th>
-                    <th>Model ID</th>
-                    <th>Timestamp</th>
-                    <th>Image</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in detections %}
-                <tr>
-                    <td>{{ item.device_id }}</td>
-                    <td>{{ item.model_id }}</td>
-                    <td>{{ item.formatted_time }}</td>
-                    <td>
-                        {% if item.image_link %}
-                        <a href="{{ item.image_link }}" target="_blank">
-                            <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
-                        </a>
-                        {% else %}
-                        No image
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('view_item', table_name='sensor_detections', device_id=item.device_id, timestamp=item.timestamp) }}"
-                            class="btn btn-sm btn-info">View Details</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {{ render_table('detectionsTable', detections, ['device_id', 'model_id', 'formatted_time', 'image_link'],
+    url_for('download_csv', table_name='sensor_detections', device_id=device_id)) }}
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ table_scripts('detectionsTable') }}
 {% endblock %}

@@ -71,6 +71,7 @@ CLASSIFICATION_API_ENDPOINT = config['classification_endpoint']
 DETECTIONS_TABLE = 'sensor_detections'
 CLASSIFICATIONS_TABLE = 'sensor_classifications'
 IMAGES_BUCKET = 'sensing-garden-images'
+MODELS_TABLE = 'sensor_models'
 
 # Load schema
 def load_schema():
@@ -216,20 +217,36 @@ def test_classification():
     """Test the classification API endpoint"""
     return test_api_endpoint('classification')
 
+def add_test_data(device_id, num_entries=10):
+    """Add test data for detections and classifications"""
+    for _ in range(num_entries):
+        test_api_endpoint('detection')
+        test_api_endpoint('classification')
+
+def add_models():
+    """Add test models to the models table"""
+    dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
+    models_table = dynamodb.Table(MODELS_TABLE)
+
+    models = [
+        {'model_id': str(uuid.uuid4()), 'name': 'Model A', 'version': '1.0'},
+        {'model_id': str(uuid.uuid4()), 'name': 'Model B', 'version': '1.1'}
+    ]
+
+    for model in models:
+        models_table.put_item(Item=model)
+        print(f"Added model: {model['name']} version {model['version']}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Test the Sensing Garden API')
-    parser.add_argument('--test-type', choices=['detection', 'classification', 'both'], 
-                        default='both', help='Type of test to run')
-    args = parser.parse_args()
-    
-    # Generate a unique device ID and model ID for testing
-    device_id = f"test-device-{uuid.uuid4().hex[:8]}"
-    model_id = f"test-model-{uuid.uuid4().hex[:8]}"
+    # Example device_id to use for testing
+    device_id = "test-device-a509497e"
+    model_id = "example-model-id"
     timestamp = datetime.now().isoformat()
-    
-    if args.test_type == 'detection' or args.test_type == 'both':
-        test_detection()
-        
-    if args.test_type == 'classification' or args.test_type == 'both':
-        test_classification()
+
+    # Add test data
+    add_test_data(device_id)
+
+    # Add test models
+    add_models()
+
+    print("Test data and models added successfully.")

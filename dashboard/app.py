@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import os
 from datetime import datetime
@@ -6,7 +8,8 @@ from functools import wraps
 
 import boto3
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, url_for
+from flask import (Flask, make_response, redirect, render_template, request,
+                   url_for)
 
 
 # Custom JSON encoder to handle Decimal objects
@@ -134,6 +137,29 @@ def view_item(table_name, device_id, timestamp):
                           item=item, 
                           table_name=table_name,
                           json_item=json.dumps(item_to_dict(item), indent=2))
+
+@app.route('/download_csv/<table_name>/<device_id>', defaults={'device_id': None})
+@app.route('/download_csv/<table_name>')
+def download_csv(table_name, device_id):
+    """Download table data as CSV"""
+    if table_name not in TABLE_MAPPING:
+        return redirect(url_for('index'))
+
+    items = scan_table(TABLE_MAPPING[table_name])
+    if device_id:
+        items = [item for item in items if item['device_id'] == device_id]
+
+    # Create CSV
+    csv_data = io.StringIO()
+    writer = csv.DictWriter(csv_data, fieldnames=items[0].keys())
+    writer.writeheader()
+    writer.writerows(items)
+
+    # Return CSV response
+    response = make_response(csv_data.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename={table_name}.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5052)
