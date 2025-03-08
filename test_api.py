@@ -75,19 +75,29 @@ MODELS_TABLE = 'models'
 
 # Load schema
 def load_schema():
-    """Load the schema from the common directory"""
-    schema_path = os.path.join(os.path.dirname(__file__), 'common/schema.json')
-    with open(schema_path, 'r') as f:
-        return json.load(f)
+    """Load the API schema from the common directory"""
+    schema_path = os.path.join(os.path.dirname(__file__), 'common/api-schema.json')
+    try:
+        with open(schema_path, 'r') as f:
+            schema = json.load(f)
+            print("Schema loaded successfully.")
+            print("Schema keys:", schema.keys())
+            return schema
+    except FileNotFoundError:
+        error_msg = f"API schema file not found at {schema_path}"
+        print(error_msg)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON in schema file {schema_path}: {str(e)}"
+        print(error_msg)
+        sys.exit(1)
+    except Exception as e:
+        error_msg = f"Failed to load schema from {schema_path}: {str(e)}"
+        print(error_msg)
+        sys.exit(1)
 
-# Get schema
-try:
-    SCHEMA = load_schema()
-    print("Schema loaded successfully.")
-    print("Schema keys:", SCHEMA.keys())
-except KeyError as e:
-    print(f"Error loading schema: Missing key {str(e)}")
-    sys.exit(1)
+# Load the schema
+SCHEMA = load_schema()
 
 # Create a test image
 def create_test_image():
@@ -108,9 +118,15 @@ def create_test_payload(request_type):
     """Create a test payload based on schema requirements"""
     payload = {}
     
+    # Map request types to OpenAPI schema components
+    schema_type_map = {
+        'detection_request': 'DetectionData',
+        'classification_request': 'ClassificationData'
+    }
+    
     # Add required fields from schema
     try:
-        api_schema = SCHEMA['properties']['api']['properties'][request_type]
+        api_schema = SCHEMA['components']['schemas'][schema_type_map[request_type]]
         for field in api_schema['required']:
             if field == 'device_id':
                 payload[field] = device_id

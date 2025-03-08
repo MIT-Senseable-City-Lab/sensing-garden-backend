@@ -34,12 +34,32 @@ s3_client = boto3.client('s3', region_name=aws_region)
 # S3 bucket name for all image data
 IMAGES_BUCKET = os.environ.get('IMAGES_BUCKET', 'sensing-garden-images')
 
-# Load schema
+# Load database schema
 root_dir = Path(__file__).parent.parent
-schema_path = root_dir / 'common' / 'schema.json'
+schema_path = root_dir / 'common' / 'db-schema.json'
 
-with open(schema_path, 'r') as f:
-    SCHEMA = json.load(f)
+def load_schema(schema_path):
+    """Load the database schema with proper error handling"""
+    try:
+        with open(schema_path, 'r') as f:
+            schema = json.load(f)
+            print(f"Schema loaded successfully from {schema_path}")
+            return schema
+    except FileNotFoundError:
+        error_msg = f"Database schema file not found at {schema_path}"
+        print(error_msg)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON in schema file {schema_path}: {str(e)}"
+        print(error_msg)
+        sys.exit(1)
+    except Exception as e:
+        error_msg = f"Failed to load schema from {schema_path}: {str(e)}"
+        print(error_msg)
+        sys.exit(1)
+
+# Load the schema
+SCHEMA = load_schema(schema_path)
 
 # Get table names from schema
 DETECTIONS_TABLE = 'sensor_detections'
@@ -56,14 +76,14 @@ TABLE_MAPPING = {
 # Get field names from schema
 def get_table_fields(table_name):
     """Get required fields for a table from schema"""
-    if table_name in SCHEMA['properties']['db']['properties']:
-        return SCHEMA['properties']['db']['properties'][table_name]['required']
+    if table_name in SCHEMA['properties']:
+        return SCHEMA['properties'][table_name]['required']
     return []
 
 def get_table_properties(table_name):
     """Get property definitions for a table from schema"""
-    if table_name in SCHEMA['properties']['db']['properties']:
-        return SCHEMA['properties']['db']['properties'][table_name]['properties']
+    if table_name in SCHEMA['properties']:
+        return SCHEMA['properties'][table_name]['properties']
     return {}
 
 # Helper function to convert DynamoDB items to dict

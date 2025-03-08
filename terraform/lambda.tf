@@ -11,8 +11,13 @@ data "archive_file" "schema_layer_zip" {
   output_path = "${path.module}/../lambda/schema_layer.zip"
   
   source {
-    content  = file("${path.module}/../common/schema.json")
-    filename = "schema.json"
+    content  = file("${path.module}/../common/api-schema.json")
+    filename = "api-schema.json"
+  }
+  
+  source {
+    content  = file("${path.module}/../common/db-schema.json")
+    filename = "db-schema.json"
   }
 }
 

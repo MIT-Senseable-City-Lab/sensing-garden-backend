@@ -1,0 +1,148 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sensing Garden API",
+    "version": "0.0.1",
+    "description": "API for plant detection and classification"
+  },
+  "paths": {
+    "/detection": {
+      "post": {
+        "summary": "Submit a detection request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection processed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/classification": {
+      "post": {
+        "summary": "Submit a classification request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Classification processed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DetectionData": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "model_id",
+          "image"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "model_id": {
+            "type": "string",
+            "description": "Identifier for the model to use for detection"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
+          },
+          "image": {
+            "type": "string",
+            "description": "Base64 encoded image data"
+          }
+        }
+      },
+      "ClassificationData": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "model_id",
+          "image",
+          "family",
+          "genus",
+          "species",
+          "family_confidence",
+          "genus_confidence",
+          "species_confidence"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "model_id": {
+            "type": "string",
+            "description": "Identifier for the model to use for classification"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
+          },
+          "image": {
+            "type": "string",
+            "description": "Base64 encoded image data"
+          },
+          "family": {
+            "type": "string",
+            "description": "Taxonomic family of the plant"
+          },
+          "genus": {
+            "type": "string",
+            "description": "Taxonomic genus of the plant"
+          },
+          "species": {
+            "type": "string",
+            "description": "Taxonomic species of the plant"
+          },
+          "family_confidence": {
+            "type": "number",
+            "description": "Confidence score for family classification (0-1)"
+          },
+          "genus_confidence": {
+            "type": "number",
+            "description": "Confidence score for genus classification (0-1)"
+          },
+          "species_confidence": {
+            "type": "number",
+            "description": "Confidence score for species classification (0-1)"
+          }
+        }
+      }
+    }
+  }
+}
