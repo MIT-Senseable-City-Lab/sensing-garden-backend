@@ -1,8 +1,11 @@
-
-
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
+}
+
+# Data source to get the API Gateway URL
+data "aws_apigatewayv2_api" "existing" {
+  name = "sensing-garden-api"
 }
 
 # GitHub connection for App Runner
@@ -10,12 +13,6 @@ resource "aws_apprunner_connection" "github" {
   provider = aws.us_east_1
   connection_name = "sensing-garden-github"
   provider_type   = "GITHUB"
-}
-
-variable "app_runner_service_role_arn" {
-  description = "ARN of an existing IAM role for App Runner service"
-  type        = string
-  default     = "arn:aws:iam::436312947046:role/service-role/AppRunnerECRAccessRole"
 }
 
 # App Runner service
@@ -36,7 +33,7 @@ resource "aws_apprunner_service" "dashboard" {
           runtime      = "PYTHON_3"
           start_command = "poetry run python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))\""
           runtime_environment_variables = {
-            "API_URL" = aws_apigatewayv2_api.http_api.api_endpoint
+            "API_URL" = data.aws_apigatewayv2_api.existing.api_endpoint
           }
         }
         configuration_source = "API"
@@ -52,7 +49,6 @@ resource "aws_apprunner_service" "dashboard" {
   instance_configuration {
     cpu = "1024"
     memory = "2048"
-    instance_role_arn = var.app_runner_service_role_arn
   }
 
   health_check_configuration {
