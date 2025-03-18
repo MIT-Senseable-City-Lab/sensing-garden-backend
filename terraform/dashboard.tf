@@ -1,8 +1,13 @@
 # GitHub connection for App Runner
 resource "aws_apprunner_connection" "github" {
-
   connection_name = "sensing-garden-github"
   provider_type   = "GITHUB"
+  
+  # This will create the connection, but you still need to manually authorize it
+  # in the AWS Console before it can be used
+  lifecycle {
+    ignore_changes = [status]
+  }
 }
 
 # App Runner service
@@ -16,14 +21,17 @@ resource "aws_apprunner_service" "dashboard" {
       connection_arn = aws_apprunner_connection.github.arn
     }
     code_repository {
+      source_directory = "dashboard"  # Specify the directory containing the Flask app
       code_configuration {
         code_configuration_values {
           build_command = "pip install poetry && poetry install"
-          port         = "8080"
+          port         = "5052"  # Using the port that Flask runs on by default
           runtime      = "PYTHON_3"
-          start_command = "poetry run python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))\""
+          start_command = "cd dashboard && poetry run python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5052)))\""
           runtime_environment_variables = {
-            "API_URL" = aws_apigatewayv2_api.http_api.api_endpoint
+            "API_URL" = aws_apigatewayv2_api.http_api.api_endpoint,
+            "IMAGES_BUCKET" = "sensing-garden-images",
+            "PYTHONPATH" = "/var/task/dashboard" # Ensure Python can find modules in the dashboard directory
           }
         }
         configuration_source = "API"
