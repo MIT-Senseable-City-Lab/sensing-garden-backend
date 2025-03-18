@@ -29,8 +29,8 @@ def load_config():
         from config import API_ENDPOINT, API_KEY, AWS_REGION
 
         # Define the specific endpoints based on the base API_ENDPOINT
-        DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detections"
-        CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classifications"
+        DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detection"
+        CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classification"
         
     except ImportError:
         # Fallback to environment variables if config file doesn't exist
@@ -39,8 +39,8 @@ def load_config():
         AWS_REGION = os.environ.get("SENSING_GARDEN_AWS_REGION", "us-east-1")
         
         # Use the specific endpoints from Terraform output
-        DETECTION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/detections"
-        CLASSIFICATION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/classifications"
+        DETECTION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/detection"
+        CLASSIFICATION_API_ENDPOINT = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com/classification"
         
         if not API_KEY:
             raise ValueError(

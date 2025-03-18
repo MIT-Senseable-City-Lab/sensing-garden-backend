@@ -92,7 +92,7 @@ resource "aws_lambda_permission" "api_gateway_detection" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.detection_function.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/detections"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/detection"
 }
 
 # Permission for API Gateway to invoke Classification Lambda
@@ -101,5 +101,5 @@ resource "aws_lambda_permission" "api_gateway_classification" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.classification_function.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classifications"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classification"
 }

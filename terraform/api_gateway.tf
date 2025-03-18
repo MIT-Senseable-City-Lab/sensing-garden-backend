@@ -48,7 +48,7 @@ resource "aws_apigatewayv2_integration" "classification_lambda" {
 # Route for detections
 resource "aws_apigatewayv2_route" "post_detections" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /detections"
+  route_key = "POST /detection"
   target    = "integrations/${aws_apigatewayv2_integration.detection_lambda.id}"
   authorization_type = "NONE"
 }
@@ -56,7 +56,7 @@ resource "aws_apigatewayv2_route" "post_detections" {
 # Route for classifications
 resource "aws_apigatewayv2_route" "post_classifications" {
   api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /classifications"
+  route_key = "POST /classification"
   target    = "integrations/${aws_apigatewayv2_integration.classification_lambda.id}"
   authorization_type = "NONE"
 }
