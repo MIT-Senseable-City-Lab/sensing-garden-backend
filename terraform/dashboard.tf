@@ -63,7 +63,7 @@ resource "aws_apprunner_service" "dashboard" {
     protocol = "HTTP"
   }
 
-  auto_scaling_configuration_name = aws_apprunner_auto_scaling_configuration_version.dashboard.auto_scaling_configuration_name
+  auto_scaling_configuration_arn = aws_apprunner_auto_scaling_configuration_version.dashboard.arn
 }
 
 # Auto-scaling configuration (minimal for low traffic)
