@@ -24,8 +24,8 @@ resource "aws_apprunner_service" "dashboard" {
       source_directory = "dashboard"  # Specify the directory containing the Flask app
       code_configuration {
         code_configuration_values {
-          # First cd into the dashboard directory before installing dependencies
-          build_command = "cd dashboard && pip install poetry && poetry config virtualenvs.create false && poetry install --no-dev"
+          # Use pip directly with compatible package versions
+          build_command = "cd dashboard && pip install --upgrade pip && pip install flask==2.2.5 boto3 python-dotenv" 
           port         = "5052"  # Using the port that Flask runs on by default
           runtime      = "PYTHON_3"
           start_command = "cd dashboard && python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5052)))\""
