@@ -1,22 +1,18 @@
-import json
 import base64
-import boto3
+import json
 import os
 from datetime import datetime
 from decimal import Decimal
-from dynamodb import store_detection_data, store_classification_data
+from typing import Dict, List, Optional, Union
 
-# Custom JSON encoder to handle Decimal objects
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        return super(DecimalEncoder, self).default(obj)
+import boto3
+
+from . import dynamodb
 
 # Initialize S3 client
 s3 = boto3.client('s3')
 
-# S3 bucket name for all image data
+# Resource names
 IMAGES_BUCKET = "sensing-garden-images"
 
 # Load the API schema once
@@ -81,7 +77,8 @@ def _validate_api_request(body, request_type):
     # Map from request_type to actual schema name in the OpenAPI spec
     schema_type_map = {
         'detection_request': 'DetectionData',
-        'classification_request': 'ClassificationData'
+        'classification_request': 'ClassificationData',
+        'model_request': 'ModelData'
     }
     
     # Get schema from the OpenAPI spec
@@ -132,11 +129,216 @@ def generate_presigned_url(s3_key, expiration=3600):
         print(f"Error generating presigned URL: {str(e)}")
         return None
 
-def _process_request(event, context, request_type, data_type, store_function):
-    """Generic request processor for both detection and classification"""
+def handle_get_detections(event: Dict) -> Dict:
+    """Handle GET /detections endpoint"""
     try:
-        # Parse and validate request
+        query_params = event.get('queryStringParameters', {}) or {}
+        result = dynamodb.query_data(
+            'detection',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 100)),
+            next_token=query_params.get('next_token')
+        )
+        
+        # Add presigned URLs for images
+        for item in result['items']:
+            if 'image_key' in item and 'image_bucket' in item:
+                item['image_url'] = generate_presigned_url(item['image_key'])
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result)
+        }
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)})
+        }
+    except Exception as e:
+        print(f"Error in handle_get_detections: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_post_detection(event: Dict) -> Dict:
+    """Handle POST /detections endpoint"""
+    try:
         body = _parse_request(event)
+        is_valid, error_message = _validate_api_request(body, 'detection_request')
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': error_message})
+            }
+        
+        # Upload image to S3
+        timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        s3_key = _upload_image_to_s3(body['image'], body['device_id'], 'detection', timestamp_str)
+        
+        # Prepare data for DynamoDB
+        data = {
+            'device_id': body['device_id'],
+            'model_id': body['model_id'],
+            'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+            'image_key': s3_key,
+            'image_bucket': IMAGES_BUCKET
+        }
+        
+        return dynamodb.store_detection_data(data)
+    except Exception as e:
+        print(f"Error in handle_post_detection: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_get_classifications(event: Dict) -> Dict:
+    """Handle GET /classifications endpoint"""
+    try:
+        query_params = event.get('queryStringParameters', {}) or {}
+        result = dynamodb.query_data(
+            'classification',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 100)),
+            next_token=query_params.get('next_token')
+        )
+        
+        # Add presigned URLs for images
+        for item in result['items']:
+            if 'image_key' in item and 'image_bucket' in item:
+                item['image_url'] = generate_presigned_url(item['image_key'])
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result)
+        }
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)})
+        }
+    except Exception as e:
+        print(f"Error in handle_get_classifications: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_post_classification(event: Dict) -> Dict:
+    """Handle POST /classifications endpoint"""
+    try:
+        body = _parse_request(event)
+        is_valid, error_message = _validate_api_request(body, 'classification_request')
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': error_message})
+            }
+        
+        # Upload image to S3
+        timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        s3_key = _upload_image_to_s3(body['image'], body['device_id'], 'classification', timestamp_str)
+        
+        # Prepare data for DynamoDB
+        data = {
+            'device_id': body['device_id'],
+            'model_id': body['model_id'],
+            'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+            'image_key': s3_key,
+            'image_bucket': IMAGES_BUCKET,
+            'family': body['family'],
+            'genus': body['genus'],
+            'species': body['species'],
+            'family_confidence': Decimal(str(body['family_confidence'])),
+            'genus_confidence': Decimal(str(body['genus_confidence'])),
+            'species_confidence': Decimal(str(body['species_confidence']))
+        }
+        
+        return dynamodb.store_classification_data(data)
+    except Exception as e:
+        print(f"Error in handle_post_classification: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_get_models(event: Dict) -> Dict:
+    """Handle GET /models endpoint"""
+    try:
+        query_params = event.get('queryStringParameters', {}) or {}
+        result = dynamodb.query_data(
+            'model',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 100)),
+            next_token=query_params.get('next_token')
+        )
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result)
+        }
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)})
+        }
+    except Exception as e:
+        print(f"Error in handle_get_models: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def handle_post_model(event: Dict) -> Dict:
+    """Handle POST /models endpoint"""
+    try:
+        body = _parse_request(event)
+        is_valid, error_message = _validate_api_request(body, 'model_request')
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': error_message})
+            }
+        
+        # Prepare data for DynamoDB
+        data = {
+            'device_id': body['device_id'],
+            'model_id': body['model_id'],
+            'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+            'name': body['name'],
+            'description': body['description'],
+            'version': body['version']
+        }
+        
+        if 'metadata' in body:
+            data['metadata'] = body['metadata']
+        
+        return dynamodb.store_model_data(data)
+    except Exception as e:
+        print(f"Error in handle_post_model: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+
+def _process_write_request(event: Dict, data_type: str) -> Dict:
+    """Process write requests for detections, classifications, and models"""
+    try:
+        # Parse request body
+        body = _parse_request(event)
+        
+        # Validate request
+        request_type = f"{data_type}_request"
         is_valid, error_message = _validate_api_request(body, request_type)
         if not is_valid:
             return {
@@ -144,69 +346,146 @@ def _process_request(event, context, request_type, data_type, store_function):
                 'body': json.dumps({'error': f"Invalid request: {error_message}"})
             }
         
-        # Generate consistent timestamp for both S3 and DynamoDB
+        # Generate timestamps
         timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
         iso_timestamp = datetime.utcnow().isoformat()
         
-        # Upload image to S3 and get the S3 key using the same timestamp
-        s3_key = _upload_image_to_s3(body['image'], body['device_id'], data_type, timestamp_str)
-        
-        # Prepare base data for DynamoDB using the timestamp we already generated
+        # Prepare base data
         dynamo_data = {
             'device_id': body['device_id'],
             'model_id': body['model_id'],
-            'timestamp': body.get('timestamp', iso_timestamp),
-            'image_key': s3_key,  # Store the S3 key instead of a direct URL
-            'image_bucket': IMAGES_BUCKET  # Store the bucket name for future reference
+            'timestamp': body.get('timestamp', iso_timestamp)
         }
         
-        # Add additional fields for classification
-        if request_type == 'classification_request':
-            # These fields are required according to db-schema.json
-            required_fields = ['family', 'genus', 'species', 'family_confidence', 'genus_confidence', 'species_confidence']
-            
-            # Check if all required fields are present in the request
-            missing_fields = [field for field in required_fields if field not in body]
-            if missing_fields:
-                return {
-                    'statusCode': 400,
-                    'body': json.dumps({
-                        'error': f'Missing required classification fields: {", ".join(missing_fields)}'
-                    })
-                }
-            
-            # Add all required fields to dynamo_data
-            for field in required_fields:
-                # Convert confidence values to Decimal for DynamoDB
+        # Handle image upload for detections and classifications
+        if data_type in ['detection', 'classification']:
+            s3_key = _upload_image_to_s3(body['image'], body['device_id'], data_type, timestamp_str)
+            dynamo_data.update({
+                'image_key': s3_key,
+                'image_bucket': IMAGES_BUCKET
+            })
+        
+        # Add classification-specific fields
+        if data_type == 'classification':
+            for field in ['family', 'genus', 'species', 'family_confidence', 'genus_confidence', 'species_confidence']:
                 if 'confidence' in field:
                     dynamo_data[field] = Decimal(str(body[field]))
                 else:
                     dynamo_data[field] = body[field]
+        # Add model-specific fields
+        elif data_type == 'model':
+            for field in ['name', 'description', 'version']:
+                dynamo_data[field] = body[field]
+            if 'metadata' in body:
+                dynamo_data['metadata'] = body['metadata']
         
-        # Store data and return result
-        result = store_function(dynamo_data)
+        # Map data type to table name
+        table_mapping = {
+            'detection': DETECTIONS_TABLE,
+            'classification': CLASSIFICATIONS_TABLE,
+            'model': MODELS_TABLE
+        }
         
-        # Ensure proper JSON serialization
-        if 'body' in result and isinstance(result['body'], str):
-            try:
-                body_dict = json.loads(result['body'])
-                result['body'] = json.dumps(body_dict, cls=DecimalEncoder)
-            except json.JSONDecodeError:
-                pass
-                
+        # Write to DynamoDB
+        return _write_to_dynamodb(table_mapping[data_type], dynamo_data)
+        
+    except Exception as e:
+        print(f"Error processing {data_type} write request: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e)
+            })
+        }
+
+def _process_read_request(event: Dict, data_type: str) -> Dict:
+    """Process read requests for detections, classifications, and models"""
+    try:
+        # Get query parameters
+        query_params = event.get('queryStringParameters', {}) or {}
+        device_id = query_params.get('device_id')
+        start_time = query_params.get('start_time')
+        end_time = query_params.get('end_time')
+        limit = int(query_params.get('limit', 100))
+        next_token = query_params.get('next_token')
+        
+        # Map data type to table name
+        table_mapping = {
+            'detection': DETECTIONS_TABLE,
+            'classification': CLASSIFICATIONS_TABLE,
+            'model': MODELS_TABLE
+        }
+        
+        # Query DynamoDB
+        return _query_dynamodb(
+            table_mapping[data_type],
+            device_id=device_id,
+            start_time=start_time,
+            end_time=end_time,
+            limit=limit,
+            next_token=next_token
+        )
+        
+    except Exception as e:
+        print(f"Error processing {data_type} read request: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e)
+            })
+        }
+
+def handler(event: Dict, context) -> Dict:
+    """Main Lambda handler for API Gateway requests"""
+    try:
+        # Get HTTP method and path
+        http_method = event.get('httpMethod')
+        path = event.get('path', '')
+        
+        # Define endpoint handlers using only plural endpoints for consistency
+        handlers = {
+            # Read endpoints (GET)
+            ('GET', '/models'): handle_get_models,
+            ('GET', '/detections'): handle_get_detections,
+            ('GET', '/classifications'): handle_get_classifications,
+            # Write endpoints (POST)
+            ('POST', '/models'): handle_post_model,
+            ('POST', '/detections'): handle_post_detection,
+            ('POST', '/classifications'): handle_post_classification,
+        }
+        
+        # Find handler for the endpoint
+        handler_func = handlers.get((http_method, path))
+        if not handler_func:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({
+                    'error': f'No handler found for {http_method} {path}'
+                })
+            }
+        
+        # Call the handler
+        result = handler_func(event)
+        
+        # Add CORS headers
+        if 'headers' not in result:
+            result['headers'] = {}
+        result['headers'].update({
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        })
+        
         return result
         
     except Exception as e:
-        print(f"Error processing {request_type}: {str(e)}")
+        print(f"Error in main handler: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)
+            'body': json.dumps({
+                'error': str(e)
+            }),
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
         }
-
-def detection(event, context):
-    """Lambda handler for processing sensor detections"""
-    return _process_request(event, context, 'detection_request', 'detections', store_detection_data)
-
-def classification(event, context):
-    """Lambda handler for processing plant classifications"""
-    return _process_request(event, context, 'classification_request', 'classifications', store_classification_data)

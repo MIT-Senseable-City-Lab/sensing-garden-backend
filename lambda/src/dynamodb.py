@@ -18,6 +18,7 @@ dynamodb = boto3.resource('dynamodb')
 # Table names
 DETECTIONS_TABLE = 'sensing-garden-detections'
 CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
+MODELS_TABLE = 'sensing-garden-models'
 
 def _load_schema():
     """Load the DB schema from the appropriate location"""
@@ -131,8 +132,77 @@ def _store_data(data, table_name, data_type):
 
 def store_detection_data(data):
     """Store sensor detection data in DynamoDB"""
-    return _store_data(data, DETECTIONS_TABLE, 'sensing-garden-detections')
+    return _store_data(data, DETECTIONS_TABLE, 'detection')
 
 def store_classification_data(data):
     """Store sensor classification data in DynamoDB"""
-    return _store_data(data, CLASSIFICATIONS_TABLE, 'sensing-garden-classifications')
+    return _store_data(data, CLASSIFICATIONS_TABLE, 'classification')
+
+def store_model_data(data):
+    """Store model data in DynamoDB"""
+    return _store_data(data, MODELS_TABLE, 'model')
+
+def query_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, 
+               end_time: str = None, limit: int = 100, next_token: str = None):
+    """Query data from DynamoDB with filtering and pagination"""
+    # Map table type to actual table name
+    table_mapping = {
+        'detection': DETECTIONS_TABLE,
+        'classification': CLASSIFICATIONS_TABLE,
+        'model': MODELS_TABLE
+    }
+    
+    if table_type not in table_mapping:
+        raise ValueError(f'Invalid table type: {table_type}')
+    
+    table = dynamodb.Table(table_mapping[table_type])
+    
+    # Base query parameters
+    query_params = {
+        'Limit': min(limit, 100) if limit else 100  # Cap at 100 items per request
+    }
+    
+    # Add pagination token if provided
+    if next_token:
+        try:
+            query_params['ExclusiveStartKey'] = json.loads(next_token)
+        except json.JSONDecodeError:
+            raise ValueError('Invalid next_token format')
+    
+    # Import conditions once for both query and filter expressions
+    from boto3.dynamodb.conditions import Key, Attr
+    
+    # Add device_id filter if provided
+    if device_id:
+        query_params['KeyConditionExpression'] = Key('device_id').eq(device_id)
+        
+        # Add time range if provided
+        if start_time and end_time:
+            query_params['KeyConditionExpression'] &= Key('timestamp').between(start_time, end_time)
+        elif start_time:
+            query_params['KeyConditionExpression'] &= Key('timestamp').gte(start_time)
+        elif end_time:
+            query_params['KeyConditionExpression'] &= Key('timestamp').lte(end_time)
+    
+    # Add model_id filter if provided
+    if model_id:
+        filter_expression = Attr('model_id').eq(model_id)
+        query_params['FilterExpression'] = filter_expression
+        
+        # Execute query
+        response = table.query(**query_params)
+    else:
+        # If no device_id, use scan
+        response = table.scan(**query_params)
+    
+    # Format response
+    result = {
+        'items': response.get('Items', []),
+        'count': len(response.get('Items', []))
+    }
+    
+    # Add pagination token if more results exist
+    if 'LastEvaluatedKey' in response:
+        result['next_token'] = json.dumps(response['LastEvaluatedKey'])
+    
+    return result

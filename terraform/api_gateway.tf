@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_api" "http_api" {
   
   cors_configuration {
     allow_headers = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"]
-    allow_methods = ["POST", "OPTIONS"]
+    allow_methods = ["POST", "GET", "OPTIONS"]
     allow_origins = ["*"]  # In production, restrict this to specific domains
     max_age       = 300
   }
@@ -45,21 +45,7 @@ resource "aws_apigatewayv2_integration" "classification_lambda" {
   payload_format_version = "2.0"
 }
 
-# Route for detections
-resource "aws_apigatewayv2_route" "post_detections" {
-  api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /detection"
-  target    = "integrations/${aws_apigatewayv2_integration.detection_lambda.id}"
-  authorization_type = "NONE"
-}
-
-# Route for classifications
-resource "aws_apigatewayv2_route" "post_classifications" {
-  api_id    = aws_apigatewayv2_api.http_api.id
-  route_key = "POST /classification"
-  target    = "integrations/${aws_apigatewayv2_integration.classification_lambda.id}"
-  authorization_type = "NONE"
-}
+# These routes have been replaced by the consolidated plural endpoint routes below
 
 # Create a usage plan for the API key
 # Note: For HTTP APIs, we need to create a REST API Gateway usage plan
@@ -88,4 +74,63 @@ resource "aws_api_gateway_usage_plan_key" "usage_plan_key" {
   key_id        = aws_api_gateway_api_key.api_key.id
   key_type      = "API_KEY"
   usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
+}
+
+# Integration for API data fetching
+resource "aws_apigatewayv2_integration" "api_handler_lambda" {
+  api_id           = aws_apigatewayv2_api.http_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.api_handler_function.invoke_arn
+  integration_method = "POST"
+  payload_format_version = "2.0"
+}
+
+# Routes for data fetching - GET endpoints (read)
+resource "aws_apigatewayv2_route" "get_detections" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /detections"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# Removed singular route alias in favor of consistent plural endpoints
+
+resource "aws_apigatewayv2_route" "get_classifications" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /classifications"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# Removed singular route alias in favor of consistent plural endpoints
+
+resource "aws_apigatewayv2_route" "get_models" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /models"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST routes for write operations
+resource "aws_apigatewayv2_route" "post_models" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /models"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST for detections
+resource "aws_apigatewayv2_route" "post_detections" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /detections"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST for classifications
+resource "aws_apigatewayv2_route" "post_classifications" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /classifications"
+  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  authorization_type = "NONE"
 }

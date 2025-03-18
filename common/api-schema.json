@@ -6,7 +6,98 @@
     "description": "API for plant detection and classification"
   },
   "paths": {
+    "/models": {
+      "get": {
+        "summary": "Get a list of models",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter models by device_id"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time for filtering models (ISO-8601)"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time for filtering models (ISO-8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of models to return"
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for pagination"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of models"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new model",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Model created successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/detection": {
+      "get": {
+        "$ref": "#/paths/~1detections/get"
+      },
       "post": {
         "summary": "Submit a detection request",
         "requestBody": {
@@ -33,6 +124,9 @@
       }
     },
     "/classification": {
+      "get": {
+        "$ref": "#/paths/~1classifications/get"
+      },
       "post": {
         "summary": "Submit a classification request",
         "requestBody": {
@@ -48,6 +142,134 @@
         "responses": {
           "200": {
             "description": "Classification processed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/detections": {
+      "get": {
+        "summary": "Get a list of detections",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter detections by device_id"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time for filtering detections (ISO-8601)"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time for filtering detections (ISO-8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of detections to return"
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for pagination"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of detections"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/classifications": {
+      "get": {
+        "summary": "Get a list of classifications",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter classifications by device_id"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time for filtering classifications (ISO-8601)"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time for filtering classifications (ISO-8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of classifications to return"
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for pagination"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of classifications"
           },
           "400": {
             "description": "Invalid request parameters"
@@ -84,6 +306,46 @@
           "image": {
             "type": "string",
             "description": "Base64 encoded image data"
+          }
+        }
+      },
+      "ModelData": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "model_id",
+          "name",
+          "description",
+          "version"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "model_id": {
+            "type": "string",
+            "description": "Unique identifier for the model"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the model"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the model"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version of the model"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata about the model"
           }
         }
       },

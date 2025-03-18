@@ -1,3 +1,4 @@
+# Create detections table
 resource "aws_dynamodb_table" "sensor_detections" {
   name         = "sensing-garden-detections"
   billing_mode = "PAY_PER_REQUEST"
@@ -24,9 +25,14 @@ resource "aws_dynamodb_table" "sensor_detections" {
     hash_key           = "model_id"
     projection_type    = "ALL"
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
+  }
 }
 
-# Table for storing classification results
+# Create classifications table
 resource "aws_dynamodb_table" "sensor_classifications" {
   name         = "sensing-garden-classifications"
   billing_mode = "PAY_PER_REQUEST"
@@ -64,9 +70,14 @@ resource "aws_dynamodb_table" "sensor_classifications" {
     hash_key           = "species"
     projection_type    = "ALL"
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
+  }
 }
 
-# Table for storing model information
+# Create models table
 resource "aws_dynamodb_table" "models" {
   name         = "sensing-garden-models"
   billing_mode = "PAY_PER_REQUEST"
@@ -92,5 +103,10 @@ resource "aws_dynamodb_table" "models" {
     name               = "type_index"
     hash_key           = "type"
     projection_type    = "ALL"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
   }
 }

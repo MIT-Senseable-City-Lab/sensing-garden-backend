@@ -28,7 +28,7 @@ Create a `config.py` file in the root directory with the following variables:
 ```python
 API_ENDPOINT = "https://your-api-endpoint.execute-api.region.amazonaws.com/data"
 API_KEY = "your-api-key"
-AWS_REGION = "your-aws-region"
+API_BASE_URL = "<output from terraform>"  # Get this from terraform output api_endpoint
 ```
 
 ## Running the Dashboard

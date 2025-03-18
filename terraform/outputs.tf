@@ -16,6 +16,11 @@ output "classification_api_endpoint" {
   description = "Full URL for the classifications endpoint"
 }
 
+output "models_api_endpoint" {
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/models"
+  description = "Full URL for the models endpoint"
+}
+
 output "api_key" {
   value       = aws_api_gateway_api_key.api_key.value
   description = "API key for authentication"

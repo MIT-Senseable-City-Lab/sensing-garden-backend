@@ -53,24 +53,7 @@ resource "aws_lambda_function" "classification_function" {
   layers          = [aws_lambda_layer_version.schema_layer.arn]
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "lambda_exec_role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
+
 
 # Attach permissions for Lambda to access DynamoDB
 resource "aws_iam_policy_attachment" "lambda_dynamodb_access" {
@@ -102,4 +85,25 @@ resource "aws_lambda_permission" "api_gateway_classification" {
   function_name = aws_lambda_function.classification_function.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classification"
+}
+
+# Lambda function for API data fetching
+resource "aws_lambda_function" "api_handler_function" {
+  function_name    = "sensing-garden-api-handler"
+  role            = aws_iam_role.lambda_exec.arn
+  handler         = "api_handler.handler"
+  runtime         = "python3.9"
+  filename        = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  timeout         = 30  # Longer timeout for pagination
+  layers          = [aws_lambda_layer_version.schema_layer.arn]
+}
+
+# Permission for API Gateway to invoke API Handler Lambda
+resource "aws_lambda_permission" "api_gateway_api_handler" {
+  statement_id  = "AllowAPIGatewayInvokeAPIHandler"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api_handler_function.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/{table_type}"
 }

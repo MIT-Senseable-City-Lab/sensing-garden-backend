@@ -68,7 +68,7 @@ def send_detection_request(
     
     # Send request
     response = requests.post(
-        f"{BASE_URL}/detection",
+        f"{BASE_URL}/detections",
         json=payload,
         headers={"Content-Type": "application/json"}
     )
@@ -125,7 +125,7 @@ def send_classification_request(
     
     # Send request
     response = requests.post(
-        f"{BASE_URL}/classification",
+        f"{BASE_URL}/classifications",
         json=payload,
         headers={"Content-Type": "application/json"}
     )

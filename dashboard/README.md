@@ -14,12 +14,12 @@ A simple web dashboard to view data from your DynamoDB tables for the Sensing Ga
 poetry install
 ```
 
-2. Configure AWS credentials:
+2. Configure API endpoint:
 
-Make sure you have AWS credentials configured either through:
-- Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-- AWS credentials file (`~/.aws/credentials`)
-- IAM role (if running on AWS)
+Set the API endpoint in your environment:
+```bash
+export API_BASE_URL=https://api.sensing-garden.com
+```
 
 3. (Optional) Populate sample data:
 
@@ -59,9 +59,7 @@ http://localhost:5050
 
 You can customize the dashboard by setting these environment variables:
 
-- `AWS_REGION`: AWS region (default: 'us-east-1')
-- `AWS_ACCESS_KEY_ID`: Your AWS access key
-- `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
+- `API_BASE_URL`: Base URL for the API (default: 'https://api.sensing-garden.com')
 
 ## Notes
 

@@ -1,23 +1,20 @@
 FROM python:3.9-slim
-
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
-COPY dashboard/pyproject.toml /app/dashboard/
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Install dependencies
-RUN pip install --upgrade pip && \
-    pip install flask==2.2.5 boto3 python-dotenv
+# Copy application files
+COPY . .
 
-# Copy application code
-COPY dashboard /app/dashboard/
+# Create common directory and copy schema files
+RUN mkdir -p /common
+COPY ../common/db-schema.json /common/
+COPY ../common/api-schema.json /common/
 
 # Set environment variables
-ENV PYTHONPATH=/app/dashboard
-ENV PORT=5052
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
 
-# Expose the port
 EXPOSE 5052
-
-# Run the application
-CMD cd dashboard && python -c "import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5052)))"
+CMD ["gunicorn", "--bind", "0.0.0.0:5052", "--timeout", "120", "app:app"]

@@ -9,12 +9,12 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-import boto3
 import requests
 from PIL import Image, ImageDraw
 
-# Import the endpoints module
+# Import the endpoints modules
 import endpoints
+import read_endpoints
 
 # Add lambda/src to the Python path so we can import the schema
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
@@ -27,24 +27,17 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(obj)
 
 # Configuration variables
-AWS_REGION = os.environ.get("SENSING_GARDEN_AWS_REGION", "us-east-1")
-API_KEY = os.environ.get("SENSING_GARDEN_API_KEY", "your-api-key-here")
+API_KEY = os.environ.get("SENSING_GARDEN_API_KEY", "gMVUsSGzdZ5JgLgpadHtA9yd3Jz5THYs2pEPP7Al")
 
-# Hardcoded API endpoints
-API_BASE = "https://9cgp0r5jh3.execute-api.us-east-1.amazonaws.com"
-DETECTION_API_ENDPOINT = f"{API_BASE}/detection"
-CLASSIFICATION_API_ENDPOINT = f"{API_BASE}/classification"
+# API endpoints
+API_BASE = os.environ.get("API_BASE_URL", "https://80tryunqte.execute-api.us-east-1.amazonaws.com")
+
+# Update base URL in endpoints modules
+endpoints.BASE_URL = API_BASE
+read_endpoints.set_base_url(API_BASE)
 
 # Print configuration information
-print(f"Using AWS Region: {AWS_REGION}")
-print(f"Using API endpoints:")
-print(f"  Detection API: {DETECTION_API_ENDPOINT}")
-print(f"  Classification API: {CLASSIFICATION_API_ENDPOINT}")
-
-# Define constants
-DETECTIONS_TABLE = 'sensor_detections'
-CLASSIFICATIONS_TABLE = 'sensor_classifications'
-MODELS_TABLE = 'models'
+print(f"Using API endpoint base URL: {API_BASE}")
 
 # Load schema
 def load_schema():
@@ -129,35 +122,50 @@ def create_test_payload(request_type):
     return payload
 
 def test_api_endpoint(endpoint_type):
-    """Test an API endpoint (detection or classification) using endpoints.py"""
+    """Test an API endpoint (detection or classification) using endpoints.py and read_endpoints.py"""
     # Create a unique timestamp for this request to avoid DynamoDB key conflicts
     request_timestamp = datetime.now().isoformat()
     
-    # Determine which endpoint and table to use
+    # Determine which endpoint to use
     is_detection = endpoint_type == 'detection'
-    table_name = DETECTIONS_TABLE if is_detection else CLASSIFICATIONS_TABLE
     
-    # Update the base URL in endpoints module
-    endpoints.BASE_URL = API_BASE
-    
-    # Create a custom function to include the API key in headers
-    def _add_api_key_to_requests(url, json_data, headers):
+    # Create a custom function to include the API key in headers for both GET and POST requests
+    def _add_api_key_to_requests_post(url, **kwargs):
+        # Make sure headers exist in kwargs
+        if 'headers' not in kwargs:
+            kwargs['headers'] = {}
+        
         # Add API key to headers
-        headers["x-api-key"] = API_KEY
-        return requests.post(url, json=json_data, headers=headers)
+        kwargs['headers']['x-api-key'] = API_KEY
+        
+        # Call the original requests.post with all arguments
+        return original_post(url, **kwargs)
     
-    # Patch the requests.post method in endpoints module
+    def _add_api_key_to_requests_get(url, **kwargs):
+        # Make sure headers exist in kwargs
+        if 'headers' not in kwargs:
+            kwargs['headers'] = {}
+        
+        # Add API key to headers
+        kwargs['headers']['x-api-key'] = API_KEY
+        
+        # Call the original requests.get with all arguments
+        return original_get(url, **kwargs)
+    
+    # Patch the requests methods
     original_post = requests.post
-    requests.post = _add_api_key_to_requests
+    original_get = requests.get
+    requests.post = _add_api_key_to_requests_post
+    requests.get = _add_api_key_to_requests_get
     
     print(f"\n\nTesting {endpoint_type.upper()} with device_id: {device_id}, model_id: {model_id}")
     
     # Create test image bytes
     image_data = create_test_image()
     
-    # Call the appropriate endpoint function
-    print(f"\n1. Sending {endpoint_type} request to API using endpoints.py")
     try:
+        # STEP 1: Call the appropriate write endpoint function
+        print(f"\n1. Sending {endpoint_type} write request to API using endpoints.py")
         if is_detection:
             response_data = endpoints.send_detection_request(
                 device_id=device_id,
@@ -180,46 +188,59 @@ def test_api_endpoint(endpoint_type):
             )
         
         print(f"Response body: {json.dumps(response_data, indent=2)}")
-        print(f"\n✅ {endpoint_type.capitalize()} API request successful!")
+        print(f"\n✅ {endpoint_type.capitalize()} API write request successful!")
         success = True
+        
+        # STEP 2: Verify data through read API if the write was successful
+        print(f"\n2. Verifying data through read API using read_endpoints.py...")
+        
+        # Use the appropriate read endpoint function
+        if is_detection:
+            data = read_endpoints.get_detections(
+                device_id=device_id,
+                start_time=request_timestamp,
+                end_time=datetime.now().isoformat(),
+                limit=10
+            )
+        else:
+            data = read_endpoints.get_classifications(
+                device_id=device_id,
+                start_time=request_timestamp,
+                end_time=datetime.now().isoformat(),
+                limit=10
+            )
+        
+        # Check if our item is in the results
+        if data.get('items'):
+            item = next((item for item in data['items'] if item.get('timestamp') == request_timestamp), None)
+            if item:
+                print(f"✅ {endpoint_type.capitalize()} data found through API!")
+                print(f"API response: {json.dumps(item, indent=2, cls=DecimalEncoder)}")
+                
+                # Check for image URL
+                if 'image_url' in item:
+                    print(f"✅ Image URL found in API response: {item['image_url']}")
+                else:
+                    print(f"❌ No image URL found in the API response")
+            else:
+                print(f"❌ {endpoint_type.capitalize()} data not found through API")
+                success = False
+        else:
+            print(f"❌ No items returned from the API")
+            success = False
+            
     except requests.exceptions.RequestException as e:
         print(f"❌ {endpoint_type.capitalize()} API request failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
         success = False
-        response_data = None
+    except Exception as e:
+        print(f"❌ Error in test: {str(e)}")
+        success = False
     finally:
-        # Restore the original requests.post method
+        # Restore the original requests methods
         requests.post = original_post
-    
-    # Verify data in DynamoDB if successful
-    if success:
-        print(f"\n2. Checking DynamoDB for stored {endpoint_type} data...")
-        dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-        table = dynamodb.Table(table_name)
-        
-        try:
-            db_response = table.get_item(
-                Key={
-                    'device_id': device_id,
-                    'timestamp': request_timestamp
-                }
-            )
-            
-            if 'Item' in db_response:
-                print(f"✅ {endpoint_type.capitalize()} data found in DynamoDB!")
-                print(f"DynamoDB item: {json.dumps(db_response['Item'], indent=2, cls=DecimalEncoder)}")
-            else:
-                print(f"❌ {endpoint_type.capitalize()} data not found in DynamoDB")
-        except Exception as e:
-            print(f"❌ Error checking DynamoDB: {str(e)}")
-        
-        # Just log the image_key information from DynamoDB
-        if 'Item' in db_response and 'image_key' in db_response['Item']:
-            image_key = db_response['Item']['image_key']
-            print(f"✅ Image key found in DynamoDB: {image_key}")
-        else:
-            print(f"❌ No image_key found in the DynamoDB item")
+        requests.get = original_get
     
     return success
 
@@ -249,41 +270,104 @@ def add_test_data(num_entries=10):
     print(f"  - Classification entries: {classification_success}/{num_entries} created successfully")
 
 def add_models():
-    """Add one test model to the models table"""
-    dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-    models_table = dynamodb.Table(MODELS_TABLE)
-
-    # Create a single test model that can be used for both detection and classification
-    model = {
-        'id': model_id, 
-        'timestamp': datetime.utcnow().isoformat(),
+    """Add one test model and verify using read_endpoints.py"""
+    # Create test model data
+    timestamp = datetime.utcnow().isoformat()
+    model_data = {
+        'device_id': device_id,
+        'model_id': model_id,
+        'timestamp': timestamp,
+        'name': 'Universal Test Model',
+        'description': 'A test model that can be used for both detection and classification',
         'version': '1.0',
-        'description': 'Universal Test Model',
-        'type': 'universal'
+        'metadata': {
+            'type': 'universal'
+        }
     }
-
+    
+    # Create functions to patch requests to include API key
+    def _add_api_key_to_requests_post(url, **kwargs):
+        if 'headers' not in kwargs:
+            kwargs['headers'] = {}
+        kwargs['headers']['x-api-key'] = API_KEY
+        return original_post(url, **kwargs)
+    
+    def _add_api_key_to_requests_get(url, **kwargs):
+        if 'headers' not in kwargs:
+            kwargs['headers'] = {}
+        kwargs['headers']['x-api-key'] = API_KEY
+        return original_get(url, **kwargs)
+    
+    # Patch requests methods
+    original_post = requests.post
+    original_get = requests.get
+    requests.post = _add_api_key_to_requests_post
+    requests.get = _add_api_key_to_requests_get
+    
     try:
-        models_table.put_item(Item=model)
-        print(f"Added model: {model['id']} version {model['version']} ({model['type']})")
-        return True
+        # STEP 1: Add model through the API directly
+        print(f"\n1. Creating model {model_id}...")
+        response = requests.post(
+            f"{API_BASE}/models",
+            json=model_data,
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        result = response.json()
+        print(f"✅ Model created: {model_data['model_id']} version {model_data['version']}")
+        print(f"Response: {json.dumps(result, indent=2)}")
+        
+        # STEP 2: Verify model was added by reading it back using read_endpoints
+        print(f"\n2. Verifying model using read_endpoints.py...")
+        models = read_endpoints.get_models(
+            device_id=device_id,
+            model_id=model_id
+        )
+        
+        if models.get('items') and len(models['items']) > 0:
+            model = models['items'][0]
+            print(f"✅ Model verified through API!")
+            print(f"API response: {json.dumps(model, indent=2, cls=DecimalEncoder)}")
+            return True
+        else:
+            print(f"❌ Failed to verify model through API")
+            return False
     except Exception as e:
-        print(f"Error adding model: {str(e)}")
+        print(f"❌ Error adding/verifying model: {str(e)}")
         return False
+    finally:
+        # Restore original requests methods
+        requests.post = original_post
+        requests.get = original_get
 
 if __name__ == "__main__":
-    # Hardcoded test device and model
-    device_id = "test-device"
-    model_id = "test-model-2025"
-
-    # Add one test model
-    print("\nCreating test model...")
-    model_success = add_models()
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Test the Sensing Garden API')
+    parser.add_argument('--model', action='store_true', help='Test model API')
+    parser.add_argument('--data', action='store_true', help='Add test data')
+    parser.add_argument('--count', type=int, default=10, help='Number of test entries to create')
+    parser.add_argument('--device', type=str, default="test-device", help='Device ID to use')
+    parser.add_argument('--model-id', type=str, default="test-model-2025", help='Model ID to use')
+    args = parser.parse_args()
     
-    if not model_success:
-        print("Failed to create model. Exiting.")
-        sys.exit(1)
+    # Set device and model IDs
+    device_id = args.device
+    model_id = args.model_id
     
-    # Add 10 test data entries each for detection and classification
-    add_test_data(10)
+    # If no specific arguments provided, run all tests
+    run_all = not (args.model or args.data)
     
-    print("\nTest setup completed successfully.")
+    # Add test model if requested
+    if args.model or run_all:
+        print("\nCreating test model...")
+        model_success = add_models()
+        
+        if not model_success and run_all:
+            print("Failed to create model. Exiting.")
+            sys.exit(1)
+    
+    # Add test data if requested
+    if args.data or run_all:
+        add_test_data(args.count)
+    
+    print("\nTest completed.")
