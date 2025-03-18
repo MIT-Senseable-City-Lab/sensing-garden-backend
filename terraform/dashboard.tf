@@ -1,7 +1,13 @@
 
 
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 # GitHub connection for App Runner
 resource "aws_apprunner_connection" "github" {
+  provider = aws.us_east_1
   connection_name = "sensing-garden-github"
   provider_type   = "GITHUB"
 }
@@ -24,6 +30,7 @@ resource "aws_iam_role" "app_runner_service" {
 
 # App Runner service
 resource "aws_apprunner_service" "dashboard" {
+  provider = aws.us_east_1
   service_name = "sensing-garden-dashboard"
 
   source_configuration {
@@ -68,6 +75,7 @@ resource "aws_apprunner_service" "dashboard" {
 
 # Auto-scaling configuration (minimal for low traffic)
 resource "aws_apprunner_auto_scaling_configuration_version" "dashboard" {
+  provider = aws.us_east_1
   auto_scaling_configuration_name = "sensing-garden-dashboard-scaling"
   
   max_concurrency = 10
