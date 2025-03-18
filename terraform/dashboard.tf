@@ -12,20 +12,10 @@ resource "aws_apprunner_connection" "github" {
   provider_type   = "GITHUB"
 }
 
-# IAM role for App Runner connection to GitHub
-resource "aws_iam_role" "app_runner_service" {
-  name = "sensing-garden-dashboard-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "build.apprunner.amazonaws.com"
-      }
-    }]
-  })
+variable "app_runner_service_role_arn" {
+  description = "ARN of an existing IAM role for App Runner service"
+  type        = string
+  default     = "arn:aws:iam::436312947046:role/service-role/AppRunnerECRAccessRole"
 }
 
 # App Runner service
@@ -62,7 +52,7 @@ resource "aws_apprunner_service" "dashboard" {
   instance_configuration {
     cpu = "1024"
     memory = "2048"
-    instance_role_arn = aws_iam_role.app_runner_service.arn
+    instance_role_arn = var.app_runner_service_role_arn
   }
 
   health_check_configuration {
