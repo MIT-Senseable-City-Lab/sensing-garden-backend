@@ -77,10 +77,24 @@ poetry run python populate_sample_data.py
 
 ## Deployment
 
-The backend is deployed using Terraform:
+### Backend Deployment
+
+The backend services (Lambda, API Gateway, etc.) are deployed using Terraform:
 
 ```bash
 cd terraform
 terraform init
 terraform apply
 ```
+
+### Dashboard Deployment
+
+The dashboard is deployed using AWS App Runner directly from GitHub for minimal maintenance. Just update the `repository_url` in `terraform/dashboard.tf` with your GitHub repository URL.
+
+The dashboard will be automatically:
+- Deployed when you push to the main branch
+- SSL/TLS secured
+- Auto-scaled based on traffic
+- Monitored for container health
+
+No manual build or push steps required! App Runner will handle the build and deployment process automatically.
