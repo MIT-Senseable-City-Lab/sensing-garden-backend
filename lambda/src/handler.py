@@ -17,7 +17,7 @@ class DecimalEncoder(json.JSONEncoder):
 s3 = boto3.client('s3')
 
 # S3 bucket name for all image data
-IMAGES_BUCKET = "sensing-garden-images"
+IMAGES_BUCKET = "sensing-garden"
 
 # Load the API schema once
 def _load_api_schema():

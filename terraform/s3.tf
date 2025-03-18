@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "sensor_images" {
-  bucket = "sensing-garden-images"
+  bucket = "sensing-garden"
 }
 
 resource "aws_s3_bucket_public_access_block" "sensor_images" {

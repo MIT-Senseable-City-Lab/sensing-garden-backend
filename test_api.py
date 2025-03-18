@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-import requests
-import json
-import base64
-import uuid
-import boto3
-from datetime import datetime
-import os
-from PIL import Image, ImageDraw
-import io
 import argparse
-from decimal import Decimal
+import base64
+import io
+import json
+import os
 import sys
+import uuid
+from datetime import datetime
+from decimal import Decimal
+
+import boto3
+import requests
+from PIL import Image, ImageDraw
 
 # Add lambda/src to the Python path so we can import the schema
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
@@ -26,7 +27,7 @@ class DecimalEncoder(json.JSONEncoder):
 def load_config():
     try:
         from config import API_ENDPOINT, API_KEY, AWS_REGION
-        
+
         # Define the specific endpoints based on the base API_ENDPOINT
         DETECTION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/detections"
         CLASSIFICATION_API_ENDPOINT = f"{API_ENDPOINT.rstrip('/data')}/classifications"

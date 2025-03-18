@@ -1,7 +1,9 @@
 import json
 import os
-import boto3
 from decimal import Decimal
+
+import boto3
+
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
@@ -14,8 +16,8 @@ class DecimalEncoder(json.JSONEncoder):
 dynamodb = boto3.resource('dynamodb')
 
 # Table names
-DETECTIONS_TABLE = 'sensor_detections'
-CLASSIFICATIONS_TABLE = 'sensor_classifications'
+DETECTIONS_TABLE = 'sensing-garden-detections'
+CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
 
 def _load_schema():
     """Load the DB schema from the appropriate location"""
@@ -129,8 +131,8 @@ def _store_data(data, table_name, data_type):
 
 def store_detection_data(data):
     """Store sensor detection data in DynamoDB"""
-    return _store_data(data, DETECTIONS_TABLE, 'sensor_detections')
+    return _store_data(data, DETECTIONS_TABLE, 'sensing-garden-detections')
 
 def store_classification_data(data):
     """Store sensor classification data in DynamoDB"""
-    return _store_data(data, CLASSIFICATIONS_TABLE, 'sensor_classifications')
+    return _store_data(data, CLASSIFICATIONS_TABLE, 'sensing-garden-classifications')

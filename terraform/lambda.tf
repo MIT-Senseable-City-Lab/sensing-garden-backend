@@ -31,7 +31,7 @@ resource "aws_lambda_layer_version" "schema_layer" {
 
 # Lambda function for detections
 resource "aws_lambda_function" "detection_function" {
-  function_name    = "detection-function"
+  function_name    = "sensing-garden-handler-detection"
   role            = aws_iam_role.lambda_exec.arn
   handler         = "handler.detection"
   runtime         = "python3.9"
@@ -43,7 +43,7 @@ resource "aws_lambda_function" "detection_function" {
 
 # Lambda function for classifications
 resource "aws_lambda_function" "classification_function" {
-  function_name    = "classification-function"
+  function_name    = "sensing-garden-handler-classification"
   role            = aws_iam_role.lambda_exec.arn
   handler         = "handler.classification"
   runtime         = "python3.9"

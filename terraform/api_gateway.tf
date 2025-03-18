@@ -1,5 +1,5 @@
 resource "aws_apigatewayv2_api" "http_api" {
-  name          = "my-api-gateway"
+  name          = "sensing-garden-api"
   protocol_type = "HTTP"
   
   cors_configuration {
@@ -13,7 +13,7 @@ resource "aws_apigatewayv2_api" "http_api" {
 # API Keys are managed differently for HTTP APIs
 # Using REST API Gateway resources for API key management
 resource "aws_api_gateway_api_key" "api_key" {
-  name = "my-api-key"
+  name = "sensing-garden-api-key"
   enabled = true
 }
 
@@ -65,7 +65,7 @@ resource "aws_apigatewayv2_route" "post_classifications" {
 # Note: For HTTP APIs, we need to create a REST API Gateway usage plan
 # and link it to our API key
 resource "aws_api_gateway_usage_plan" "usage_plan" {
-  name        = "standard-usage-plan"
+  name        = "sensing-garden-usage-plan"
   description = "Standard usage plan for API"
   
   # Note: HTTP APIs don't directly integrate with usage plans in the same way as REST APIs
