@@ -24,10 +24,11 @@ resource "aws_apprunner_service" "dashboard" {
       source_directory = "dashboard"  # Specify the directory containing the Flask app
       code_configuration {
         code_configuration_values {
-          build_command = "pip install poetry && poetry install"
+          # First cd into the dashboard directory before installing dependencies
+          build_command = "cd dashboard && pip install poetry && poetry config virtualenvs.create false && poetry install --no-dev"
           port         = "5052"  # Using the port that Flask runs on by default
           runtime      = "PYTHON_3"
-          start_command = "cd dashboard && poetry run python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5052)))\""
+          start_command = "cd dashboard && python -c \"import os; from app import app; app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5052)))\""
           runtime_environment_variables = {
             "API_URL" = aws_apigatewayv2_api.http_api.api_endpoint,
             "IMAGES_BUCKET" = "sensing-garden-images",
