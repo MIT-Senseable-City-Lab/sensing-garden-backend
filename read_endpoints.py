@@ -61,6 +61,7 @@ def get_models(
 
 def get_detections(
     device_id: Optional[str] = None,
+    model_id: Optional[str] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
@@ -71,6 +72,7 @@ def get_detections(
     
     Args:
         device_id: Optional filter by device ID
+        model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of detections to return
@@ -109,6 +111,7 @@ def get_detections(
 
 def get_classifications(
     device_id: Optional[str] = None,
+    model_id: Optional[str] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
@@ -119,6 +122,7 @@ def get_classifications(
     
     Args:
         device_id: Optional filter by device ID
+        model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of classifications to return
