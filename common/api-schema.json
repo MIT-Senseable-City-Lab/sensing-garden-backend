@@ -20,6 +20,15 @@
             "description": "Filter models by device_id"
           },
           {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by specific model_id"
+          },
+          {
             "name": "start_time",
             "in": "query",
             "required": false,
@@ -94,64 +103,6 @@
         }
       }
     },
-    "/detection": {
-      "get": {
-        "$ref": "#/paths/~1detections/get"
-      },
-      "post": {
-        "summary": "Submit a detection request",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DetectionData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Detection processed successfully"
-          },
-          "400": {
-            "description": "Invalid request parameters"
-          },
-          "500": {
-            "description": "Server error"
-          }
-        }
-      }
-    },
-    "/classification": {
-      "get": {
-        "$ref": "#/paths/~1classifications/get"
-      },
-      "post": {
-        "summary": "Submit a classification request",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ClassificationData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Classification processed successfully"
-          },
-          "400": {
-            "description": "Invalid request parameters"
-          },
-          "500": {
-            "description": "Server error"
-          }
-        }
-      }
-    },
     "/detections": {
       "get": {
         "summary": "Get a list of detections",
@@ -164,6 +115,15 @@
               "type": "string"
             },
             "description": "Filter detections by device_id"
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter detections by model_id"
           },
           {
             "name": "start_time",
@@ -214,6 +174,30 @@
             "description": "Server error"
           }
         }
+      },
+      "post": {
+        "summary": "Submit a detection request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection processed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
       }
     },
     "/classifications": {
@@ -228,6 +212,15 @@
               "type": "string"
             },
             "description": "Filter classifications by device_id"
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter classifications by model_id"
           },
           {
             "name": "start_time",
@@ -270,6 +263,30 @@
         "responses": {
           "200": {
             "description": "List of classifications"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit a classification request",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Classification processed successfully"
           },
           "400": {
             "description": "Invalid request parameters"

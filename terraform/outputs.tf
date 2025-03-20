@@ -7,12 +7,12 @@ output "api_gateway_url" {
 }
 
 output "detection_api_endpoint" {
-  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/detection"
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/detections"
   description = "Full URL for the detections endpoint"
 }
 
 output "classification_api_endpoint" {
-  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/classification"
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/classifications"
   description = "Full URL for the classifications endpoint"
 }
 
