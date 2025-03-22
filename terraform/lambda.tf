@@ -29,32 +29,6 @@ resource "aws_lambda_layer_version" "schema_layer" {
   compatible_runtimes = ["python3.9"]
 }
 
-# Lambda function for detections
-resource "aws_lambda_function" "detection_function" {
-  function_name    = "sensing-garden-handler-detection"
-  role            = aws_iam_role.lambda_exec.arn
-  handler         = "handler.detection"
-  runtime         = "python3.9"
-  filename        = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 10
-  layers          = [aws_lambda_layer_version.schema_layer.arn]
-}
-
-# Lambda function for classifications
-resource "aws_lambda_function" "classification_function" {
-  function_name    = "sensing-garden-handler-classification"
-  role            = aws_iam_role.lambda_exec.arn
-  handler         = "handler.classification"
-  runtime         = "python3.9"
-  filename        = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 10
-  layers          = [aws_lambda_layer_version.schema_layer.arn]
-}
-
-
-
 # Attach permissions for Lambda to access DynamoDB
 resource "aws_iam_policy_attachment" "lambda_dynamodb_access" {
   name       = "lambda-dynamodb-access"
@@ -69,41 +43,30 @@ resource "aws_iam_policy_attachment" "lambda_s3_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 }
 
-# Permission for API Gateway to invoke Detection Lambda
-resource "aws_lambda_permission" "api_gateway_detection" {
-  statement_id  = "AllowAPIGatewayInvokeDetection"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.detection_function.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/detections"
-}
-
-# Permission for API Gateway to invoke Classification Lambda
-resource "aws_lambda_permission" "api_gateway_classification" {
-  statement_id  = "AllowAPIGatewayInvokeClassification"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.classification_function.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/classifications"
-}
-
-# Lambda function for API data fetching
+# Single Lambda function for all API operations
 resource "aws_lambda_function" "api_handler_function" {
   function_name    = "sensing-garden-api-handler"
   role            = aws_iam_role.lambda_exec.arn
-  handler         = "api_handler.handler"
+  handler         = "handler.handler"
   runtime         = "python3.9"
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 30  # Longer timeout for pagination
+  timeout         = 30  # Longer timeout for pagination and processing
+  memory_size     = 256 # Increased memory for better performance
   layers          = [aws_lambda_layer_version.schema_layer.arn]
+  
+  environment {
+    variables = {
+      IMAGES_BUCKET = "scl-sensing-garden-images"
+    }
+  }
 }
 
-# Permission for API Gateway to invoke API Handler Lambda
+# Permission for API Gateway to invoke API Handler Lambda for all routes
 resource "aws_lambda_permission" "api_gateway_api_handler" {
   statement_id  = "AllowAPIGatewayInvokeAPIHandler"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api_handler_function.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/{table_type}"
+  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/*"
 }

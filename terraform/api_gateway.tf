@@ -27,20 +27,11 @@ resource "aws_apigatewayv2_stage" "default" {
   }
 }
 
-# Integration for detections
-resource "aws_apigatewayv2_integration" "detection_lambda" {
+# Single integration for all API endpoints using the consolidated Lambda function
+resource "aws_apigatewayv2_integration" "api_lambda" {
   api_id           = aws_apigatewayv2_api.http_api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.detection_function.invoke_arn
-  integration_method = "POST"
-  payload_format_version = "2.0"
-}
-
-# Integration for classifications
-resource "aws_apigatewayv2_integration" "classification_lambda" {
-  api_id           = aws_apigatewayv2_api.http_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.classification_function.invoke_arn
+  integration_uri  = aws_lambda_function.api_handler_function.invoke_arn
   integration_method = "POST"
   payload_format_version = "2.0"
 }
@@ -76,38 +67,27 @@ resource "aws_api_gateway_usage_plan_key" "usage_plan_key" {
   usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
 }
 
-# Integration for API data fetching
-resource "aws_apigatewayv2_integration" "api_handler_lambda" {
-  api_id           = aws_apigatewayv2_api.http_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.api_handler_function.invoke_arn
-  integration_method = "POST"
-  payload_format_version = "2.0"
-}
+# The integration for the API is defined above as aws_apigatewayv2_integration.api_lambda
 
 # Routes for data fetching - GET endpoints (read)
 resource "aws_apigatewayv2_route" "get_detections" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /detections"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
-
-# Removed singular route alias in favor of consistent plural endpoints
 
 resource "aws_apigatewayv2_route" "get_classifications" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /classifications"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
-
-# Removed singular route alias in favor of consistent plural endpoints
 
 resource "aws_apigatewayv2_route" "get_models" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /models"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
 
@@ -115,7 +95,7 @@ resource "aws_apigatewayv2_route" "get_models" {
 resource "aws_apigatewayv2_route" "post_models" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /models"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
 
@@ -123,7 +103,7 @@ resource "aws_apigatewayv2_route" "post_models" {
 resource "aws_apigatewayv2_route" "post_detections" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /detections"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
 
@@ -131,6 +111,6 @@ resource "aws_apigatewayv2_route" "post_detections" {
 resource "aws_apigatewayv2_route" "post_classifications" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /classifications"
-  target    = "integrations/${aws_apigatewayv2_integration.api_handler_lambda.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
