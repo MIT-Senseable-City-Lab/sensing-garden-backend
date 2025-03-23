@@ -176,6 +176,146 @@ def test_recent_data(device_id, model_id, hours=24):
     else:
         print(f"\n⚠️ No recent data found within the last {hours} hours")
 
+
+def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
+    """Test the sorting functionality for the specified endpoint"""
+    # Initialize the client with API base URL from environment
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url)
+    
+    print(f"\n\nTesting {endpoint_type.upper()} GET with sorting by '{sort_by}'")
+    print(f"Device ID: {device_id}, Model ID: {model_id}")
+    
+    # We'll use a wide date range to ensure we get results
+    start_time = datetime(2023, 1, 1).isoformat()
+    end_time = datetime.now().isoformat()
+    
+    try:
+        # Get results with ascending sort
+        if endpoint_type == 'detection':
+            asc_data = get_detections(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=False
+            )
+        elif endpoint_type == 'classification':
+            asc_data = get_classifications(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=False
+            )
+        else:  # model
+            asc_data = get_models(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=False
+            )
+        
+        # Get results with descending sort
+        if endpoint_type == 'detection':
+            desc_data = get_detections(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=True
+            )
+        elif endpoint_type == 'classification':
+            desc_data = get_classifications(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=True
+            )
+        else:  # model
+            desc_data = get_models(
+                client=client,
+                device_id=device_id,
+                model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=True
+            )
+        
+        # Check if we got any results
+        asc_items = asc_data.get('items', [])
+        desc_items = desc_data.get('items', [])
+        
+        if not asc_items or not desc_items:
+            print(f"⚠️ Not enough {endpoint_type} items found to test sorting")
+            return False
+        
+        print(f"✅ Retrieved {len(asc_items)} items with ascending sort and {len(desc_items)} with descending sort")
+        
+        # Check the sorting is correct
+        if len(asc_items) > 1 and len(desc_items) > 1:
+            # Extract values from first and last items for each sort order
+            asc_first_value = asc_items[0].get(sort_by)
+            asc_last_value = asc_items[-1].get(sort_by)
+            desc_first_value = desc_items[0].get(sort_by)
+            desc_last_value = desc_items[-1].get(sort_by)
+            
+            print(f"\nAscending order - First: {asc_first_value}, Last: {asc_last_value}")
+            print(f"Descending order - First: {desc_first_value}, Last: {desc_last_value}")
+            
+            # Verify correct sorting - ascending should go from low to high
+            sorting_correct = True
+            if asc_first_value and asc_last_value and asc_first_value > asc_last_value:
+                print(f"❌ Ascending sort is incorrect: first value > last value")
+                sorting_correct = False
+            
+            # Descending should go from high to low
+            if desc_first_value and desc_last_value and desc_first_value < desc_last_value:
+                print(f"❌ Descending sort is incorrect: first value < last value")
+                sorting_correct = False
+            
+            # The first item of descending should match last item of ascending (roughly)
+            if asc_last_value and desc_first_value and not (desc_first_value >= asc_last_value):
+                print(f"⚠️ Last ascending item should be <= first descending item")
+            
+            if sorting_correct:
+                print(f"✅ Sorting verification passed for {sort_by}!")
+            return sorting_correct
+        else:
+            print(f"⚠️ Not enough items to verify sorting order properly")
+            return True  # Still return True as the API didn't fail
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ {endpoint_type.capitalize()} API GET request with sorting failed: {str(e)}")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
+        return False
+    except Exception as e:
+        print(f"❌ Error in sorting test: {str(e)}")
+        return False
+
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Test the Sensing Garden API GET endpoints')
@@ -184,6 +324,8 @@ if __name__ == "__main__":
     parser.add_argument('--classification', action='store_true', help='Test classification API GET endpoint')
     parser.add_argument('--recent', action='store_true', help='Test for recent data (last 24h)')
     parser.add_argument('--verify', action='store_true', help='Verify test data exists')
+    parser.add_argument('--test-sort', action='store_true', help='Test sorting functionality')
+    parser.add_argument('--sort-by', type=str, default='timestamp', help='Field to sort by')
     parser.add_argument('--hours', type=int, default=24, help='Hours to look back for recent test')
     parser.add_argument('--device', type=str, default="test-device", help='Device ID to use')
     parser.add_argument('--model-id', type=str, default="test-model-2025", help='Model ID to use')
@@ -196,7 +338,7 @@ if __name__ == "__main__":
     timestamp = args.timestamp
     
     # If no specific arguments provided, run all tests
-    run_all = not (args.model or args.detection or args.classification or args.verify or args.recent)
+    run_all = not (args.model or args.detection or args.classification or args.verify or args.recent or args.test_sort)
     
     # Test model API if requested
     if args.model or run_all:
@@ -221,5 +363,12 @@ if __name__ == "__main__":
     # Test for recent data if requested
     if args.recent or run_all:
         test_recent_data(device_id, model_id, args.hours)
+        
+    # Test sorting functionality if requested
+    if args.test_sort or run_all:
+        print("\n\n==== Testing Sorting Functionality ====\n")
+        test_sorting('detection', device_id, model_id, args.sort_by)
+        test_sorting('classification', device_id, model_id, args.sort_by)
+        test_sorting('model', device_id, model_id, args.sort_by)
     
     print("\nGET API Tests completed.")

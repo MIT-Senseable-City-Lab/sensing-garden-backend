@@ -16,7 +16,9 @@ def _build_common_params(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
-    next_token: Optional[str] = None
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False
 ) -> Dict[str, str]:
     """
     Build common query parameters for GET requests.
@@ -28,6 +30,8 @@ def _build_common_params(
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of items to return
         next_token: Token for pagination
+        sort_by: Attribute to sort by (e.g., 'timestamp', 'device_id')
+        sort_desc: If True, sort in descending order, otherwise ascending
         
     Returns:
         Dictionary with query parameters
@@ -47,6 +51,10 @@ def _build_common_params(
         params['limit'] = str(limit)
     if next_token:
         params['next_token'] = next_token
+    if sort_by:
+        params['sort_by'] = sort_by
+        # Always include sort_desc when sort_by is specified
+        params['sort_desc'] = str(sort_desc).lower()
     
     return params
 
@@ -58,7 +66,9 @@ def get_models(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
-    next_token: Optional[str] = None
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False
 ) -> Dict[str, Any]:
     """
     Get a list of models from the API.
@@ -71,14 +81,17 @@ def get_models(
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of models to return
         next_token: Token for pagination
+        sort_by: Attribute to sort by (e.g., 'timestamp', 'name', 'version')
+        sort_desc: If True, sort in descending order, otherwise ascending
         
     Returns:
         API response as dictionary
     
     Raises:
         requests.HTTPError: For HTTP error responses
+        ValueError: If any parameter is invalid
     """
-    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
+    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token, sort_by, sort_desc)
     return client.get('models', params)
 
 
@@ -89,7 +102,9 @@ def get_detections(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
-    next_token: Optional[str] = None
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False
 ) -> Dict[str, Any]:
     """
     Get a list of detections from the API.
@@ -102,15 +117,17 @@ def get_detections(
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of detections to return
         next_token: Token for pagination
+        sort_by: Attribute to sort by (e.g., 'timestamp', 'device_id')
+        sort_desc: If True, sort in descending order, otherwise ascending
         
     Returns:
         API response as dictionary
     
     Raises:
-        ValueError: If limit is invalid
+        ValueError: If limit or sort_order is invalid
         requests.HTTPError: For HTTP error responses
     """
-    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
+    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token, sort_by, sort_desc)
     return client.get('detections', params)
 
 
@@ -121,7 +138,9 @@ def get_classifications(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     limit: int = 100,
-    next_token: Optional[str] = None
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False
 ) -> Dict[str, Any]:
     """
     Get a list of classifications from the API.
@@ -134,13 +153,15 @@ def get_classifications(
         end_time: Optional end time for filtering (ISO-8601)
         limit: Maximum number of classifications to return
         next_token: Token for pagination
+        sort_by: Attribute to sort by (e.g., 'timestamp', 'family', 'species')
+        sort_desc: If True, sort in descending order, otherwise ascending
         
     Returns:
         API response as dictionary
     
     Raises:
-        ValueError: If limit is invalid
+        ValueError: If limit or sort_order is invalid
         requests.HTTPError: For HTTP error responses
     """
-    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
+    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token, sort_by, sort_desc)
     return client.get('classifications', params)

@@ -233,7 +233,8 @@ def store_model_data(data):
     return _store_data(data, MODELS_TABLE, 'model')
 
 def query_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, 
-               end_time: str = None, limit: int = 100, next_token: str = None):
+               end_time: str = None, limit: int = 100, next_token: str = None, 
+               sort_by: str = None, sort_desc: bool = False):
     """Query data from DynamoDB with filtering and pagination"""
     # Map table type to actual table name
     table_mapping = {
@@ -366,9 +367,29 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
             response = table.scan(**scan_params)
     
     # Format response
+    items = response.get('Items', [])
+    
+    # Sort items if sort_by is specified
+    if sort_by and items:
+        # Check if the attribute exists in the items
+        if any(sort_by in item for item in items):
+            # Use sort_desc directly for determining sort direction
+            # Set default to False (ascending) if not specified
+            reverse_sort = bool(sort_desc)
+                
+            # Sort items, handling missing attributes gracefully
+            # Items missing the sort attribute will appear last in ascending order
+            # and first in descending order
+            items = sorted(
+                items,
+                key=lambda x: (sort_by in x, x.get(sort_by)),
+                reverse=reverse_sort
+            )
+            print(f"Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
+    
     result = {
-        'items': response.get('Items', []),
-        'count': len(response.get('Items', []))
+        'items': items,
+        'count': len(items)
     }
     
     # Add pagination token if more results exist

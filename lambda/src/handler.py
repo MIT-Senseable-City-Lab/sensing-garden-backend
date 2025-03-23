@@ -296,6 +296,9 @@ def _common_get_handler(event: Dict, data_type: str, process_results: Optional[C
         print(f"Query parameters: {query_params}")
         
         # Query data using the dynamodb module
+        # Convert sort_desc from string to boolean if provided
+        sort_desc = query_params.get('sort_desc', 'false').lower() == 'true'
+        
         result = dynamodb.query_data(
             data_type,
             device_id=query_params.get('device_id'),
@@ -303,7 +306,9 @@ def _common_get_handler(event: Dict, data_type: str, process_results: Optional[C
             start_time=query_params.get('start_time'),
             end_time=query_params.get('end_time'),
             limit=int(query_params.get('limit', 100)) if query_params.get('limit') else 100,
-            next_token=query_params.get('next_token')
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=sort_desc
         )
         
         # Apply custom processing to results if provided
