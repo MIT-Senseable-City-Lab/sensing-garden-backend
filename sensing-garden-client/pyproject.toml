@@ -1,9 +1,20 @@
 [tool.poetry]
 name = "sensing-garden-client"
-version = "0.1.0"
+version = "0.0.1"
 description = "Sensing Garden Client for API interaction"
 authors = ["Deniz Aydemir"]
 readme = "README.md"
+repository = "https://github.com/daydemir/sensing-garden-backend"
+packages = [{include = "sensing_garden_client"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8"
