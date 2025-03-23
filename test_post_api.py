@@ -4,6 +4,8 @@ import base64
 import io
 import json
 import os
+import random
+import string
 import sys
 import uuid
 from datetime import datetime
@@ -41,7 +43,47 @@ def create_test_image():
     # Return raw bytes (not base64 encoded)
     return img_byte_arr.getvalue()
 
-# This function is no longer needed as we're using the client API directly
+def generate_random_string(length=8):
+    """Generate a random string of specified length"""
+    return ''.join(random.choices(string.ascii_lowercase, k=length))
+
+def generate_random_confidence():
+    """Generate a random confidence value between 0 and 1"""
+    return random.uniform(0.5, 1.0)  # Ensure confidences are reasonable (above 0.5)
+
+def generate_random_bounding_box():
+    """Generate a random bounding box with coordinates between 0 and 1"""
+    x1 = random.uniform(0, 0.8)  # Ensure room for width
+    y1 = random.uniform(0, 0.8)  # Ensure room for height
+    width = random.uniform(0.1, 0.8 - x1)  # Ensure valid width
+    height = random.uniform(0.1, 0.8 - y1)  # Ensure valid height
+    return [x1, y1, x1 + width, y1 + height]
+
+# Predefined lists of test names
+TEST_FAMILIES = [
+    "test_family_rosaceae",
+    "test_family_fabaceae",
+    "test_family_salicaceae",
+    "test_family_pinaceae"
+]
+
+TEST_GENERA = [
+    "test_genus_prunus",
+    "test_genus_quercus",
+    "test_genus_salix",
+    "test_genus_pinus"
+]
+
+TEST_SPECIES = [
+    "test_species_prunus_persica",
+    "test_species_quercus_robur",
+    "test_species_salix_alba",
+    "test_species_pinus_sylvestris"
+]
+
+def get_random_test_name(name_list):
+    """Get a random name from the predefined list"""
+    return random.choice(name_list)
 
 def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
     """Test a POST API endpoint (detection or classification) using sensing_garden_api package"""
@@ -76,19 +118,19 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
                 model_id=model_id,
                 image_data=image_data,
                 timestamp=request_timestamp,
-                bounding_box=[0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
+                bounding_box=generate_random_bounding_box()
             )
         else:
             response_data = client.classifications.add(
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
-                family="Test Family",
-                genus="Test Genus",
-                species="Test Species",
-                family_confidence=0.92,
-                genus_confidence=0.94,
-                species_confidence=0.90,
+                family=get_random_test_name(TEST_FAMILIES),
+                genus=get_random_test_name(TEST_GENERA),
+                species=get_random_test_name(TEST_SPECIES),
+                family_confidence=generate_random_confidence(),
+                genus_confidence=generate_random_confidence(),
+                species_confidence=generate_random_confidence(),
                 timestamp=request_timestamp
             )
         
@@ -143,23 +185,23 @@ def test_post_detection_with_invalid_model(device_id, timestamp):
             model_id=invalid_model_id,
             image_data=image_data,
             timestamp=request_timestamp,
-            bounding_box=[0.0, 0.0, 1.0, 1.0]
+            bounding_box=generate_random_bounding_box()
         )
         
         # If we get here without an exception, the test failed
         print(f"❌ Detection with invalid model_id succeeded but should have failed!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        return False
+        return False, request_timestamp
             
     except requests.exceptions.RequestException as e:
         # We expect an error, so this is success
         print(f"✅ Detection with invalid model_id failed as expected!")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return True
+        return True, request_timestamp
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        return False
+        return False, request_timestamp
 
 def test_post_classification(device_id, model_id, timestamp):
     """Test the classification API POST endpoint"""
@@ -193,169 +235,74 @@ def test_post_classification_with_invalid_model(device_id, timestamp):
             device_id=device_id,
             model_id=invalid_model_id,
             image_data=image_data,
-            family="Test Family",
-            genus="Test Genus",
-            species="Test Species",
-            family_confidence=0.92,
-            genus_confidence=0.94,
-            species_confidence=0.90,
+            family=get_random_test_name(TEST_FAMILIES),
+            genus=get_random_test_name(TEST_GENERA),
+            species=get_random_test_name(TEST_SPECIES),
+            family_confidence=generate_random_confidence(),
+            genus_confidence=generate_random_confidence(),
+            species_confidence=generate_random_confidence(),
             timestamp=request_timestamp
         )
         
         # If we get here without an exception, the test failed
         print(f"❌ Classification with invalid model_id succeeded but should have failed!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        return False
+        return False, request_timestamp
             
     except requests.exceptions.RequestException as e:
         # We expect an error, so this is success
         print(f"✅ Classification with invalid model_id failed as expected!")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return True
+        return True, request_timestamp
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        return False
+        return False, request_timestamp
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
     """Add test data for detections and classifications"""
-    # Initialize the client with API key and base URL from environment
-    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
-    if not api_key:
-        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
-    
-    api_base_url = os.environ.get('API_BASE_URL')
-    if not api_base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
-    
-    detection_success = 0
-    classification_success = 0
-    
-    print(f"\nAdding {num_entries} detection and {num_entries} classification records for device: {device_id}")
+    print(f"\nAdding {num_entries} test entries for device {device_id}")
     
     for i in range(num_entries):
-        print(f"\nCreating entry #{i+1}/{num_entries}")
-        success, _ = test_post_endpoint('detection', device_id, model_id, timestamp)
-        if success:
-            detection_success += 1
-        success, _ = test_post_endpoint('classification', device_id, model_id, timestamp)
-        if success:
-            classification_success += 1
-    
-    print(f"\n\nSummary:\n  - Detection entries: {detection_success}/{num_entries} created successfully")
-    print(f"  - Classification entries: {classification_success}/{num_entries} created successfully")
-
-def test_post_model(device_id, model_id, timestamp):
-    """Test the model API POST endpoint using sensing_garden_api package"""
-    # Generate a unique version for this request to avoid conflicts
-    version = f"v{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    
-    # Initialize the client with API key and base URL from environment
-    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
-    if not api_key:
-        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
-    
-    api_base_url = os.environ.get('API_BASE_URL')
-    if not api_base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
-    
-    success = False
-    try:
-        # Call the model creation endpoint function
-        print(f"\nSending model creation request to API using sensing_garden_api package")
-        
-        # Use the Models client API for model creation
-        response_data = client.models.create(
-            model_id=model_id,
-            name='Universal Test Model',
-            version=version,
-            description='A test model that can be used for both detection and classification',
-            timestamp=timestamp
-        )
-        
-        print(f"Response body: {json.dumps(response_data, indent=2)}")
-        print(f"\n✅ Model API write request successful!")
-        success = True
-        
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Model API request failed: {str(e)}")
-        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
-        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        success = False
-    except Exception as e:
-        print(f"❌ Error in test: {str(e)}")
-        success = False
-    finally:
-        # No patching needed anymore
-        pass
-    
-    return success
+        # Alternate between detection and classification
+        if i % 2 == 0:
+            test_post_detection(device_id, model_id, timestamp)
+        else:
+            test_post_classification(device_id, model_id, timestamp)
 
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Test the Sensing Garden API POST endpoints')
-    parser.add_argument('--model', action='store_true', help='Test model API POST endpoints')
-    parser.add_argument('--detection', action='store_true', help='Test detection API POST endpoints')
-    parser.add_argument('--classification', action='store_true', help='Test classification API POST endpoints')
-    parser.add_argument('--test-invalid-model', action='store_true', help='Test validation for non-existent model_id')
-    parser.add_argument('--data', action='store_true', help='Add test data')
-    parser.add_argument('--count', type=int, default=10, help='Number of test entries to create')
-    parser.add_argument('--device', type=str, default="test-device", help='Device ID to use')
-    parser.add_argument('--model-id', type=str, default="test-model-2025", help='Model ID to use')
+    parser.add_argument('--device-id', type=str, required=True, help='Device ID to use for testing')
+    parser.add_argument('--model-id', type=str, required=True, help='Model ID to use for testing')
+    parser.add_argument('--timestamp', type=str, help='Optional timestamp to use for testing')
+    parser.add_argument('--num-entries', type=int, default=10, help='Number of test entries to add')
+    
     args = parser.parse_args()
     
-    # Set device and model IDs
-    device_id = args.device
-    model_id = args.model_id
-    timestamp = datetime.utcnow().isoformat()
+    # Use provided timestamp or generate a new one
+    timestamp = args.timestamp or datetime.now().isoformat()
     
-    # If no specific arguments provided, run all tests
-    run_all = not (args.model or args.detection or args.classification or args.data)
+    # Run the appropriate tests
+    success = True
     
-    # Test model API if requested
-    if args.model or run_all:
-        print("\nTesting model API POST endpoint...")
-        model_success = test_post_model(device_id, model_id, timestamp)
-        
-        if not model_success and run_all:
-            print("Failed to test model API POST endpoint. Exiting.")
-            sys.exit(1)
+    # Test detection endpoints
+    detection_success, _ = test_post_detection(args.device_id, args.model_id, timestamp)
+    success &= detection_success
+    detection_invalid_success, _ = test_post_detection_with_invalid_model(args.device_id, timestamp)
+    success &= detection_invalid_success
     
-    # Test detection API if requested
-    if args.detection or run_all:
-        print("\nTesting detection API POST endpoint...")
-        detection_success, _ = test_post_detection(device_id, model_id, timestamp)
-        
-        if not detection_success and run_all:
-            print("Failed to test detection API POST endpoint. Exiting.")
-            sys.exit(1)
+    # Test classification endpoints
+    classification_success, _ = test_post_classification(args.device_id, args.model_id, timestamp)
+    success &= classification_success
+    classification_invalid_success, _ = test_post_classification_with_invalid_model(args.device_id, timestamp)
+    success &= classification_invalid_success
     
-    # Test classification API if requested
-    if args.classification or run_all:
-        print("\nTesting classification API POST endpoint...")
-        classification_success, _ = test_post_classification(device_id, model_id, timestamp)
-        
-        if not classification_success and run_all:
-            print("Failed to test classification API POST endpoint. Exiting.")
-            sys.exit(1)
+    # Add multiple test entries
+    add_test_data(args.device_id, args.model_id, timestamp, args.num_entries)
     
-    # Add test data if requested
-    if args.data or run_all:
-        add_test_data(device_id, model_id, timestamp, args.count)
-    
-    # Test validation of non-existent model_id if requested
-    if args.test_invalid_model:
-        print("\nTesting validation of non-existent model_id...")
-        detection_test_success = test_post_detection_with_invalid_model(device_id, timestamp)
-        classification_test_success = test_post_classification_with_invalid_model(device_id, timestamp)
-        
-        if detection_test_success and classification_test_success:
-            print("\n✅ Model validation tests PASSED!")
-        else:
-            print("\n❌ Model validation tests FAILED!")
-    
-    print("\nPOST API Tests completed.")
+    if success:
+        print("\n✅ All tests passed!")
+    else:
+        print("\n❌ Some tests failed!")
+        sys.exit(1)

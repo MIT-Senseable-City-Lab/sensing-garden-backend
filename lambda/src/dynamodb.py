@@ -5,12 +5,14 @@ from decimal import Decimal
 import boto3
 
 
-# Custom JSON encoder to handle Decimal objects
-class DecimalEncoder(json.JSONEncoder):
+# Custom JSON encoder to handle DynamoDB data types
+class DynamoDBEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
-        return super(DecimalEncoder, self).default(obj)
+        elif isinstance(obj, list) and all(isinstance(x, (int, float, Decimal)) for x in obj):
+            return [float(x) if isinstance(x, Decimal) else x for x in obj]
+        return super(DynamoDBEncoder, self).default(obj)
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -150,38 +152,24 @@ def _validate_model_exists(model_id):
     print(f"Validating model_id exists: {model_id}")
     models_table = dynamodb.Table(MODELS_TABLE)
     
-    # First try to get the model by model_id as the primary key (id)
     try:
-        response = models_table.get_item(
-            Key={
-                'id': model_id
-            }
+        # Use query instead of get_item since we have a composite key
+        from boto3.dynamodb.conditions import Key
+        
+        response = models_table.query(
+            KeyConditionExpression=Key('id').eq(model_id)
         )
         
-        # If the model exists with id=model_id, return true
-        if 'Item' in response:
-            return True, ""
-    except Exception as e:
-        print(f"Error while checking model by id: {str(e)}")
-    
-    # If not found by id, use scan to check if any model has this model_id
-    try:
-        from boto3.dynamodb.conditions import Attr
+        if not response.get('Items'):
+            error_msg = f"Model with id '{model_id}' not found in models table"
+            print(error_msg)
+            return False, error_msg
         
-        scan_response = models_table.scan(
-            FilterExpression=Attr('model_id').eq(model_id)
-        )
-        
-        # If at least one item was found, the model exists
-        if scan_response.get('Items', []):
-            return True, ""
+        return True, ""
     except Exception as e:
-        print(f"Error while scanning for model_id: {str(e)}")
-    
-    # If we got here, the model doesn't exist
-    error_msg = f"Model with id '{model_id}' not found in models table"
-    print(error_msg)
-    return False, error_msg
+        error_msg = f"Error validating model_id: {str(e)}"
+        print(error_msg)
+        return False, error_msg
 
 def _store_data(data, table_name, data_type):
     """Generic function to store data in DynamoDB"""
@@ -196,9 +184,7 @@ def _store_data(data, table_name, data_type):
     if data_type in ['detection', 'classification'] and 'model_id' in data:
         model_exists, model_error = _validate_model_exists(data['model_id'])
         if not model_exists:
-            detailed_error = f"{data_type} data references invalid model_id: {model_error}"
-            print(detailed_error)
-            raise ValueError(detailed_error)
+            raise ValueError(f"Invalid model_id: {model_error}")
     
     # Store in DynamoDB
     table = dynamodb.Table(table_name)
@@ -209,7 +195,7 @@ def _store_data(data, table_name, data_type):
         'body': json.dumps({
             'message': f'{data_type.replace("sensor_", "").capitalize()} data stored successfully',
             'data': data
-        }, cls=DecimalEncoder)
+        }, cls=DynamoDBEncoder)
     }
 
 def store_detection_data(data):
@@ -223,10 +209,7 @@ def store_classification_data(data):
 def store_model_data(data):
     """Store model data in DynamoDB"""
     # Models must have an id field which is the primary key
-    if 'id' not in data and 'model_id' in data:
-        # Use model_id as the id (primary key) if provided but id isn't
-        data['id'] = data['model_id']
-    elif 'id' not in data:
+    if 'id' not in data:
         raise ValueError("Model data must contain an 'id' field")
         
     # Set the type field which is required by the schema
@@ -239,20 +222,22 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
                end_time: str = None, limit: int = 100, next_token: str = None, 
                sort_by: str = None, sort_desc: bool = False):
     """Query data from DynamoDB with filtering and pagination"""
-    # Map table type to actual table name
-    table_mapping = {
+    if table_type not in ['detection', 'classification', 'model']:
+        raise ValueError(f"Invalid table_type: {table_type}")
+    
+    table_name = {
         'detection': DETECTIONS_TABLE,
         'classification': CLASSIFICATIONS_TABLE,
         'model': MODELS_TABLE
-    }
+    }[table_type]
     
-    if table_type not in table_mapping:
-        raise ValueError(f'Invalid table type: {table_type}')
+    table = dynamodb.Table(table_name)
     
-    # Print debugging info to CloudWatch
-    print(f"Querying {table_type} with params: device_id={device_id}, model_id={model_id}, start_time={start_time}, end_time={end_time}")
-    
-    table = dynamodb.Table(table_mapping[table_type])
+    # Validate model_id if it's provided and we're querying detections or classifications
+    if table_type in ['detection', 'classification'] and model_id:
+        model_exists, error = _validate_model_exists(model_id)
+        if not model_exists:
+            raise ValueError(f"Invalid model_id: {error}")
     
     # Import conditions for expressions
     from boto3.dynamodb.conditions import Key, Attr
@@ -291,7 +276,7 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
             
             # Add model_id as a filter if provided (in models table, model_id might be a different attribute)
             if model_id:
-                query_params['FilterExpression'] = Attr('model_id').eq(model_id)
+                query_params['FilterExpression'] = Attr('id').eq(model_id)
                 
             # Execute query
             print(f"Executing QUERY on models table with params: {query_params}")
@@ -307,7 +292,7 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
             if end_time:
                 filter_expressions.append(Attr('timestamp').lte(end_time))
             if model_id:
-                filter_expressions.append(Attr('model_id').eq(model_id))
+                filter_expressions.append(Attr('id').eq(model_id))
                 
             # Combine filter expressions if any exist
             if filter_expressions:

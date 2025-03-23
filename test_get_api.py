@@ -101,6 +101,14 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
             if data.get('next_token'):
                 print(f"⚠️ More results available. Use next_token: {data['next_token']}")
             
+            # Additional verification for detection responses
+            if endpoint_type == 'detection':
+                first_item = data['items'][0]
+                if 'bounding_box' not in first_item:
+                    print("❌ Warning: bounding_box field is missing from detection response")
+                else:
+                    print(f"✅ bounding_box field present: {first_item['bounding_box']}")
+            
             success = True
         else:
             print(f"⚠️ No {endpoint_type} items found")

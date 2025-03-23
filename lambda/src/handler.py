@@ -78,7 +78,7 @@ def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
 def _parse_request(event):
     """Parse the incoming request from API Gateway or direct invocation"""
     # Print the event structure for debugging
-    print(f"Event structure: {json.dumps({k: type(v).__name__ for k, v in event.items()}, cls=DecimalEncoder)}")
+    print(f"Event structure: {json.dumps({k: type(v).__name__ for k, v in event.items()}, cls=dynamodb.DynamoDBEncoder)}")
     
     # Handle both direct invocation and API Gateway proxy integration
     if 'body' not in event:
@@ -103,7 +103,7 @@ def _parse_request(event):
     # Safely handle printing the body (without large base64 images)
     try:
         body_for_log = {k: '...' if k == 'image' else v for k, v in body.items()}
-        print(f"Processed request body: {json.dumps(body_for_log, cls=DecimalEncoder)}") 
+        print(f"Processed request body: {json.dumps(body_for_log, cls=dynamodb.DynamoDBEncoder)}") 
     except Exception as e:
         print(f"Error logging request body: {str(e)}")
     
@@ -269,7 +269,7 @@ def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[
         if not is_valid:
             return {
                 'statusCode': 400,
-                'body': json.dumps({'error': error_message}, cls=DecimalEncoder)
+                'body': json.dumps({'error': error_message}, cls=dynamodb.DynamoDBEncoder)
             }
         
         # Call the appropriate store function with the parsed body
@@ -279,7 +279,7 @@ def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[
         print(f"Error in {data_type} POST handler: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
 def _common_get_handler(event: Dict, data_type: str, process_results: Optional[Callable[[Dict], Dict]] = None) -> Dict:
@@ -317,21 +317,21 @@ def _common_get_handler(event: Dict, data_type: str, process_results: Optional[C
         # Return success response
         return {
             'statusCode': 200,
-            'body': json.dumps(result, cls=DecimalEncoder)
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
         }
         
     except ValueError as e:
         # Handle validation errors
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
     except Exception as e:
         # Handle all other errors
         print(f"Error in {data_type} GET handler: {str(e)}")
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': str(e)}, cls=DecimalEncoder)
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
 def handler(event: Dict, context) -> Dict:
@@ -346,7 +346,7 @@ def handler(event: Dict, context) -> Dict:
             if isinstance(event[key], dict):
                 print(f"Event[{key}] sub-keys: {list(event[key].keys())}")
                 if key == 'requestContext' and 'http' in event[key]:
-                    print(f"HTTP context: {json.dumps(event[key]['http'], cls=DecimalEncoder)}")
+                    print(f"HTTP context: {json.dumps(event[key]['http'], cls=dynamodb.DynamoDBEncoder)}")
             else:
                 if key != 'body':  # Don't print body which might be large
                     print(f"Event[{key}] = {event[key]}")
@@ -402,14 +402,14 @@ def handler(event: Dict, context) -> Dict:
                 'statusCode': 404,
                 'body': json.dumps({
                     'error': f'No handler found for {http_method} {path}'
-                }, cls=DecimalEncoder)
+                }, cls=dynamodb.DynamoDBEncoder)
             }
         
         print(f"Found handler {handler_func.__name__} for {http_method} {path}")
         
         # Call the handler
         result = handler_func(event)
-        print(f"Handler result: {json.dumps(result, cls=DecimalEncoder)}")
+        print(f"Handler result: {json.dumps(result, cls=dynamodb.DynamoDBEncoder)}")
         
         # Add CORS headers
         if 'headers' not in result:
@@ -431,7 +431,7 @@ def handler(event: Dict, context) -> Dict:
             'body': json.dumps({
                 'error': str(e),
                 'trace': trace
-            }, cls=DecimalEncoder),
+            }, cls=dynamodb.DynamoDBEncoder),
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
