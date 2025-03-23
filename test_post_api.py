@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 # Import the endpoints modules
 import post_endpoints
 import get_endpoints
+import model_endpoints
 
 # Add lambda/src to the Python path so we can import the schema
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
@@ -206,7 +207,7 @@ def test_post_model(device_id, model_id, timestamp):
     success = False
     try:
         # Call the model creation endpoint function
-        print(f"\nSending model creation request to API using post_endpoints.py")
+        print(f"\nSending model creation request to API using model_endpoints.py")
         
         # Create metadata for testing
         metadata = {
@@ -215,7 +216,7 @@ def test_post_model(device_id, model_id, timestamp):
         }
         
         # Call updated send_model_request function with all required parameters
-        response_data = post_endpoints.send_model_request(
+        response_data = model_endpoints.send_model_request(
             model_id=model_id,
             device_id=device_id,
             name='Universal Test Model',
