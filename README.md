@@ -9,8 +9,14 @@ Backend services for the Sensing Garden project, including Lambda functions for 
     - `handler.py`: Main Lambda handler functions
     - `dynamodb.py`: DynamoDB interaction functions
 - `terraform/`: Infrastructure as Code using Terraform
-- `dashboard/`: Web dashboard for viewing data
-- `test_api.py`: Script for testing the API endpoints
+- `sensing-garden-client/`: Python package for API interaction
+  - `sensing_garden_client/`: Source code for the API client and endpoints
+    - `client.py`: Core client for interacting with the API
+    - `get_endpoints.py`: GET endpoint functions
+    - `post_endpoints.py`: POST endpoint functions
+    - `model_endpoints.py`: Model-related endpoint functions
+- `test_get_api.py`: Script for testing the GET API endpoints
+- `test_post_api.py`: Script for testing the POST API endpoints
 
 ## Setup
 
@@ -23,66 +29,68 @@ Backend services for the Sensing Garden project, including Lambda functions for 
 
 ### Environment Variables
 
-Set up API configuration using one of these methods:
-
-1. **Environment Variables (Recommended for Production):**
-   ```bash
-   # Set these in your shell or .env file (don't commit .env to git)
-   export SENSING_GARDEN_API_KEY="your-api-key"
-   export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
-   ```
-
-2. **Using the Configuration Template:**
-   ```bash
-   # Copy the template to create your configuration
-   cp api_config.template.py api_config.py
-   
-   # Then edit api_config.py with your credentials
-   # Note: api_config.py is in .gitignore to prevent committing credentials
-   ```
-
-## Running the Dashboard
-
-The dashboard provides a web interface to view data from your DynamoDB tables.
+Set up API configuration using environment variables:
 
 ```bash
-# Navigate to the dashboard directory
-cd dashboard
-
-# Install dependencies using Poetry
-poetry install
-
-# Run the dashboard
-poetry run python app.py
+# Set these in your shell or .env file (don't commit .env to git)
+export SENSING_GARDEN_API_KEY="your-api-key"
+export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
 ```
 
-The dashboard will be available at http://localhost:5050
+## Using the Sensing Garden Client Package
+
+The `sensing-garden-client` package provides functions to interact with the API endpoints.
+
+```python
+# Import the client and endpoint functions
+from sensing_garden_client import SensingGardenClient
+from sensing_garden_client import get_models, get_detections, get_classifications
+from sensing_garden_client import send_detection_request, send_classification_request, send_model_request
+
+# Create a client instance
+client = SensingGardenClient(
+    base_url="https://your-api-endpoint.execute-api.region.amazonaws.com",
+    api_key="your-api-key"
+)
+
+# Use the endpoint functions
+models = get_models(client, device_id="my-device")
+detections = get_detections(client, device_id="my-device")
+```
+
+For development, install the package in development mode:
+
+```bash
+# From the project root
+cd sensing-garden-client
+poetry install
+```
 
 ## Testing the API
 
-The test script allows you to test the detection and classification API endpoints.
+There are separate test scripts for GET and POST API endpoints.
 
 ```bash
 # Install dependencies using Poetry (from the project root)
 poetry install
 
-# Run tests for both detection and classification
-poetry run python test_api.py --test-type both
+# Run tests for GET endpoints
+poetry run python test_get_api.py
 
-# Or run tests for just detection
-poetry run python test_api.py --test-type detection
+# Run tests for POST endpoints
+poetry run python test_post_api.py
 
-# Or run tests for just classification
-poetry run python test_api.py --test-type classification
+# Run tests with specific parameters
+poetry run python test_get_api.py --device my-device --model-id my-model
 ```
 
 ## Populating Sample Data
 
-To populate the database with sample data for testing the dashboard:
+To populate the database with sample data for testing:
 
 ```bash
-cd dashboard
-poetry run python populate_sample_data.py
+# Add test data for a specific device and model
+poetry run python test_post_api.py --add-test-data --device-id my-device --model-id my-model
 ```
 
 ## Deployment
@@ -97,14 +105,14 @@ terraform init
 terraform apply
 ```
 
-### Dashboard Deployment
+### API Package Deployment
 
-The dashboard is deployed using AWS App Runner directly from GitHub for minimal maintenance. Just update the `repository_url` in `terraform/dashboard.tf` with your GitHub repository URL.
+The `sensing-garden-client` package can be installed directly from the repository or published to PyPI for easier consumption:
 
-The dashboard will be automatically:
-- Deployed when you push to the main branch
-- SSL/TLS secured
-- Auto-scaled based on traffic
-- Monitored for container health
+```bash
+# Install from GitHub
+pip install git+https://github.com/your-username/sensing-garden-backend.git#subdirectory=sensing-garden-client
 
-No manual build or push steps required! App Runner will handle the build and deployment process automatically.
+# Or if published to PyPI
+pip install sensing-garden-client
+```

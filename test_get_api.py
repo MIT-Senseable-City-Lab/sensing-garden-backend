@@ -8,8 +8,13 @@ from decimal import Decimal
 
 import requests
 
-# Import the endpoints modules
-import get_endpoints
+# Import the Sensing Garden client package
+from sensing_garden_client import SensingGardenClient, get_models, get_detections, get_classifications
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add lambda/src to the Python path so we can import the schema
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
@@ -24,7 +29,7 @@ class DecimalEncoder(json.JSONEncoder):
 # The endpoint modules handle their own configuration via environment variables
 
 def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_time=None, end_time=None):
-    """Test a GET API endpoint (detection, classification, or model) using get_endpoints.py"""
+    """Test a GET API endpoint (detection, classification, or model) using the sensing_garden_api package"""
     if not timestamp and not start_time:
         # If no specific timestamp provided, use a time range
         start_time = datetime(2023, 1, 1).isoformat()
@@ -36,7 +41,12 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
         start_time = (timestamp_dt - timedelta(minutes=1)).isoformat()
         end_time = (timestamp_dt + timedelta(minutes=1)).isoformat()
     
-    # The endpoint modules now handle the API key internally
+    # Initialize the client with API base URL from environment
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url)
     
     print(f"\n\nTesting {endpoint_type.upper()} GET with device_id: {device_id}, model_id: {model_id}")
     if timestamp:
@@ -45,9 +55,10 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
         print(f"Searching from {start_time} to {end_time}")
     
     try:
-        # Use the appropriate read endpoint function
+        # Use the appropriate read endpoint function from sensing_garden_api
         if endpoint_type == 'detection':
-            data = get_endpoints.get_detections(
+            data = get_detections(
+                client=client,
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -55,7 +66,8 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 limit=10
             )
         elif endpoint_type == 'classification':
-            data = get_endpoints.get_classifications(
+            data = get_classifications(
+                client=client,
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -63,7 +75,8 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 limit=10
             )
         else:  # model
-            data = get_endpoints.get_models(
+            data = get_models(
+                client=client,
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,

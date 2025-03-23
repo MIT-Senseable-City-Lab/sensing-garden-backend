@@ -3,61 +3,10 @@ API endpoints for POST operations in Sensing Garden API.
 This module provides functions to interact with the write operations of the API.
 """
 import base64
-from typing import Optional, Dict, Any, Callable, TypeVar, cast, List
-import os
-import requests
+from typing import Optional, Dict, Any, List
 
-# Load environment variables from .env file if present
-try:
-    from dotenv import load_dotenv
-    load_dotenv()  # Load environment variables from .env file if it exists
-except ImportError:
-    pass  # dotenv is not required, just a convenience
+from .client import SensingGardenClient
 
-# Type variable for generic function return types
-T = TypeVar('T', bound=Dict[str, Any])
-
-# Base URL validation is now handled by the api_config module
-
-def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Make a request to the API with proper error handling.
-    
-    Args:
-        endpoint: API endpoint (without base URL)
-        payload: Request payload
-        
-    Returns:
-        API response as dictionary
-    
-    Raises:
-        ValueError: If environment variables are not set
-        requests.HTTPError: For HTTP error responses
-    """
-    # Get API configuration from environment variables
-    api_key = os.environ.get("SENSING_GARDEN_API_KEY")
-    if not api_key:
-        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
-        
-    base_url = os.environ.get("API_BASE_URL")
-    if not base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    # Make the request
-    response = requests.post(
-        f"{base_url}/{endpoint}",
-        json=payload,
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": api_key
-        }
-    )
-    
-    # Raise exception for error responses
-    response.raise_for_status()
-    
-    # Return parsed JSON response
-    return response.json()
 
 def _prepare_common_payload(
     device_id: str,
@@ -96,7 +45,9 @@ def _prepare_common_payload(
     
     return payload
 
+
 def send_detection_request(
+    client: SensingGardenClient,
     device_id: str,
     model_id: str,
     image_data: bytes,
@@ -107,6 +58,7 @@ def send_detection_request(
     Submit a detection request to the API.
     
     Args:
+        client: SensingGardenClient instance
         device_id: Unique identifier for the device
         model_id: Identifier for the model to use for detection
         image_data: Raw image data as bytes
@@ -126,9 +78,11 @@ def send_detection_request(
     payload['bounding_box'] = bounding_box
     
     # Make API request
-    return _make_api_request("detections", payload)
+    return client.post("detections", payload)
+
 
 def send_classification_request(
+    client: SensingGardenClient,
     device_id: str,
     model_id: str,
     image_data: bytes,
@@ -138,12 +92,13 @@ def send_classification_request(
     family_confidence: float,
     genus_confidence: float,
     species_confidence: float,
-    timestamp: Optional[str] = None
+    timestamp: str
 ) -> Dict[str, Any]:
     """
     Submit a classification request to the API.
     
     Args:
+        client: SensingGardenClient instance
         device_id: Unique identifier for the device
         model_id: Identifier for the model to use for classification
         image_data: Raw image data as bytes
@@ -153,7 +108,7 @@ def send_classification_request(
         family_confidence: Confidence score for family classification (0-1)
         genus_confidence: Confidence score for genus classification (0-1)
         species_confidence: Confidence score for species classification (0-1)
-        timestamp: ISO-8601 formatted timestamp (optional)
+        timestamp: ISO-8601 formatted timestamp
         
     Returns:
         API response as dictionary
@@ -177,8 +132,6 @@ def send_classification_request(
             raise ValueError(f"{name} cannot be empty")
     
     # Prepare common payload
-    if timestamp is None:
-        raise ValueError("timestamp must be provided")
     payload = _prepare_common_payload(device_id, model_id, image_data, timestamp)
     
     # Add classification-specific fields
@@ -193,4 +146,4 @@ def send_classification_request(
     payload.update(classification_fields)
     
     # Make API request
-    return _make_api_request("classifications", payload)
+    return client.post("classifications", payload)

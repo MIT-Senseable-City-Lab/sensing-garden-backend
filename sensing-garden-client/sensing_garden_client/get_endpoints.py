@@ -3,20 +3,12 @@ API endpoints for GET operations in Sensing Garden API.
 This module provides functions to interact with the read operations of the API.
 """
 from typing import Dict, List, Optional, Any, TypeVar, Mapping, cast
-import os
-import requests
 
-# Load environment variables from .env file if present
-try:
-    from dotenv import load_dotenv
-    load_dotenv()  # Load environment variables from .env file if it exists
-except ImportError:
-    pass  # dotenv is not required, just a convenience
+from .client import SensingGardenClient
 
 # Type variable for generic function return types
 T = TypeVar('T', bound=Dict[str, Any])
 
-# Base URL validation is now handled by the api_config module
 
 def _build_common_params(
     device_id: Optional[str] = None,
@@ -58,31 +50,9 @@ def _build_common_params(
     
     return params
 
-def _make_api_request(endpoint: str, params: Mapping[str, str] = None) -> Dict[str, Any]:
-    """
-    Make a request to the API with proper error handling.
-    
-    Args:
-        endpoint: API endpoint (without base URL)
-        params: Query parameters
-        
-    Returns:
-        API response as dictionary
-    
-    Raises:
-        ValueError: If environment variables are not set
-        requests.HTTPError: For HTTP error responses
-    """
-    base_url = os.getenv('API_BASE_URL')
-    if not base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    url = f"{base_url}/{endpoint}"
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    return response.json()
 
 def get_models(
+    client: SensingGardenClient,
     device_id: Optional[str] = None,
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
@@ -94,6 +64,7 @@ def get_models(
     Get a list of models from the API.
     
     Args:
+        client: SensingGardenClient instance
         device_id: Optional filter by device ID
         model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
@@ -105,13 +76,14 @@ def get_models(
         API response as dictionary
     
     Raises:
-        ValueError: If BASE_URL is not set
         requests.HTTPError: For HTTP error responses
     """
     params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
-    return _make_api_request('models', params)
+    return client.get('models', params)
+
 
 def get_detections(
+    client: SensingGardenClient,
     device_id: Optional[str] = None,
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
@@ -123,6 +95,7 @@ def get_detections(
     Get a list of detections from the API.
     
     Args:
+        client: SensingGardenClient instance
         device_id: Optional filter by device ID
         model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
@@ -134,13 +107,15 @@ def get_detections(
         API response as dictionary
     
     Raises:
-        ValueError: If limit is invalid or BASE_URL is not set
+        ValueError: If limit is invalid
         requests.HTTPError: For HTTP error responses
     """
     params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
-    return _make_api_request('detections', params)
+    return client.get('detections', params)
+
 
 def get_classifications(
+    client: SensingGardenClient,
     device_id: Optional[str] = None,
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
@@ -152,6 +127,7 @@ def get_classifications(
     Get a list of classifications from the API.
     
     Args:
+        client: SensingGardenClient instance
         device_id: Optional filter by device ID
         model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
@@ -163,8 +139,8 @@ def get_classifications(
         API response as dictionary
     
     Raises:
-        ValueError: If limit is invalid or BASE_URL is not set
+        ValueError: If limit is invalid
         requests.HTTPError: For HTTP error responses
     """
     params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token)
-    return _make_api_request('classifications', params)
+    return client.get('classifications', params)

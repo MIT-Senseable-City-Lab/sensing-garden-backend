@@ -41,6 +41,11 @@ venv/
 ENV/
 .pytest_cache/
 
+# Poetry
+poetry.lock
+**/.venv/
+**/dist/
+
 # Lambda deployment packages
 lambda/deployment_package.zip
 lambda/*.zip

@@ -1,61 +1,15 @@
-#!/usr/bin/env python3
 """
 Model API endpoints for the Sensing Garden Backend.
 
 This module provides functions for creating and managing models in the Sensing Garden API.
 """
 from typing import Any, Dict, Optional
-import os
-import requests
 
-# Load environment variables from .env file if present
-try:
-    from dotenv import load_dotenv
-    load_dotenv()  # Load environment variables from .env file if it exists
-except ImportError:
-    pass  # dotenv is not required, just a convenience
+from .client import SensingGardenClient
 
-def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Make an API request to the specified endpoint.
-    
-    Args:
-        endpoint: API endpoint path (e.g., "models")
-        payload: Request payload data
-        
-    Returns:
-        API response as dictionary
-        
-    Raises:
-        ValueError: If environment variables are not set
-        requests.HTTPError: For HTTP error responses
-    """
-    # Get API configuration from environment variables
-    api_key = os.environ.get("SENSING_GARDEN_API_KEY")
-    if not api_key:
-        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
-        
-    base_url = os.environ.get("API_BASE_URL")
-    if not base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    # Prepare request URL and headers
-    url = f"{base_url}/{endpoint}"
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": api_key
-    }
-    
-    # Send request
-    response = requests.post(url, json=payload, headers=headers)
-    
-    # Raise exception for error responses
-    response.raise_for_status()
-    
-    # Return parsed JSON response
-    return response.json()
 
 def send_model_request(
+    client: SensingGardenClient,
     model_id: str,
     device_id: str,
     name: str,
@@ -68,6 +22,7 @@ def send_model_request(
     Submit a model creation request to the API.
     
     Args:
+        client: SensingGardenClient instance
         model_id: Unique identifier for the model
         device_id: Unique identifier for the device
         name: Name of the model
@@ -104,4 +59,4 @@ def send_model_request(
         payload["timestamp"] = timestamp
     
     # Make API request
-    return _make_api_request("models", payload)
+    return client.post("models", payload)

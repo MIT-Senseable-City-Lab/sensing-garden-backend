@@ -12,10 +12,14 @@ from decimal import Decimal
 import requests
 from PIL import Image, ImageDraw
 
-# Import the endpoints modules
-import post_endpoints
-import get_endpoints
-import model_endpoints
+# Import the Sensing Garden client package
+from sensing_garden_client import SensingGardenClient, get_models, get_detections, get_classifications, \
+    send_detection_request, send_classification_request, send_model_request
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add lambda/src to the Python path so we can import the schema
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
@@ -115,14 +119,23 @@ def create_test_payload(request_type, device_id, model_id, timestamp):
     return payload
 
 def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
-    """Test a POST API endpoint (detection or classification) using endpoints.py"""
+    """Test a POST API endpoint (detection or classification) using sensing_garden_api package"""
     # Create a unique timestamp for this request to avoid DynamoDB key conflicts
     request_timestamp = datetime.now().isoformat()
     
     # Determine which endpoint to use
     is_detection = endpoint_type == 'detection'
     
-    # The endpoint modules now handle the API key internally
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
     
     print(f"\n\nTesting {endpoint_type.upper()} POST with device_id: {device_id}, model_id: {model_id}")
     
@@ -131,9 +144,10 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
     
     try:
         # Call the appropriate write endpoint function
-        print(f"\nSending {endpoint_type} write request to API using post_endpoints.py")
+        print(f"\nSending {endpoint_type} write request to API using sensing_garden_api package")
         if is_detection:
-            response_data = post_endpoints.send_detection_request(
+            response_data = send_detection_request(
+                client=client,
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
@@ -141,7 +155,8 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
                 bounding_box=[0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
             )
         else:
-            response_data = post_endpoints.send_classification_request(
+            response_data = send_classification_request(
+                client=client,
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
@@ -184,6 +199,17 @@ def test_post_classification(device_id, model_id, timestamp):
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
     """Add test data for detections and classifications"""
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
+    
     detection_success = 0
     classification_success = 0
     
@@ -202,16 +228,25 @@ def add_test_data(device_id, model_id, timestamp, num_entries=10):
     print(f"  - Classification entries: {classification_success}/{num_entries} created successfully")
 
 def test_post_model(device_id, model_id, timestamp):
-    """Test the model API POST endpoint using endpoints.py"""
+    """Test the model API POST endpoint using sensing_garden_api package"""
     # Generate a unique version for this request to avoid conflicts
     version = f"v{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
-    # The endpoint modules now handle the API key internally
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
     
     success = False
     try:
         # Call the model creation endpoint function
-        print(f"\nSending model creation request to API using model_endpoints.py")
+        print(f"\nSending model creation request to API using sensing_garden_api package")
         
         # Create metadata for testing
         metadata = {
@@ -220,7 +255,8 @@ def test_post_model(device_id, model_id, timestamp):
         }
         
         # Call updated send_model_request function with all required parameters
-        response_data = model_endpoints.send_model_request(
+        response_data = send_model_request(
+            client=client,
             model_id=model_id,
             device_id=device_id,
             name='Universal Test Model',

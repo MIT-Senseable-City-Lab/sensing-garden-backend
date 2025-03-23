@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "sensing-garden-client"
+version = "0.1.0"
+description = "Sensing Garden Client for API interaction"
+authors = ["Deniz Aydemir"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+requests = "^2.32.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
