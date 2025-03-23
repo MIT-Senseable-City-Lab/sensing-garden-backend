@@ -5,13 +5,15 @@ Model API endpoints for the Sensing Garden Backend.
 This module provides functions for creating and managing models in the Sensing Garden API.
 """
 from typing import Any, Dict, Optional
-
+import os
 import requests
 
-# Import the centralized configuration
-from api_config import get_base_url, set_base_url, get_auth_headers
-
-# Note: Configuration is now managed by the api_config module
+# Load environment variables from .env file if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file if it exists
+except ImportError:
+    pass  # dotenv is not required, just a convenience
 
 def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -25,11 +27,24 @@ def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         API response as dictionary
         
     Raises:
+        ValueError: If environment variables are not set
         requests.HTTPError: For HTTP error responses
     """
-    # Prepare request URL and headers using the config module
-    url = f"{get_base_url()}/{endpoint}"
-    headers = get_auth_headers()
+    # Get API configuration from environment variables
+    api_key = os.environ.get("SENSING_GARDEN_API_KEY")
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+        
+    base_url = os.environ.get("API_BASE_URL")
+    if not base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    # Prepare request URL and headers
+    url = f"{base_url}/{endpoint}"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": api_key
+    }
     
     # Send request
     response = requests.post(url, json=payload, headers=headers)

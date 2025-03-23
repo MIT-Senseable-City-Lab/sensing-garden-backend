@@ -4,12 +4,15 @@ This module provides functions to interact with the write operations of the API.
 """
 import base64
 from typing import Optional, Dict, Any, Callable, TypeVar, cast
+import os
 import requests
 
-# Import the centralized configuration
-from api_config import get_base_url, set_base_url, get_auth_headers
-
-# Note: Configuration is now managed by the api_config module
+# Load environment variables from .env file if present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file if it exists
+except ImportError:
+    pass  # dotenv is not required, just a convenience
 
 # Type variable for generic function return types
 T = TypeVar('T', bound=Dict[str, Any])
@@ -28,13 +31,26 @@ def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         API response as dictionary
     
     Raises:
-        ValueError: If BASE_URL is not set
+        ValueError: If environment variables are not set
         requests.HTTPError: For HTTP error responses
     """
+    # Get API configuration from environment variables
+    api_key = os.environ.get("SENSING_GARDEN_API_KEY")
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+        
+    base_url = os.environ.get("API_BASE_URL")
+    if not base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    # Make the request
     response = requests.post(
-        f"{get_base_url()}/{endpoint}",
+        f"{base_url}/{endpoint}",
         json=payload,
-        headers=get_auth_headers()
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key
+        }
     )
     
     # Raise exception for error responses
