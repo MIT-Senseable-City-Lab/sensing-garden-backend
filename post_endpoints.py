@@ -3,7 +3,7 @@ API endpoints for POST operations in Sensing Garden API.
 This module provides functions to interact with the write operations of the API.
 """
 import base64
-from typing import Optional, Dict, Any, Callable, TypeVar, cast
+from typing import Optional, Dict, Any, Callable, TypeVar, cast, List
 import os
 import requests
 
@@ -63,7 +63,7 @@ def _prepare_common_payload(
     device_id: str,
     model_id: str,
     image_data: bytes,
-    timestamp: Optional[str] = None
+    timestamp: str
 ) -> Dict[str, Any]:
     """
     Prepare common payload data for API requests.
@@ -72,7 +72,7 @@ def _prepare_common_payload(
         device_id: Unique identifier for the device
         model_id: Identifier for the model to use
         image_data: Raw image data as bytes
-        timestamp: ISO-8601 formatted timestamp (optional)
+        timestamp: ISO-8601 formatted timestamp
         
     Returns:
         Dictionary with common payload fields
@@ -90,12 +90,9 @@ def _prepare_common_payload(
     payload = {
         "device_id": device_id,
         "model_id": model_id,
-        "image": base64_image
+        "image": base64_image,
+        "timestamp": timestamp
     }
-    
-    # Add timestamp if provided, otherwise server will generate
-    if timestamp:
-        payload["timestamp"] = timestamp
     
     return payload
 
@@ -103,7 +100,8 @@ def send_detection_request(
     device_id: str,
     model_id: str,
     image_data: bytes,
-    timestamp: Optional[str] = None
+    timestamp: str,
+    bounding_box: List[float]
 ) -> Dict[str, Any]:
     """
     Submit a detection request to the API.
@@ -112,7 +110,8 @@ def send_detection_request(
         device_id: Unique identifier for the device
         model_id: Identifier for the model to use for detection
         image_data: Raw image data as bytes
-        timestamp: ISO-8601 formatted timestamp (optional)
+        timestamp: ISO-8601 formatted timestamp
+        bounding_box: Bounding box coordinates
         
     Returns:
         API response as dictionary
@@ -123,6 +122,8 @@ def send_detection_request(
     """
     # Prepare payload
     payload = _prepare_common_payload(device_id, model_id, image_data, timestamp)
+    
+    payload['bounding_box'] = bounding_box
     
     # Make API request
     return _make_api_request("detections", payload)
@@ -176,6 +177,8 @@ def send_classification_request(
             raise ValueError(f"{name} cannot be empty")
     
     # Prepare common payload
+    if timestamp is None:
+        raise ValueError("timestamp must be provided")
     payload = _prepare_common_payload(device_id, model_id, image_data, timestamp)
     
     # Add classification-specific fields
@@ -191,5 +194,3 @@ def send_classification_request(
     
     # Make API request
     return _make_api_request("classifications", payload)
-
-

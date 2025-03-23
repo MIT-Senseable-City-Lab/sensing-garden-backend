@@ -10,7 +10,8 @@
         "timestamp",
         "model_id",
         "image_key",
-        "image_bucket"
+        "image_bucket",
+        "bounding_box"
       ],
       "properties": {
         "device_id": {
@@ -32,6 +33,13 @@
         "image_bucket": {
           "type": "string",
           "description": "S3 bucket containing the image"
+        },
+        "bounding_box": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Bounding box coordinates for the detection"
         }
       }
     },

@@ -20,6 +20,11 @@ resource "aws_dynamodb_table" "sensor_detections" {
     type = "S"
   }
 
+  attribute {
+    name = "bounding_box"
+    type = "S"
+  }
+
   global_secondary_index {
     name               = "model_id_index"
     hash_key           = "model_id"
@@ -56,6 +61,11 @@ resource "aws_dynamodb_table" "sensor_classifications" {
 
   attribute {
     name = "species"
+    type = "S"
+  }
+
+  attribute {
+    name = "bounding_box"
     type = "S"
   }
 
@@ -96,6 +106,11 @@ resource "aws_dynamodb_table" "models" {
 
   attribute {
     name = "type"
+    type = "S"
+  }
+
+  attribute {
+    name = "bounding_box"
     type = "S"
   }
 

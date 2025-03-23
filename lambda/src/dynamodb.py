@@ -114,6 +114,17 @@ def _validate_data(data, table_type):
                         error_msg = f"Could not convert {field} to Decimal: {value}. Error: {str(e)}"
                         print(error_msg)
                         return False, error_msg
+                
+                # Array validation for bounding_box
+                elif field == "bounding_box" and isinstance(value, list):
+                    if not all(isinstance(coord, (int, float, Decimal)) for coord in value):
+                        error_msg = f"All bounding box coordinates should be numbers, got {value}"
+                        print(error_msg)
+                        return False, error_msg
+                elif field == "bounding_box":
+                    error_msg = f"Field bounding_box should be an array of numbers, got {type(value)}"
+                    print(error_msg)
+                    return False, error_msg
         
         return True, ""
     except Exception as e:

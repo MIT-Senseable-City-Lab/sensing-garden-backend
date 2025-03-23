@@ -192,6 +192,10 @@ def _store_detection(body: Dict) -> Dict:
         'image_bucket': IMAGES_BUCKET
     }
     
+    # Include bounding_box if present
+    if 'bounding_box' in body:
+        data['bounding_box'] = body['bounding_box']
+    
     return dynamodb.store_detection_data(data)
 
 def handle_post_detection(event: Dict) -> Dict:

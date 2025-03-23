@@ -102,6 +102,9 @@ def create_test_payload(request_type, device_id, model_id, timestamp):
                     payload[field] = str(Decimal('0.94'))
                 elif field == 'species_confidence':
                     payload[field] = str(Decimal('0.90'))
+            elif request_type == 'detection_request':
+                if field == 'bounding_box':
+                    payload[field] = [0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
     except KeyError as e:
         print(f"Error creating payload: Missing key {str(e)}")
         sys.exit(1)
@@ -134,7 +137,8 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
-                timestamp=request_timestamp
+                timestamp=request_timestamp,
+                bounding_box=[0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
             )
         else:
             response_data = post_endpoints.send_classification_request(
