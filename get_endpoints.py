@@ -3,30 +3,17 @@ API endpoints for GET operations in Sensing Garden API.
 This module provides functions to interact with the read operations of the API.
 """
 from typing import Dict, List, Optional, Any, TypeVar, Mapping, cast
-import os
 import requests
 
-# Configuration variables loaded from environment
-API_KEY = os.environ.get("SENSING_GARDEN_API_KEY", "gMVUsSGzdZ5JgLgpadHtA9yd3Jz5THYs2pEPP7Al")
-BASE_URL = os.environ.get("API_BASE_URL", "https://linyz44pd6.execute-api.us-east-1.amazonaws.com")
+# Import the centralized configuration
+from api_config import get_base_url, set_base_url, get_auth_headers
 
-def set_base_url(url: str) -> None:
-    """
-    Set the base URL for API requests. This is useful for testing.
-    
-    Args:
-        url: Base URL for the API
-    """
-    global BASE_URL
-    BASE_URL = url
+# Note: Configuration is now managed by the api_config module
 
 # Type variable for generic function return types
 T = TypeVar('T', bound=Dict[str, Any])
 
-def _validate_base_url() -> None:
-    """Validate that the base URL is set"""
-    if not BASE_URL:
-        raise ValueError("Base URL not set. Check environment variables or call set_base_url().")
+# Base URL validation is now handled by the api_config module
 
 def _build_common_params(
     device_id: Optional[str] = None,
@@ -83,15 +70,11 @@ def _make_api_request(endpoint: str, params: Mapping[str, str] = None) -> Dict[s
         ValueError: If BASE_URL is not set
         requests.HTTPError: For HTTP error responses
     """
-    _validate_base_url()
-    
+    # Use centralized configuration
     response = requests.get(
-        f"{BASE_URL}/{endpoint}",
+        f"{get_base_url()}/{endpoint}",
         params=params,
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": API_KEY
-        }
+        headers=get_auth_headers()
     )
     
     # Raise exception for error responses

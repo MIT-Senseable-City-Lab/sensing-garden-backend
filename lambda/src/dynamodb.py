@@ -56,16 +56,28 @@ def _validate_data(data, table_type):
         print(f"Available schema keys: {list(SCHEMA['properties'].keys())}")
         print(f"Input data keys: {list(data.keys())}")
         
+        # Map table types to schema keys (handling singular/plural mismatch)
+        schema_type_mapping = {
+            'model': 'models',
+            'detection': 'sensor_detections',
+            'classification': 'sensor_classifications'
+        }
+        
+        # Use mapped schema key if available
+        schema_key = schema_type_mapping.get(table_type, table_type)
+        
         # Check schema existence
-        if table_type not in SCHEMA['properties']:
-            error_msg = f"Schema for {table_type} not found in DB schema"
+        if schema_key not in SCHEMA['properties']:
+            error_msg = f"Schema for {table_type} not found in DB schema (looked for '{schema_key}')"
             print(error_msg)
             return False, error_msg
         
-        db_schema = SCHEMA['properties'][table_type]
+        # Use the mapped schema key to get the schema properties
+        db_schema = SCHEMA['properties'][schema_key]
         
         # Print schema info for debugging
         print(f"Schema required fields: {db_schema.get('required', [])}")
+        print(f"Schema properties: {list(db_schema.get('properties', {}).keys())}")
         
         # Check required fields
         required_fields = db_schema.get('required', [])
@@ -140,6 +152,14 @@ def store_classification_data(data):
 
 def store_model_data(data):
     """Store model data in DynamoDB"""
+    # For models table, make sure to map device_id to id (the primary key)
+    if 'device_id' in data and 'id' not in data:
+        data['id'] = data['device_id']
+        
+    # Set the type field which is required by the schema
+    if 'type' not in data:
+        data['type'] = 'model'  # Default type
+        
     return _store_data(data, MODELS_TABLE, 'model')
 
 def query_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, 
@@ -155,45 +175,125 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
     if table_type not in table_mapping:
         raise ValueError(f'Invalid table type: {table_type}')
     
+    # Print debugging info to CloudWatch
+    print(f"Querying {table_type} with params: device_id={device_id}, model_id={model_id}, start_time={start_time}, end_time={end_time}")
+    
     table = dynamodb.Table(table_mapping[table_type])
     
-    # Base query parameters
-    query_params = {
+    # Import conditions for expressions
+    from boto3.dynamodb.conditions import Key, Attr
+    
+    # Base parameters - will be different for query vs scan
+    base_params = {
         'Limit': min(limit, 100) if limit else 100  # Cap at 100 items per request
     }
     
     # Add pagination token if provided
     if next_token:
         try:
-            query_params['ExclusiveStartKey'] = json.loads(next_token)
+            base_params['ExclusiveStartKey'] = json.loads(next_token)
         except json.JSONDecodeError:
             raise ValueError('Invalid next_token format')
     
-    # Import conditions once for both query and filter expressions
-    from boto3.dynamodb.conditions import Key, Attr
-    
-    # Add device_id filter if provided
-    if device_id:
-        query_params['KeyConditionExpression'] = Key('device_id').eq(device_id)
-        
-        # Add time range if provided
-        if start_time and end_time:
-            query_params['KeyConditionExpression'] &= Key('timestamp').between(start_time, end_time)
-        elif start_time:
-            query_params['KeyConditionExpression'] &= Key('timestamp').gte(start_time)
-        elif end_time:
-            query_params['KeyConditionExpression'] &= Key('timestamp').lte(end_time)
-    
-    # Add model_id filter if provided
-    if model_id:
-        filter_expression = Attr('model_id').eq(model_id)
-        query_params['FilterExpression'] = filter_expression
-        
-        # Execute query
-        response = table.query(**query_params)
+    # Handle different table schemas (models table uses 'id' as hash key, others use 'device_id')
+    if table_type == 'model':
+        # For models table
+        if device_id:  # In models table, we use device_id as the 'id' field
+            # QUERY operation - can use KeyConditionExpression
+            query_params = base_params.copy()
+            
+            # Create key condition for id (using device_id as the value)
+            key_condition = Key('id').eq(device_id)
+            
+            # Add time range conditions if provided
+            if start_time and end_time:
+                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
+            elif start_time:
+                key_condition = key_condition & Key('timestamp').gte(start_time)
+            elif end_time:
+                key_condition = key_condition & Key('timestamp').lte(end_time)
+                
+            query_params['KeyConditionExpression'] = key_condition
+            
+            # Add model_id as a filter if provided (in models table, model_id might be a different attribute)
+            if model_id:
+                query_params['FilterExpression'] = Attr('model_id').eq(model_id)
+                
+            # Execute query
+            print(f"Executing QUERY on models table with params: {query_params}")
+            response = table.query(**query_params)
+        else:
+            # SCAN operation for models table
+            scan_params = base_params.copy()
+            filter_expressions = []
+            
+            # Add time range as filter expressions
+            if start_time:
+                filter_expressions.append(Attr('timestamp').gte(start_time))
+            if end_time:
+                filter_expressions.append(Attr('timestamp').lte(end_time))
+            if model_id:
+                filter_expressions.append(Attr('model_id').eq(model_id))
+                
+            # Combine filter expressions if any exist
+            if filter_expressions:
+                combined_filter = filter_expressions[0]
+                for expr in filter_expressions[1:]:
+                    combined_filter = combined_filter & expr
+                scan_params['FilterExpression'] = combined_filter
+                
+            # Execute scan
+            print(f"Executing SCAN on models table with params: {scan_params}")
+            response = table.scan(**scan_params)
     else:
-        # If no device_id, use scan
-        response = table.scan(**query_params)
+        # For detections and classifications tables which use device_id as hash key
+        if device_id:
+            # QUERY operation - can use KeyConditionExpression
+            query_params = base_params.copy()
+            
+            # Create key condition for device_id
+            key_condition = Key('device_id').eq(device_id)
+            
+            # Add time range conditions if provided
+            if start_time and end_time:
+                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
+            elif start_time:
+                key_condition = key_condition & Key('timestamp').gte(start_time)
+            elif end_time:
+                key_condition = key_condition & Key('timestamp').lte(end_time)
+                
+            query_params['KeyConditionExpression'] = key_condition
+            
+            # Add model_id as a filter if provided
+            if model_id:
+                query_params['FilterExpression'] = Attr('model_id').eq(model_id)
+                
+            # Execute query
+            print(f"Executing QUERY with params: {query_params}")
+            response = table.query(**query_params)
+        else:
+            # SCAN operation - must use FilterExpression, cannot use KeyConditionExpression
+            scan_params = base_params.copy()
+            filter_expressions = []
+            
+            # Add time range as filter expressions
+            if start_time:
+                filter_expressions.append(Attr('timestamp').gte(start_time))
+            if end_time:
+                filter_expressions.append(Attr('timestamp').lte(end_time))
+            if model_id:
+                filter_expressions.append(Attr('model_id').eq(model_id))
+                
+            # Combine filter expressions if any exist
+            if filter_expressions:
+                combined_filter = filter_expressions[0]
+                for expr in filter_expressions[1:]:
+                    combined_filter = combined_filter & expr
+                scan_params['FilterExpression'] = combined_filter
+                
+            # Execute scan
+            print(f"Executing SCAN with params: {scan_params}")
+            response = table.scan(**scan_params)
     
     # Format response
     result = {

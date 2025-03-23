@@ -23,13 +23,23 @@ Backend services for the Sensing Garden project, including Lambda functions for 
 
 ### Environment Variables
 
-Create a `config.py` file in the root directory with the following variables:
+Set up API configuration using one of these methods:
 
-```python
-API_ENDPOINT = "https://your-api-endpoint.execute-api.region.amazonaws.com/data"
-API_KEY = "your-api-key"
-API_BASE_URL = "<output from terraform>"  # Get this from terraform output api_endpoint
-```
+1. **Environment Variables (Recommended for Production):**
+   ```bash
+   # Set these in your shell or .env file (don't commit .env to git)
+   export SENSING_GARDEN_API_KEY="your-api-key"
+   export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
+   ```
+
+2. **Using the Configuration Template:**
+   ```bash
+   # Copy the template to create your configuration
+   cp api_config.template.py api_config.py
+   
+   # Then edit api_config.py with your credentials
+   # Note: api_config.py is in .gitignore to prevent committing credentials
+   ```
 
 ## Running the Dashboard
 

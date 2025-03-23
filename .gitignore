@@ -49,6 +49,13 @@ lambda/*.zip
 .aws-sam/
 samconfig.toml
 
+# Sensitive configuration files
+config.py
+.env
+*.env
+secrets.py
+local_settings.py
+
 # IDE and editors
 .idea/
 .vscode/

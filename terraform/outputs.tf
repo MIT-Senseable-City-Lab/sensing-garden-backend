@@ -21,9 +21,15 @@ output "models_api_endpoint" {
   description = "Full URL for the models endpoint"
 }
 
-output "api_key" {
-  value       = aws_api_gateway_api_key.api_key.value
-  description = "API key for authentication"
+output "test_api_key" {
+  value       = aws_api_gateway_api_key.test_key.value
+  description = "Test environment API key for authentication"
+  sensitive   = true
+}
+
+output "edge_api_key" {
+  value       = aws_api_gateway_api_key.edge_key.value
+  description = "Edge/production environment API key for authentication"
   sensitive   = true
 }
 
@@ -50,23 +56,18 @@ output "models_table_name" {
 }
 
 # Lambda outputs
-output "detection_lambda_function_name" {
-  value       = aws_lambda_function.detection_function.function_name
-  description = "Name of the detection Lambda function"
-}
-
-output "classification_lambda_function_name" {
-  value       = aws_lambda_function.classification_function.function_name
-  description = "Name of the classification Lambda function"
+output "api_handler_lambda_function_name" {
+  value       = aws_lambda_function.api_handler_function.function_name
+  description = "Name of the API handler Lambda function"
 }
 
 # Direct Lambda invocation examples
-output "detection_lambda_invoke_command" {
-  value       = "aws lambda invoke --function-name ${aws_lambda_function.detection_function.function_name} --payload '{\"device_id\":\"device123\",\"model_id\":\"model456\",\"image\":\"base64_data\"}' response.json"
-  description = "Example command to invoke detection Lambda directly"
+output "detection_api_invoke_command" {
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.api_handler_function.function_name} --payload '{\"path\":\"/detections\",\"httpMethod\":\"POST\",\"body\":\"{\\\"device_id\\\":\\\"device123\\\",\\\"model_id\\\":\\\"model456\\\",\\\"image\\\":\\\"base64_data\\\"}\"}' response.json"
+  description = "Example command to invoke detection API directly"
 }
 
-output "classification_lambda_invoke_command" {
-  value       = "aws lambda invoke --function-name ${aws_lambda_function.classification_function.function_name} --payload '{\"device_id\":\"device123\",\"model_id\":\"model456\",\"image\":\"base64_data\",\"genus\":\"Test Genus\",\"family\":\"Test Family\",\"species\":\"Test Species\",\"confidence\":0.95}' response.json"
-  description = "Example command to invoke classification Lambda directly"
+output "classification_api_invoke_command" {
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.api_handler_function.function_name} --payload '{\"path\":\"/classifications\",\"httpMethod\":\"POST\",\"body\":\"{\\\"device_id\\\":\\\"device123\\\",\\\"model_id\\\":\\\"model456\\\",\\\"image\\\":\\\"base64_data\\\",\\\"genus\\\":\\\"Test Genus\\\",\\\"family\\\":\\\"Test Family\\\",\\\"species\\\":\\\"Test Species\\\",\\\"confidence\\\":0.95}\"}' response.json"
+  description = "Example command to invoke classification API directly"
 }

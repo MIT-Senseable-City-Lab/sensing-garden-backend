@@ -1,0 +1,2 @@
+- make sure the @api_schema.json and @db-schema.json files are always are always the source of truth for the API and database schema
+- make sure the @get_endpoints.py and @post_endpoints.py files are always up to date with the api schema

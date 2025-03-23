@@ -4,24 +4,14 @@ Model API endpoints for the Sensing Garden Backend.
 
 This module provides functions for creating and managing models in the Sensing Garden API.
 """
-import os
 from typing import Any, Dict, Optional
 
 import requests
 
-# Configuration variables loaded from environment
-API_KEY = os.environ.get("SENSING_GARDEN_API_KEY", "gMVUsSGzdZ5JgLgpadHtA9yd3Jz5THYs2pEPP7Al")
-BASE_URL = os.environ.get("API_BASE_URL", "https://linyz44pd6.execute-api.us-east-1.amazonaws.com")
+# Import the centralized configuration
+from api_config import get_base_url, set_base_url, get_auth_headers
 
-def set_base_url(url: str) -> None:
-    """
-    Set the base URL for API requests. This is useful for testing.
-    
-    Args:
-        url: Base URL for the API
-    """
-    global BASE_URL
-    BASE_URL = url
+# Note: Configuration is now managed by the api_config module
 
 def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -37,12 +27,9 @@ def _make_api_request(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     Raises:
         requests.HTTPError: For HTTP error responses
     """
-    # Prepare request URL and headers
-    url = f"{BASE_URL}/{endpoint}"
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY
-    }
+    # Prepare request URL and headers using the config module
+    url = f"{get_base_url()}/{endpoint}"
+    headers = get_auth_headers()
     
     # Send request
     response = requests.post(url, json=payload, headers=headers)

@@ -10,11 +10,21 @@ resource "aws_apigatewayv2_api" "http_api" {
   }
 }
 
-# API Keys are managed differently for HTTP APIs
+# API Keys for different environments
 # Using REST API Gateway resources for API key management
-resource "aws_api_gateway_api_key" "api_key" {
-  name = "sensing-garden-api-key"
+
+# Test environment API key
+resource "aws_api_gateway_api_key" "test_key" {
+  name = "sensing-garden-api-key-test"
   enabled = true
+  description = "API key for test environment"
+}
+
+# Edge/production environment API key
+resource "aws_api_gateway_api_key" "edge_key" {
+  name = "sensing-garden-api-key-edge"
+  enabled = true
+  description = "API key for edge/production environment"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -60,9 +70,16 @@ resource "aws_api_gateway_usage_plan" "usage_plan" {
   }
 }
 
-# Associate the API key with the usage plan
-resource "aws_api_gateway_usage_plan_key" "usage_plan_key" {
-  key_id        = aws_api_gateway_api_key.api_key.id
+# Associate the test environment API key with the usage plan
+resource "aws_api_gateway_usage_plan_key" "test_usage_plan_key" {
+  key_id        = aws_api_gateway_api_key.test_key.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
+}
+
+# Associate the edge/production environment API key with the usage plan
+resource "aws_api_gateway_usage_plan_key" "edge_usage_plan_key" {
+  key_id        = aws_api_gateway_api_key.edge_key.id
   key_type      = "API_KEY"
   usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
 }
