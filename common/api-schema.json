@@ -338,17 +338,12 @@
       "ModelData": {
         "type": "object",
         "required": [
-          "device_id",
           "model_id",
           "name",
           "description",
           "version"
         ],
         "properties": {
-          "device_id": {
-            "type": "string",
-            "description": "Unique identifier for the device"
-          },
           "model_id": {
             "type": "string",
             "description": "Unique identifier for the model"

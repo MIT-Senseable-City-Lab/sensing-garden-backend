@@ -2,7 +2,7 @@
 name = "sensing-garden-client"
 version = "0.0.1"
 description = "Sensing Garden Client for API interaction"
-authors = ["Deniz Aydemir"]
+authors = ["Deniz Aydemir <deniz@aydemir.us>"]
 readme = "README.md"
 repository = "https://github.com/daydemir/sensing-garden-backend"
 packages = [{include = "sensing_garden_client"}]

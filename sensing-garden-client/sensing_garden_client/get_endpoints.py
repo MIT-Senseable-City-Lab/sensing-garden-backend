@@ -61,7 +61,6 @@ def _build_common_params(
 
 def get_models(
     client: SensingGardenClient,
-    device_id: Optional[str] = None,
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
@@ -75,7 +74,6 @@ def get_models(
     
     Args:
         client: SensingGardenClient instance
-        device_id: Optional filter by device ID
         model_id: Optional filter by model ID
         start_time: Optional start time for filtering (ISO-8601)
         end_time: Optional end time for filtering (ISO-8601)
@@ -91,7 +89,11 @@ def get_models(
         requests.HTTPError: For HTTP error responses
         ValueError: If any parameter is invalid
     """
-    params = _build_common_params(device_id, model_id, start_time, end_time, limit, next_token, sort_by, sort_desc)
+    # Create a modified parameter set without device_id (not used for models)
+    params = _build_common_params(None, model_id, start_time, end_time, limit, next_token, sort_by, sort_desc)
+    # Remove device_id from params if it was added (will be None)
+    if 'device_id' in params:
+        del params['device_id']
     return client.get('models', params)
 
 

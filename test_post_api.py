@@ -21,43 +21,12 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Add lambda/src to the Python path so we can import the schema
-sys.path.append(os.path.join(os.path.dirname(__file__), 'lambda/src'))
-
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
-
-# The endpoint modules handle their own configuration via environment variables
-
-# Load schema
-def load_schema():
-    """Load the API schema from the common directory"""
-    schema_path = os.path.join(os.path.dirname(__file__), 'common/api-schema.json')
-    try:
-        with open(schema_path, 'r') as f:
-            schema = json.load(f)
-            print("Schema loaded successfully.")
-            print("Schema keys:", schema.keys())
-            return schema
-    except FileNotFoundError:
-        error_msg = f"API schema file not found at {schema_path}"
-        print(error_msg)
-        sys.exit(1)
-    except json.JSONDecodeError as e:
-        error_msg = f"Invalid JSON in schema file {schema_path}: {str(e)}"
-        print(error_msg)
-        sys.exit(1)
-    except Exception as e:
-        error_msg = f"Failed to load schema from {schema_path}: {str(e)}"
-        print(error_msg)
-        sys.exit(1)
-
-# Load the schema
-SCHEMA = load_schema()
 
 # Create a test image
 def create_test_image():
@@ -73,50 +42,7 @@ def create_test_image():
     # Return raw bytes (not base64 encoded)
     return img_byte_arr.getvalue()
 
-def create_test_payload(request_type, device_id, model_id, timestamp):
-    """Create a test payload based on schema requirements"""
-    payload = {}
-    
-    # Map request types to OpenAPI schema components
-    schema_type_map = {
-        'detection_request': 'DetectionData',
-        'classification_request': 'ClassificationData'
-    }
-    
-    # Add required fields from schema
-    try:
-        api_schema = SCHEMA['components']['schemas'][schema_type_map[request_type]]
-        for field in api_schema['required']:
-            if field == 'device_id':
-                payload[field] = device_id
-            elif field == 'model_id':
-                payload[field] = model_id
-            elif field == 'image':
-                payload[field] = create_test_image()
-            elif request_type == 'classification_request':
-                if field == 'family':
-                    payload[field] = "Test Family"
-                elif field == 'genus':
-                    payload[field] = "Test Genus"
-                elif field == 'species':
-                    payload[field] = "Test Species"
-                elif field == 'family_confidence':
-                    payload[field] = str(Decimal('0.92'))
-                elif field == 'genus_confidence':
-                    payload[field] = str(Decimal('0.94'))
-                elif field == 'species_confidence':
-                    payload[field] = str(Decimal('0.90'))
-            elif request_type == 'detection_request':
-                if field == 'bounding_box':
-                    payload[field] = [0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
-    except KeyError as e:
-        print(f"Error creating payload: Missing key {str(e)}")
-        sys.exit(1)
-
-    # Add optional fields
-    payload['timestamp'] = timestamp
-    
-    return payload
+# This function is no longer needed as we're using the client API directly
 
 def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
     """Test a POST API endpoint (detection or classification) using sensing_garden_api package"""
@@ -357,7 +283,6 @@ def test_post_model(device_id, model_id, timestamp):
         response_data = send_model_request(
             client=client,
             model_id=model_id,
-            device_id=device_id,
             name='Universal Test Model',
             version=version,
             description='A test model that can be used for both detection and classification',

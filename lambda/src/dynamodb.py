@@ -222,9 +222,12 @@ def store_classification_data(data):
 
 def store_model_data(data):
     """Store model data in DynamoDB"""
-    # For models table, make sure to map device_id to id (the primary key)
-    if 'device_id' in data and 'id' not in data:
-        data['id'] = data['device_id']
+    # Models must have an id field which is the primary key
+    if 'id' not in data and 'model_id' in data:
+        # Use model_id as the id (primary key) if provided but id isn't
+        data['id'] = data['model_id']
+    elif 'id' not in data:
+        raise ValueError("Model data must contain an 'id' field")
         
     # Set the type field which is required by the schema
     if 'type' not in data:

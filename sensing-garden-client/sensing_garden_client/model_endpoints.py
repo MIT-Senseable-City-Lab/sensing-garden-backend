@@ -11,7 +11,6 @@ from .client import SensingGardenClient
 def send_model_request(
     client: SensingGardenClient,
     model_id: str,
-    device_id: str,
     name: str,
     version: str,
     description: str = "",
@@ -24,7 +23,6 @@ def send_model_request(
     Args:
         client: SensingGardenClient instance
         model_id: Unique identifier for the model
-        device_id: Unique identifier for the device
         name: Name of the model
         version: Version string for the model
         description: Description of the model
@@ -39,13 +37,12 @@ def send_model_request(
         requests.HTTPError: For HTTP error responses
     """
     # Validate required parameters
-    if not model_id or not device_id or not name or not version:
-        raise ValueError("model_id, device_id, name, and version must be provided")
+    if not model_id or not name or not version:
+        raise ValueError("model_id, name, and version must be provided")
     
     # Create payload with required fields according to the API schema
     payload = {
         "model_id": model_id,
-        "device_id": device_id,
         "name": name,
         "version": version,
         "description": description

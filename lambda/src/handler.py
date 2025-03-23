@@ -241,8 +241,7 @@ def _store_model(body: Dict) -> Dict:
     """Process and store model data"""
     # Prepare data for DynamoDB
     data = {
-        'device_id': body['device_id'],
-        'model_id': body['model_id'],
+        'id': body['model_id'],  # Use model_id as the primary key (id)
         'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
         'name': body['name'],
         'description': body['description'],
