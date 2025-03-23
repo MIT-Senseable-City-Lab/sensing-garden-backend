@@ -1,12 +1,11 @@
-{% macro render_table(table_id, items, headers, download_url) %}
+{% macro render_table(table_id, items, headers, download_url, pagination=None) %}
 <!-- Controls outside of the table-responsive area -->
 <div class="mb-3">
     <button onclick="window.open('{{ download_url }}', '_blank')" class="btn btn-secondary">Download CSV</button>
 </div>
 
 <div class="mb-3 d-flex justify-content-between align-items-center">
-    <div id="{{ table_id }}_length" class="dataTables_length"></div>
-    <div id="{{ table_id }}_info" class="dataTables_info"></div>
+    <div id="{{ table_id }}_info" class="dataTables_info">Showing up to 50 items per page</div>
 </div>
 
 <!-- Table within scrollable area -->
@@ -24,17 +23,17 @@
             <tr>
                 {% for header in headers %}
                 <td>
-                    {% if header == 'image_url' and item.image_url %}
+                    {% if header == 'image_url' and item.get('image_url') %}
                         <a href="{{ item.image_url }}" target="_blank">
                             <img src="{{ item.image_url }}" class="img-fluid" style="max-height: 100px;">
                         </a>
                     {% elif header in ['image_key', 'image_bucket'] %}
-                        {{ item[header] }}
-                        {% if header == 'image_key' and item.image_url %}
+                        {{ item.get(header, '') }}
+                        {% if header == 'image_key' and item.get('image_url') %}
                             <a href="{{ item.image_url }}" target="_blank" class="btn btn-sm btn-outline-primary ml-2">View</a>
                         {% endif %}
                     {% else %}
-                        {{ item[header] }}
+                        {{ item.get(header, '') }}
                     {% endif %}
                 </td>
                 {% endfor %}
@@ -45,8 +44,16 @@
 </div>
 
 <!-- Pagination outside of the table-responsive area -->
-<div class="mt-3">
-    <div id="{{ table_id }}_paginate" class="dataTables_paginate paging_simple_numbers"></div>
+<div class="mt-3 text-center">
+    <div class="btn-group" role="group" aria-label="Pagination">
+        {% if pagination and pagination.has_prev %}
+        <a href="{{ pagination.prev_url }}" class="btn btn-primary">Previous</a>
+        {% endif %}
+        
+        {% if pagination and pagination.has_next %}
+        <a href="{{ pagination.next_url }}" class="btn btn-primary">Next</a>
+        {% endif %}
+    </div>
 </div>
 {% endmacro %}
 
@@ -97,7 +104,7 @@
             searching: false,
             ordering: true,
             info: true,
-            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            lengthMenu: [[50], [50]], // Fixed to 50 items per page
             // Basic DOM structure - just table
             dom: 't',
             // Basic callback when table is drawn

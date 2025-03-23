@@ -11,39 +11,7 @@
     
     {% if items %}
     {% set display_fields = fields + ['formatted_time'] if 'formatted_time' not in fields else fields %}
-    <div class="table-responsive">
-        <a href="{{ url_for('download_csv', table_name='sensor_detections') }}" class="btn btn-secondary mb-2">Download CSV</a>
-        <table id="detectionsTable" class="table table-striped">
-            <thead>
-                <tr>
-                    {% for field in display_fields %}
-                    <th>{{ field|replace('_', ' ')|title }}</th>
-                    {% endfor %}
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                <tr>
-                    {% for field in display_fields %}
-                    <td>
-                        {% if field == 'image_link' and item.image_link %}
-                        <a href="{{ item.image_link }}" target="_blank">
-                            <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
-                        </a>
-                        {% else %}
-                        {{ item.get(field, '') }}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                    <td>
-                        <a href="{{ url_for('view_item', table_name='sensor_detections', device_id=item.device_id, timestamp=item.timestamp) }}" class="btn btn-sm btn-info">View Details</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {{ render_table('detectionsTable', items, display_fields, url_for('download_csv', table_type='detections'), pagination) }}
     {% else %}
     <div class="alert alert-info">
         No detection data found. Try running the test script to generate some data.

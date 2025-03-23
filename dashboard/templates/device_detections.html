@@ -9,7 +9,7 @@
     <h2>Device {{ device_id }} Detections</h2>
     {% set display_fields = fields + ['formatted_time'] if 'formatted_time' not in fields else fields %}
     {{ render_table('detectionsTable', detections, display_fields,
-    url_for('download_csv', table_name='sensor_detections', device_id=device_id)) }}
+    url_for('download_csv', table_type='detections', device_id=device_id), pagination) }}
 </div>
 {% endblock %}
 

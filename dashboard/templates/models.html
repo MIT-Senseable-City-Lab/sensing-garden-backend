@@ -12,8 +12,7 @@
     {% if 'model_id' not in adjusted_fields %}
         {% set adjusted_fields = ['model_id'] + adjusted_fields %}
     {% endif %}
-    {{ render_table('modelsTable', items, adjusted_fields, url_for('download_csv', table_name='models'))
-    }}
+    {{ render_table('modelsTable', items, adjusted_fields, url_for('download_csv', table_type='models'), pagination) }}
 </div>
 {% endblock %}
 

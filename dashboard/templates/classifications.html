@@ -2,60 +2,22 @@
 
 {% block title %}Sensing Garden Dashboard - Classifications{% endblock %}
 
+{% from "table.html" import render_table, table_scripts %}
+
 {% block content %}
 <h1>Plant Classifications</h1>
 <p>Showing the most recent classification data from DynamoDB.</p>
 
 {% if items %}
-<div class="table-responsive">
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Device ID</th>
-                <th>Model ID</th>
-                <th>Timestamp</th>
-                <th>Family</th>
-                <th>Genus</th>
-                <th>Species</th>
-                <th>Confidence</th>
-                <th>Image</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.device_id }}</td>
-                <td>{{ item.model_id }}</td>
-                <td>{{ item.formatted_time }}</td>
-                <td>{{ item.family }}</td>
-                <td>{{ item.genus }}</td>
-                <td>{{ item.species }}</td>
-                <td>
-                    Family: {{ item.family_confidence }}<br>
-                    Genus: {{ item.genus_confidence }}<br>
-                    Species: {{ item.species_confidence }}
-                </td>
-                <td>
-                    {% if item.image_link %}
-                    <a href="{{ item.image_link }}" target="_blank">
-                        <img src="{{ item.image_link }}" class="img-thumbnail" style="max-width: 100px;">
-                    </a>
-                    {% else %}
-                    No image
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('view_item', table_name='sensor_classifications', device_id=item.device_id, timestamp=item.timestamp) }}" class="btn btn-sm btn-info">View Details</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+{% set display_fields = ['device_id', 'model_id', 'formatted_time', 'family', 'genus', 'species', 'confidence', 'image_link'] %}
+{{ render_table('classificationsTable', items, display_fields, url_for('download_csv', table_type='classifications'), pagination) }}
 {% else %}
 <div class="alert alert-info">
     No classification data found. Try running the test script to generate some data.
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+    {{ table_scripts('classificationsTable') }}
 {% endblock %}
