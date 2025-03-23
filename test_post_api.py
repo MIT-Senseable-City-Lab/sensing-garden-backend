@@ -192,10 +192,109 @@ def test_post_detection(device_id, model_id, timestamp):
     success, timestamp = test_post_endpoint('detection', device_id, model_id, timestamp)
     return success, timestamp
 
+def test_post_detection_with_invalid_model(device_id, timestamp):
+    """Test the detection API POST endpoint with an invalid model_id"""
+    # Create a random UUID that won't exist in the database
+    invalid_model_id = str(uuid.uuid4())
+    print(f"\nTesting DETECTION POST with invalid model_id: {invalid_model_id}")
+    
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
+    
+    # Create test image bytes
+    image_data = create_test_image()
+    request_timestamp = datetime.now().isoformat()
+    
+    try:
+        # Try to send a detection with an invalid model_id
+        response_data = send_detection_request(
+            client=client,
+            device_id=device_id,
+            model_id=invalid_model_id,
+            image_data=image_data,
+            timestamp=request_timestamp,
+            bounding_box=[0.0, 0.0, 1.0, 1.0]
+        )
+        
+        # If we get here without an exception, the test failed
+        print(f"❌ Detection with invalid model_id succeeded but should have failed!")
+        print(f"Response: {json.dumps(response_data, indent=2)}")
+        return False
+            
+    except requests.exceptions.RequestException as e:
+        # We expect an error, so this is success
+        print(f"✅ Detection with invalid model_id failed as expected!")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
+        return True
+    except Exception as e:
+        print(f"❌ Error in test: {str(e)}")
+        return False
+
 def test_post_classification(device_id, model_id, timestamp):
     """Test the classification API POST endpoint"""
     success, timestamp = test_post_endpoint('classification', device_id, model_id, timestamp)
     return success, timestamp
+
+def test_post_classification_with_invalid_model(device_id, timestamp):
+    """Test the classification API POST endpoint with an invalid model_id"""
+    # Create a random UUID that won't exist in the database
+    invalid_model_id = str(uuid.uuid4())
+    print(f"\nTesting CLASSIFICATION POST with invalid model_id: {invalid_model_id}")
+    
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
+    
+    # Create test image bytes
+    image_data = create_test_image()
+    request_timestamp = datetime.now().isoformat()
+    
+    try:
+        # Try to send a classification with an invalid model_id
+        response_data = send_classification_request(
+            client=client,
+            device_id=device_id,
+            model_id=invalid_model_id,
+            image_data=image_data,
+            family="Test Family",
+            genus="Test Genus",
+            species="Test Species",
+            family_confidence=0.92,
+            genus_confidence=0.94,
+            species_confidence=0.90,
+            timestamp=request_timestamp
+        )
+        
+        # If we get here without an exception, the test failed
+        print(f"❌ Classification with invalid model_id succeeded but should have failed!")
+        print(f"Response: {json.dumps(response_data, indent=2)}")
+        return False
+            
+    except requests.exceptions.RequestException as e:
+        # We expect an error, so this is success
+        print(f"✅ Classification with invalid model_id failed as expected!")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
+        return True
+    except Exception as e:
+        print(f"❌ Error in test: {str(e)}")
+        return False
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
     """Add test data for detections and classifications"""
@@ -290,6 +389,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', action='store_true', help='Test model API POST endpoints')
     parser.add_argument('--detection', action='store_true', help='Test detection API POST endpoints')
     parser.add_argument('--classification', action='store_true', help='Test classification API POST endpoints')
+    parser.add_argument('--test-invalid-model', action='store_true', help='Test validation for non-existent model_id')
     parser.add_argument('--data', action='store_true', help='Add test data')
     parser.add_argument('--count', type=int, default=10, help='Number of test entries to create')
     parser.add_argument('--device', type=str, default="test-device", help='Device ID to use')
@@ -334,5 +434,16 @@ if __name__ == "__main__":
     # Add test data if requested
     if args.data or run_all:
         add_test_data(device_id, model_id, timestamp, args.count)
+    
+    # Test validation of non-existent model_id if requested
+    if args.test_invalid_model:
+        print("\nTesting validation of non-existent model_id...")
+        detection_test_success = test_post_detection_with_invalid_model(device_id, timestamp)
+        classification_test_success = test_post_classification_with_invalid_model(device_id, timestamp)
+        
+        if detection_test_success and classification_test_success:
+            print("\n✅ Model validation tests PASSED!")
+        else:
+            print("\n❌ Model validation tests FAILED!")
     
     print("\nPOST API Tests completed.")

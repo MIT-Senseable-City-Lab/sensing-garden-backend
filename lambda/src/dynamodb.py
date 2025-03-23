@@ -121,6 +121,16 @@ def _validate_data(data, table_type):
                         error_msg = f"All bounding box coordinates should be numbers, got {value}"
                         print(error_msg)
                         return False, error_msg
+                    
+                    # Convert all coordinates to Decimal for DynamoDB compatibility
+                    try:
+                        for i, coord in enumerate(value):
+                            if not isinstance(coord, Decimal):
+                                data[field][i] = Decimal(str(coord))
+                    except (ValueError, TypeError) as e:
+                        error_msg = f"Could not convert bounding_box coordinates to Decimal: {value}. Error: {str(e)}"
+                        print(error_msg)
+                        return False, error_msg
                 elif field == "bounding_box":
                     error_msg = f"Field bounding_box should be an array of numbers, got {type(value)}"
                     print(error_msg)
@@ -132,6 +142,47 @@ def _validate_data(data, table_type):
         print(error_msg)
         return False, error_msg
 
+def _validate_model_exists(model_id):
+    """Validate that a model_id exists in the models table"""
+    if not model_id:
+        return True, ""  # No model_id to validate
+    
+    print(f"Validating model_id exists: {model_id}")
+    models_table = dynamodb.Table(MODELS_TABLE)
+    
+    # First try to get the model by model_id as the primary key (id)
+    try:
+        response = models_table.get_item(
+            Key={
+                'id': model_id
+            }
+        )
+        
+        # If the model exists with id=model_id, return true
+        if 'Item' in response:
+            return True, ""
+    except Exception as e:
+        print(f"Error while checking model by id: {str(e)}")
+    
+    # If not found by id, use scan to check if any model has this model_id
+    try:
+        from boto3.dynamodb.conditions import Attr
+        
+        scan_response = models_table.scan(
+            FilterExpression=Attr('model_id').eq(model_id)
+        )
+        
+        # If at least one item was found, the model exists
+        if scan_response.get('Items', []):
+            return True, ""
+    except Exception as e:
+        print(f"Error while scanning for model_id: {str(e)}")
+    
+    # If we got here, the model doesn't exist
+    error_msg = f"Model with id '{model_id}' not found in models table"
+    print(error_msg)
+    return False, error_msg
+
 def _store_data(data, table_name, data_type):
     """Generic function to store data in DynamoDB"""
     # Validate against schema
@@ -140,6 +191,14 @@ def _store_data(data, table_name, data_type):
         detailed_error = f"{data_type} data does not match schema: {error_message}"
         print(detailed_error)
         raise ValueError(detailed_error)
+    
+    # For detection and classification, validate that model_id exists if provided
+    if data_type in ['detection', 'classification'] and 'model_id' in data:
+        model_exists, model_error = _validate_model_exists(data['model_id'])
+        if not model_exists:
+            detailed_error = f"{data_type} data references invalid model_id: {model_error}"
+            print(detailed_error)
+            raise ValueError(detailed_error)
     
     # Store in DynamoDB
     table = dynamodb.Table(table_name)
