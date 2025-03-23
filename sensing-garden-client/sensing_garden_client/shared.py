@@ -49,6 +49,8 @@ def build_common_params(
     if next_token:
         params['next_token'] = next_token
     if sort_by:
+        if not isinstance(sort_desc, bool):
+            raise ValueError("sort_desc must be a boolean value")
         params['sort_by'] = sort_by
         # Always include sort_desc when sort_by is specified
         params['sort_desc'] = str(sort_desc).lower()

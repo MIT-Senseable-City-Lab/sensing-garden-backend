@@ -28,7 +28,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 # The endpoint modules handle their own configuration via environment variables
 
-def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_time=None, end_time=None):
+def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_time=None, end_time=None, sort_by=None, sort_desc=False):
     """Test a GET API endpoint (detection, classification, or model) using the sensing_garden_api package"""
     if not timestamp and not start_time:
         # If no specific timestamp provided, use a time range
@@ -62,7 +62,9 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
-                limit=10
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=sort_desc
             )
         elif endpoint_type == 'classification':
             data = client.classifications.fetch(
@@ -70,14 +72,18 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
-                limit=10
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=sort_desc
             )
         else:  # model
             data = client.models.fetch(
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
-                limit=10
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=sort_desc
             )
         
         # Check if we got any results
@@ -114,6 +120,9 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
             print(f"⚠️ No {endpoint_type} items found")
             success = False
             
+    except ValueError as e:
+        print(f"✅ {endpoint_type.capitalize()} API GET request failed: {str(e)}")
+        raise  # Re-raise ValueError to be caught by tests
     except requests.exceptions.RequestException as e:
         print(f"❌ {endpoint_type.capitalize()} API GET request failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
@@ -312,20 +321,35 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
         print(f"❌ Error in sorting test: {str(e)}")
         return False
 
+def test_sorting_with_invalid_sort_desc(device_id, model_id):
+    """Test that passing a non-boolean value for sort_desc raises an error"""
+    try:
+        test_get_endpoint('detection', device_id, model_id, sort_by='timestamp', sort_desc='true')
+        assert False, "Expected ValueError was not raised"
+    except ValueError as e:
+        assert str(e) == "sort_desc must be a boolean value"
+        print(f"✅ Correct error raised for invalid sort_desc value")
+    except Exception as e:
+        print(f"❌ Unexpected error type: {type(e)}")
+        print(f"Error message: {str(e)}")
+        assert False, "Expected ValueError but got different error type"
+
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Test the Sensing Garden API GET endpoints')
     parser.add_argument('--model', action='store_true', help='Test model API GET endpoint')
     parser.add_argument('--detection', action='store_true', help='Test detection API GET endpoint')
     parser.add_argument('--classification', action='store_true', help='Test classification API GET endpoint')
-    parser.add_argument('--recent', action='store_true', help='Test for recent data (last 24h)')
+    parser.add_argument('--recent', action='store_true', help='Test recent data')
     parser.add_argument('--verify', action='store_true', help='Verify test data exists')
     parser.add_argument('--test-sort', action='store_true', help='Test sorting functionality')
-    parser.add_argument('--sort-by', type=str, default='timestamp', help='Field to sort by')
-    parser.add_argument('--hours', type=int, default=24, help='Hours to look back for recent test')
-    parser.add_argument('--device', type=str, default="test-device", help='Device ID to use')
-    parser.add_argument('--model-id', type=str, default="test-model-2025", help='Model ID to use')
-    parser.add_argument('--timestamp', type=str, help='Specific timestamp to search for')
+    parser.add_argument('--test-invalid-sort', action='store_true', help='Test invalid sort_desc parameter')
+    parser.add_argument('--sort-by', type=str, help='Attribute to sort by')
+    parser.add_argument('--hours', type=int, default=24, help='Number of hours to check for recent data')
+    parser.add_argument('--device', type=str, default='test-device', help='Device ID to test')
+    parser.add_argument('--model-id', type=str, default='test-model-2025', help='Model ID to test')
+    parser.add_argument('--timestamp', type=str, help='Specific timestamp to test')
+    
     args = parser.parse_args()
     
     # Set device and model IDs
@@ -334,7 +358,7 @@ if __name__ == "__main__":
     timestamp = args.timestamp
     
     # If no specific arguments provided, run all tests
-    run_all = not (args.model or args.detection or args.classification or args.verify or args.recent or args.test_sort)
+    run_all = not (args.model or args.detection or args.classification or args.verify or args.recent or args.test_sort or args.test_invalid_sort)
     
     # Test model API if requested
     if args.model or run_all:
@@ -366,5 +390,9 @@ if __name__ == "__main__":
         test_sorting('detection', device_id, model_id, args.sort_by)
         test_sorting('classification', device_id, model_id, args.sort_by)
         test_sorting('model', device_id, model_id, args.sort_by)
+    
+    # Test invalid sort_desc parameter if requested
+    if args.test_invalid_sort or run_all:
+        test_sorting_with_invalid_sort_desc(device_id, model_id)
     
     print("\nGET API Tests completed.")

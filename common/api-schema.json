@@ -64,6 +64,25 @@
               "type": "string"
             },
             "description": "Token for pagination"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Attribute to sort by (e.g., 'timestamp', 'device_id')"
+          },
+          {
+            "name": "sort_desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, sort in descending order"
           }
         ],
         "responses": {
@@ -161,6 +180,25 @@
               "type": "string"
             },
             "description": "Token for pagination"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Attribute to sort by (e.g., 'timestamp', 'device_id')"
+          },
+          {
+            "name": "sort_desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, sort in descending order"
           }
         ],
         "responses": {
@@ -258,6 +296,25 @@
               "type": "string"
             },
             "description": "Token for pagination"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Attribute to sort by (e.g., 'timestamp', 'device_id')"
+          },
+          {
+            "name": "sort_desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, sort in descending order"
           }
         ],
         "responses": {
