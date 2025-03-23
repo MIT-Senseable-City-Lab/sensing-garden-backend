@@ -12,7 +12,7 @@ api_key = os.environ.get("SENSING_GARDEN_API_KEY")
 api_base_url = os.environ.get("API_BASE_URL")
 
 # Initialize the client
-sgc = sensing_garden_client.initialize(api_base_url, api_key)
+sgc = sensing_garden_client.SensingGardenClient(api_base_url, api_key)
 
 # Examples of using the models client
 print("=== Models API ===")

@@ -27,7 +27,6 @@ class ModelsClient:
         name: str,
         version: str,
         description: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
         timestamp: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -38,7 +37,6 @@ class ModelsClient:
             name: Name of the model
             version: Version string for the model
             description: Description of the model
-            metadata: Optional metadata for the model
             timestamp: ISO-8601 formatted timestamp (optional)
             
         Returns:
@@ -59,10 +57,6 @@ class ModelsClient:
             "version": version,
             "description": description
         }
-        
-        # Add optional fields if provided
-        if metadata:
-            payload["metadata"] = metadata
         
         if timestamp:
             payload["timestamp"] = timestamp

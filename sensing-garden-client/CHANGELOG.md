@@ -5,10 +5,16 @@ All notable changes to the Sensing Garden Client will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2025-03-23
+
+### Changed
+- Removed metadata parameter from model creation method to align with API schema
+- Updated client initialization to use direct constructor instead of initialize() function
+- Updated example usage and documentation to reflect new API structure
+
 ## [0.0.2] - 2025-03-23
 
 ### Added
-- New modular API structure with domain-specific clients
 - Dedicated client classes for models, detections, and classifications (accessed via client properties)
 - Comprehensive examples in README
 - Shared utility functions in `shared.py` to promote code reuse

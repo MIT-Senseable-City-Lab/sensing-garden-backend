@@ -268,19 +268,12 @@ def test_post_model(device_id, model_id, timestamp):
         # Call the model creation endpoint function
         print(f"\nSending model creation request to API using sensing_garden_api package")
         
-        # Create metadata for testing
-        metadata = {
-            'type': 'universal',
-            'test_timestamp': datetime.now().isoformat()
-        }
-        
         # Use the Models client API for model creation
         response_data = client.models.create(
             model_id=model_id,
             name='Universal Test Model',
             version=version,
             description='A test model that can be used for both detection and classification',
-            metadata=metadata,
             timestamp=timestamp
         )
         

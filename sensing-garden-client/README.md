@@ -37,8 +37,7 @@ models = sgc.models.fetch(limit=10)
 model = sgc.models.create(
     model_id="model-123",
     name="My Plant Model",
-    version="1.0.0",
-    description="A model for plant classification"
+    version="1.0.0"
 )
 
 # Working with detections
