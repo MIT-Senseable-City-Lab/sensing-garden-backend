@@ -1,17 +1,25 @@
 """
 Core client for Sensing Garden API interactions.
-Provides base functionality used by all endpoint modules.
+Provides base functionality used by all endpoint modules and the main client class.
 """
 from typing import Dict, Any, Mapping, Optional
 import requests
 
+# Import sub-clients - these imports will be resolved when the package is fully loaded
+# to avoid circular imports
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .models import ModelsClient
+    from .detections import DetectionsClient
+    from .classifications import ClassificationsClient
 
-class SensingGardenClient:
-    """Client for interacting with the Sensing Garden API."""
+
+class BaseClient:
+    """Base client for API interactions. Used internally by the feature-specific clients."""
     
     def __init__(self, base_url: str, api_key: Optional[str] = None):
         """
-        Initialize the Sensing Garden API client.
+        Initialize the Base API client.
         
         Args:
             base_url: Base URL for the API without trailing slash
@@ -67,3 +75,26 @@ class SensingGardenClient:
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
         return response.json()
+
+
+class SensingGardenClient:
+    """Main client for interacting with the Sensing Garden API."""
+    
+    def __init__(self, base_url: str, api_key: Optional[str] = None):
+        """
+        Initialize the Sensing Garden API client with domain-specific sub-clients.
+        
+        Args:
+            base_url: Base URL for the API without trailing slash
+            api_key: API key for authenticated endpoints (required for POST operations)
+        """
+        self._base_client = BaseClient(base_url, api_key)
+        
+        # Initialize domain-specific clients
+        from .models import ModelsClient
+        from .detections import DetectionsClient
+        from .classifications import ClassificationsClient
+        
+        self.models = ModelsClient(self._base_client)
+        self.detections = DetectionsClient(self._base_client)
+        self.classifications = ClassificationsClient(self._base_client)

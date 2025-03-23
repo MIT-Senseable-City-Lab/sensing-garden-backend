@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sensing-garden-client"
-version = "0.0.1"
+version = "0.0.2"
 description = "Sensing Garden Client for API interaction"
 authors = ["Deniz Aydemir <deniz@aydemir.us>"]
 readme = "README.md"

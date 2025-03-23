@@ -13,8 +13,7 @@ import requests
 from PIL import Image, ImageDraw
 
 # Import the Sensing Garden client package
-from sensing_garden_client import SensingGardenClient, get_models, get_detections, get_classifications, \
-    send_detection_request, send_classification_request, send_model_request
+from sensing_garden_client import SensingGardenClient
 import os
 from dotenv import load_dotenv
 
@@ -72,8 +71,7 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
         # Call the appropriate write endpoint function
         print(f"\nSending {endpoint_type} write request to API using sensing_garden_api package")
         if is_detection:
-            response_data = send_detection_request(
-                client=client,
+            response_data = client.detections.add(
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
@@ -81,8 +79,7 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
                 bounding_box=[0.0, 0.0, 1.0, 1.0]  # Example bounding box coordinates
             )
         else:
-            response_data = send_classification_request(
-                client=client,
+            response_data = client.classifications.add(
                 device_id=device_id,
                 model_id=model_id,
                 image_data=image_data,
@@ -141,8 +138,7 @@ def test_post_detection_with_invalid_model(device_id, timestamp):
     
     try:
         # Try to send a detection with an invalid model_id
-        response_data = send_detection_request(
-            client=client,
+        response_data = client.detections.add(
             device_id=device_id,
             model_id=invalid_model_id,
             image_data=image_data,
@@ -193,8 +189,7 @@ def test_post_classification_with_invalid_model(device_id, timestamp):
     
     try:
         # Try to send a classification with an invalid model_id
-        response_data = send_classification_request(
-            client=client,
+        response_data = client.classifications.add(
             device_id=device_id,
             model_id=invalid_model_id,
             image_data=image_data,
@@ -279,9 +274,8 @@ def test_post_model(device_id, model_id, timestamp):
             'test_timestamp': datetime.now().isoformat()
         }
         
-        # Call updated send_model_request function with all required parameters
-        response_data = send_model_request(
-            client=client,
+        # Use the Models client API for model creation
+        response_data = client.models.create(
             model_id=model_id,
             name='Universal Test Model',
             version=version,

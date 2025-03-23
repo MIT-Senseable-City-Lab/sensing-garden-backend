@@ -9,7 +9,7 @@ from decimal import Decimal
 import requests
 
 # Import the Sensing Garden client package
-from sensing_garden_client import SensingGardenClient, get_models, get_detections, get_classifications
+from sensing_garden_client import SensingGardenClient
 import os
 from dotenv import load_dotenv
 
@@ -57,8 +57,7 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
     try:
         # Use the appropriate read endpoint function from sensing_garden_api
         if endpoint_type == 'detection':
-            data = get_detections(
-                client=client,
+            data = client.detections.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -66,8 +65,7 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 limit=10
             )
         elif endpoint_type == 'classification':
-            data = get_classifications(
-                client=client,
+            data = client.classifications.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -75,9 +73,7 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
                 limit=10
             )
         else:  # model
-            data = get_models(
-                client=client,
-                device_id=device_id,
+            data = client.models.fetch(
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
@@ -196,8 +192,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
     try:
         # Get results with ascending sort
         if endpoint_type == 'detection':
-            asc_data = get_detections(
-                client=client,
+            asc_data = client.detections.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -207,8 +202,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
                 sort_desc=False
             )
         elif endpoint_type == 'classification':
-            asc_data = get_classifications(
-                client=client,
+            asc_data = client.classifications.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -218,9 +212,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
                 sort_desc=False
             )
         else:  # model
-            asc_data = get_models(
-                client=client,
-                device_id=device_id,
+            asc_data = client.models.fetch(
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
@@ -231,8 +223,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
         
         # Get results with descending sort
         if endpoint_type == 'detection':
-            desc_data = get_detections(
-                client=client,
+            desc_data = client.detections.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -242,8 +233,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
                 sort_desc=True
             )
         elif endpoint_type == 'classification':
-            desc_data = get_classifications(
-                client=client,
+            desc_data = client.classifications.fetch(
                 device_id=device_id,
                 model_id=model_id,
                 start_time=start_time,
@@ -253,9 +243,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
                 sort_desc=True
             )
         else:  # model
-            desc_data = get_models(
-                client=client,
-                device_id=device_id,
+            desc_data = client.models.fetch(
                 model_id=model_id,
                 start_time=start_time,
                 end_time=end_time,
