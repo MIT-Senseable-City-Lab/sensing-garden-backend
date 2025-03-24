@@ -7,14 +7,14 @@ A Python client for interacting with the Sensing Garden API.
 Install from PyPI:
 
 ```bash
-pip install sensing-garden-client
+pip install sensing_garden_client
 ```
 
 Or install from source:
 
 ```bash
 git clone https://github.com/daydemir/sensing-garden-backend.git
-pip install sensing-garden-client/sensing-garden-client
+pip install sensing_garden_client/sensing_garden_client
 ```
 
 ## Usage

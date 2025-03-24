@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import base64
 import io
 import json
 import os
@@ -12,12 +11,10 @@ from datetime import datetime
 from decimal import Decimal
 
 import requests
+from dotenv import load_dotenv
 from PIL import Image, ImageDraw
-
 # Import the Sensing Garden client package
 from sensing_garden_client import SensingGardenClient
-import os
-from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()

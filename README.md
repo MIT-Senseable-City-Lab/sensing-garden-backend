@@ -9,7 +9,7 @@ Backend services for the Sensing Garden project, including Lambda functions for 
     - `handler.py`: Main Lambda handler functions
     - `dynamodb.py`: DynamoDB interaction functions
 - `terraform/`: Infrastructure as Code using Terraform
-- `sensing-garden-client/`: Python package for API interaction
+- `sensing_garden_client/`: Python package for API interaction
   - `sensing_garden_client/`: Source code for the API client and endpoints
     - `client.py`: Core client for interacting with the API
     - `get_endpoints.py`: GET endpoint functions
@@ -39,7 +39,7 @@ export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
 
 ## Using the Sensing Garden Client Package
 
-The `sensing-garden-client` package provides functions to interact with the API endpoints.
+The `sensing_garden_client` package provides functions to interact with the API endpoints.
 
 ```python
 # Import the client and endpoint functions
@@ -62,7 +62,7 @@ For development, install the package in development mode:
 
 ```bash
 # From the project root
-cd sensing-garden-client
+cd sensing_garden_client
 poetry install
 ```
 
@@ -107,12 +107,12 @@ terraform apply
 
 ### API Package Deployment
 
-The `sensing-garden-client` package can be installed directly from the repository or published to PyPI for easier consumption:
+The `sensing_garden_client` package can be installed directly from the repository or published to PyPI for easier consumption:
 
 ```bash
 # Install from GitHub
-pip install git+https://github.com/your-username/sensing-garden-backend.git#subdirectory=sensing-garden-client
+pip install git+https://github.com/your-username/sensing-garden-backend.git#subdirectory=sensing_garden_client
 
 # Or if published to PyPI
-pip install sensing-garden-client
+pip install sensing_garden_client
 ```

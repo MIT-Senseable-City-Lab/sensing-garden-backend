@@ -13,7 +13,7 @@ pillow = "^9.1.0"
 
 [tool.poetry.group.dev.dependencies]
 # Use local package in development mode
-sensing-garden-client = {path = "./sensing-garden-client", develop = true}
+sensing_garden_client = {path = "./sensing_garden_client", develop = true}
 
 [build-system]
 requires = ["poetry-core"]
