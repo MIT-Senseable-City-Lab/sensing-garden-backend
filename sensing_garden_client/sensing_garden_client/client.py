@@ -28,6 +28,18 @@ class BaseClient:
         """
         self.base_url = base_url.rstrip('/')
         self.api_key = api_key
+    
+    def encode_binary(self, data: bytes) -> str:
+        """
+        Encode binary data to base64 string for API requests.
+        
+        Args:
+            data: Binary data to encode
+            
+        Returns:
+            Base64 encoded string
+        """
+        return base64.b64encode(data).decode('utf-8')
         
     def get(self, endpoint: str, params: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
         """

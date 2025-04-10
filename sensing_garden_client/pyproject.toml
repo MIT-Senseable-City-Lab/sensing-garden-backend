@@ -19,6 +19,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.8"
 requests = "^2.32.3"
+boto3 = "^1.28.0"
 
 
 [build-system]

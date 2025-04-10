@@ -460,6 +460,110 @@
           }
         }
       }
+    },
+    "/videos/multipart/initiate": {
+      "post": {
+        "summary": "Initiate a multipart video upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultipartInitiateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Multipart upload initiated successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/videos/multipart/upload": {
+      "post": {
+        "summary": "Upload a part of a multipart video upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultipartUploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Part uploaded successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/videos/multipart/complete": {
+      "post": {
+        "summary": "Complete a multipart video upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultipartCompleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Multipart upload completed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/videos/register": {
+      "post": {
+        "summary": "Register a video that was uploaded directly to S3",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoRegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Video registered successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -613,6 +717,110 @@
           "description": {
             "type": "string",
             "description": "Description of the video content"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata about the video"
+          }
+        }
+      },
+      "MultipartInitiateRequest": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "description",
+          "content_type",
+          "total_parts",
+          "total_size_bytes"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the video content"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of the video (e.g., 'video/mp4')"
+          },
+          "total_parts": {
+            "type": "integer",
+            "description": "Total number of parts in the multipart upload"
+          },
+          "total_size_bytes": {
+            "type": "integer",
+            "description": "Total size of the video in bytes"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata about the video"
+          }
+        }
+      },
+      "MultipartUploadRequest": {
+        "type": "object",
+        "required": [
+          "upload_id",
+          "part_number",
+          "part_data"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "description": "Unique identifier for the multipart upload"
+          },
+          "part_number": {
+            "type": "integer",
+            "description": "Part number (1-based index)"
+          },
+          "part_data": {
+            "type": "string",
+            "description": "Base64 encoded part data"
+          }
+        }
+      },
+      "MultipartCompleteRequest": {
+        "type": "object",
+        "required": [
+          "upload_id"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "description": "Unique identifier for the multipart upload"
+          }
+        }
+      },
+      "VideoRegistrationRequest": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "description",
+          "video_key"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the video content"
+          },
+          "video_key": {
+            "type": "string",
+            "description": "S3 key of the uploaded video"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
           },
           "metadata": {
             "type": "object",

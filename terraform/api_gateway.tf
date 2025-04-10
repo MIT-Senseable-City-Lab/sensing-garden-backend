@@ -8,6 +8,9 @@ resource "aws_apigatewayv2_api" "http_api" {
     allow_origins = ["*"]  # In production, restrict this to specific domains
     max_age       = 300
   }
+  
+  # API Gateway v2 has a default payload limit of 10MB
+  # We'll use multipart uploads for larger files
 }
 
 # API Keys for different environments
@@ -144,6 +147,14 @@ resource "aws_apigatewayv2_route" "get_videos" {
 resource "aws_apigatewayv2_route" "post_videos" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /videos"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST for registering videos uploaded directly to S3
+resource "aws_apigatewayv2_route" "post_videos_register" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /videos/register"
   target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }

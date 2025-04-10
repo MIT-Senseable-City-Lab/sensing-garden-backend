@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Union, Any, Tuple, Callable
@@ -76,23 +77,48 @@ def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     # We'll generate presigned URLs when needed
     return s3_key
 
-def _upload_video_to_s3(video_data, device_id, timestamp=None):
+def _upload_video_to_s3(video_data, device_id, timestamp=None, content_type='video/mp4'):
     """Upload base64 encoded video to S3"""
     # Decode base64 video and upload to S3
     if timestamp is None:
         timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
-    s3_key = f"videos/{device_id}/{timestamp}.mp4"
+    
+    # Determine file extension based on content type
+    extension = 'mp4'  # Default
+    if content_type:
+        if 'mp4' in content_type:
+            extension = 'mp4'
+        elif 'webm' in content_type:
+            extension = 'webm'
+        elif 'mov' in content_type:
+            extension = 'mov'
+        elif 'avi' in content_type:
+            extension = 'avi'
+    
+    s3_key = f"videos/{device_id}/{timestamp}.{extension}"
     
     s3.put_object(
         Bucket=VIDEOS_BUCKET,
         Key=s3_key,
         Body=base64.b64decode(video_data),
-        ContentType='video/mp4'
+        ContentType=content_type
     )
     
     # Store the S3 key rather than a direct URL
     # We'll generate presigned URLs when needed
     return s3_key
+
+
+
+
+
+
+
+
+
+
+
+
 
 def _parse_request(event):
     """Parse the incoming request from API Gateway or direct invocation"""
@@ -135,7 +161,8 @@ def _validate_api_request(body, request_type):
         'detection_request': 'DetectionData',
         'classification_request': 'ClassificationData',
         'model_request': 'ModelData',
-        'video_request': 'VideoData'
+        'video_request': 'VideoData',
+        'video_registration_request': 'VideoRegistrationRequest'
     }
     
     # Get schema from the OpenAPI spec
@@ -324,6 +351,70 @@ def handle_post_video(event: Dict) -> Dict:
     """Handle POST /videos endpoint"""
     return _common_post_handler(event, 'video', _store_video)
 
+
+
+
+
+def handle_post_video_register(event: Dict) -> Dict:
+    """Handle POST /videos/register endpoint"""
+    try:
+        # Parse the request body
+        body = _parse_request(event)
+        
+        # Validate the request against the schema
+        is_valid, validation_error = _validate_api_request(body, 'video_registration_request')
+        if not is_valid:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': f"Invalid request: {validation_error}"
+                }, cls=dynamodb.DynamoDBEncoder)
+            }
+        
+        # Get or generate timestamp
+        timestamp = body.get('timestamp')
+        if not timestamp:
+            # Generate a new timestamp if not provided
+            timestamp = datetime.utcnow().isoformat()
+        
+        # Prepare data for DynamoDB
+        data = {
+            'device_id': body['device_id'],
+            'timestamp': timestamp,
+            'video_key': body['video_key'],
+            'video_bucket': VIDEOS_BUCKET,
+            'description': body['description'],
+            'type': 'video'  # Set the type field required by the schema
+        }
+        
+        # Include metadata if present
+        if 'metadata' in body:
+            data['metadata'] = body['metadata']
+        
+        # Store video metadata in DynamoDB
+        result = dynamodb.store_video_data(data)
+        
+        # Generate a presigned URL for the video
+        video_url = generate_presigned_url(body['video_key'], VIDEOS_BUCKET)
+        result['video_url'] = video_url
+        
+        # Return success response
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Video data stored successfully',
+                'data': result
+            }, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        print(f"Error in handle_post_video_register: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e)
+            }, cls=dynamodb.DynamoDBEncoder)
+        }
+
 def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[Dict], Dict]) -> Dict:
     """Common handler for all POST endpoints"""
     try:
@@ -458,6 +549,8 @@ def handler(event: Dict, context) -> Dict:
             ('POST', '/detections'): handle_post_detection,
             ('POST', '/classifications'): handle_post_classification,
             ('POST', '/videos'): handle_post_video,
+            # Video registration endpoint (for direct S3 uploads)
+            ('POST', '/videos/register'): handle_post_video_register
         }
         
         print(f"Processing {http_method} {path} request")
