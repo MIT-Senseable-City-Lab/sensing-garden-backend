@@ -353,6 +353,113 @@
           }
         }
       }
+    },
+    "/videos": {
+      "get": {
+        "summary": "Get a list of videos",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter videos by device_id"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time for filtering videos (ISO-8601)"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time for filtering videos (ISO-8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of videos to return"
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for pagination"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Attribute to sort by (e.g., 'timestamp', 'device_id')"
+          },
+          {
+            "name": "sort_desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, sort in descending order"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of videos"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload a video",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Video uploaded successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -480,6 +587,36 @@
           "species_confidence": {
             "type": "number",
             "description": "Confidence score for species classification (0-1)"
+          }
+        }
+      },
+      "VideoData": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "video",
+          "description"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"
+          },
+          "video": {
+            "type": "string",
+            "description": "Base64 encoded video data"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the video content"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata about the video"
           }
         }
       }

@@ -28,7 +28,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 # The endpoint modules handle their own configuration via environment variables
 
-def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_time=None, end_time=None, sort_by=None, sort_desc=False):
+def test_get_endpoint(endpoint_type, device_id, model_id=None, timestamp=None, start_time=None, end_time=None, sort_by=None, sort_desc=False):
     """Test a GET API endpoint (detection, classification, or model) using the sensing_garden_api package"""
     if not timestamp and not start_time:
         # If no specific timestamp provided, use a time range
@@ -70,6 +70,15 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp=None, start_
             data = client.classifications.fetch(
                 device_id=device_id,
                 model_id=model_id,
+                start_time=start_time,
+                end_time=end_time,
+                limit=10,
+                sort_by=sort_by,
+                sort_desc=sort_desc
+            )
+        elif endpoint_type == 'video':
+            data = client.videos.fetch(
+                device_id=device_id,
                 start_time=start_time,
                 end_time=end_time,
                 limit=10,
@@ -149,13 +158,18 @@ def test_get_model(device_id, model_id):
     """Test the model API GET endpoint"""
     return test_get_endpoint('model', device_id, model_id)
 
+def test_get_video(device_id, start_time=None, end_time=None):
+    """Test the video API GET endpoint"""
+    return test_get_endpoint('video', device_id, model_id=None, start_time=start_time, end_time=end_time)
+
 def verify_data_exists(device_id, model_id):
     """Verify that test data exists for the specified device/model"""
     detection_exists = test_get_detection(device_id, model_id)
     classification_exists = test_get_classification(device_id, model_id)
     model_exists = test_get_model(device_id, model_id)
+    video_exists = test_get_video(device_id)
     
-    if detection_exists or classification_exists or model_exists:
+    if detection_exists or classification_exists or model_exists or video_exists:
         print("\n✅ Test data exists for this device/model")
         if not detection_exists:
             print("⚠️ No detection data found")
@@ -163,11 +177,13 @@ def verify_data_exists(device_id, model_id):
             print("⚠️ No classification data found")
         if not model_exists:
             print("⚠️ No model data found")
+        if not video_exists:
+            print("⚠️ No video data found")
     else:
         print("\n❌ No test data found for this device/model")
         print("You may want to run test_post_api.py first to create test data")
     
-    return detection_exists or classification_exists or model_exists
+    return detection_exists or classification_exists or model_exists or video_exists
 
 def test_recent_data(device_id, model_id, hours=24):
     """Test for recent data within the last specified hours"""
@@ -183,8 +199,10 @@ def test_recent_data(device_id, model_id, hours=24):
                                          start_time=start_time, end_time=end_time)
     classification_success = test_get_endpoint('classification', device_id, model_id, 
                                               start_time=start_time, end_time=end_time)
+    video_success = test_get_endpoint('video', device_id, None,
+                                     start_time=start_time, end_time=end_time)
     
-    if detection_success or classification_success:
+    if detection_success or classification_success or video_success:
         print(f"\n✅ Recent data found within the last {hours} hours")
     else:
         print(f"\n⚠️ No recent data found within the last {hours} hours")
@@ -340,6 +358,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', action='store_true', help='Test model API GET endpoint')
     parser.add_argument('--detection', action='store_true', help='Test detection API GET endpoint')
     parser.add_argument('--classification', action='store_true', help='Test classification API GET endpoint')
+    parser.add_argument('--video', action='store_true', help='Test video API GET endpoint')
     parser.add_argument('--recent', action='store_true', help='Test recent data')
     parser.add_argument('--verify', action='store_true', help='Verify test data exists')
     parser.add_argument('--test-sort', action='store_true', help='Test sorting functionality')
@@ -358,7 +377,7 @@ if __name__ == "__main__":
     timestamp = args.timestamp
     
     # If no specific arguments provided, run all tests
-    run_all = not (args.model or args.detection or args.classification or args.verify or args.recent or args.test_sort or args.test_invalid_sort)
+    run_all = not (args.model or args.detection or args.classification or args.video or args.verify or args.recent or args.test_sort or args.test_invalid_sort)
     
     # Test model API if requested
     if args.model or run_all:
@@ -374,6 +393,11 @@ if __name__ == "__main__":
     if args.classification or run_all:
         print("\nTesting classification API GET endpoint...")
         test_get_classification(device_id, model_id, timestamp)
+        
+    # Test video API if requested
+    if args.video or run_all:
+        print("\nTesting video API GET endpoint...")
+        test_get_video(device_id)
     
     # Verify test data exists if requested
     if args.verify or run_all:

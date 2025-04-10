@@ -21,6 +21,7 @@ dynamodb = boto3.resource('dynamodb')
 DETECTIONS_TABLE = 'sensing-garden-detections'
 CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
 MODELS_TABLE = 'sensing-garden-models'
+VIDEOS_TABLE = 'sensing-garden-videos'
 
 def _load_schema():
     """Load the DB schema from the appropriate location"""
@@ -62,7 +63,8 @@ def _validate_data(data, table_type):
         schema_type_mapping = {
             'model': 'models',
             'detection': 'sensor_detections',
-            'classification': 'sensor_classifications'
+            'classification': 'sensor_classifications',
+            'video': 'videos'
         }
         
         # Use mapped schema key if available
@@ -218,17 +220,26 @@ def store_model_data(data):
         
     return _store_data(data, MODELS_TABLE, 'model')
 
+def store_video_data(data):
+    """Store video data in DynamoDB"""
+    # Set the type field which is required by the schema
+    if 'type' not in data:
+        data['type'] = 'video'  # Default type
+        
+    return _store_data(data, VIDEOS_TABLE, 'video')
+
 def query_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, 
                end_time: str = None, limit: int = 100, next_token: str = None, 
                sort_by: str = None, sort_desc: bool = False):
     """Query data from DynamoDB with filtering and pagination"""
-    if table_type not in ['detection', 'classification', 'model']:
+    if table_type not in ['detection', 'classification', 'model', 'video']:
         raise ValueError(f"Invalid table_type: {table_type}")
     
     table_name = {
         'detection': DETECTIONS_TABLE,
         'classification': CLASSIFICATIONS_TABLE,
-        'model': MODELS_TABLE
+        'model': MODELS_TABLE,
+        'video': VIDEOS_TABLE
     }[table_type]
     
     table = dynamodb.Table(table_name)

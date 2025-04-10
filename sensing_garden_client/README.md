@@ -67,6 +67,23 @@ classification = sgc.classifications.add(
     timestamp="2023-06-01T12:34:56Z"
 )
 classifications = sgc.classifications.fetch(model_id="model-456")
+
+# Working with videos
+with open("plant_video.mp4", "rb") as f:
+    video_data = f.read()
+    
+video = sgc.videos.upload(
+    device_id="device-123",
+    video_data=video_data,
+    description="Time-lapse of plant growth",
+    timestamp="2023-06-01T12:34:56Z",
+    metadata={"location": "greenhouse-A", "duration_seconds": 120}
+)
+videos = sgc.videos.fetch(
+    device_id="device-123",
+    start_time="2023-06-01T00:00:00Z",
+    end_time="2023-06-02T00:00:00Z"
+)
 ```
 
 ### Environment Variables
@@ -91,9 +108,10 @@ sgc = sensing_garden_client.SensingGardenClient(
 ## Features
 
 - Modern, intuitive API with domain-specific clients
-- GET operations for models, detections, and classifications
-- POST operations for submitting detections and classifications
+- GET operations for models, detections, classifications, and videos
+- POST operations for submitting detections, classifications, and videos
 - Model management operations
+- Video upload and retrieval with filtering capabilities
 - Backward compatibility with previous API versions
 
 ## Dependencies

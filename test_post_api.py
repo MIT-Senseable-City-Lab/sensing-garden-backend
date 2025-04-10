@@ -40,6 +40,13 @@ def create_test_image():
     # Return raw bytes (not base64 encoded)
     return img_byte_arr.getvalue()
 
+# Create a test video (simulated with a small binary file)
+def create_test_video():
+    # Create a simple binary file that simulates a video
+    # In a real scenario, this would be actual video data
+    video_data = bytearray([random.randint(0, 255) for _ in range(1024)])
+    return bytes(video_data)
+
 def generate_random_string(length=8):
     """Generate a random string of specified length"""
     return ''.join(random.choices(string.ascii_lowercase, k=length))
@@ -205,6 +212,53 @@ def test_post_classification(device_id, model_id, timestamp):
     success, timestamp = test_post_endpoint('classification', device_id, model_id, timestamp)
     return success, timestamp
 
+def test_post_video(device_id, timestamp):
+    """Test the video API POST endpoint"""
+    # Create a unique timestamp for this request to avoid DynamoDB key conflicts
+    request_timestamp = datetime.now().isoformat()
+    
+    # Initialize the client with API key and base URL from environment
+    api_key = os.environ.get('SENSING_GARDEN_API_KEY')
+    if not api_key:
+        raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
+    
+    api_base_url = os.environ.get('API_BASE_URL')
+    if not api_base_url:
+        raise ValueError("API_BASE_URL environment variable is not set")
+    
+    client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
+    
+    print(f"\n\nTesting VIDEO POST with device_id: {device_id}")
+    
+    # Create test video bytes
+    video_data = create_test_video()
+    
+    try:
+        # Call the video upload endpoint
+        print(f"\nSending video upload request to API using sensing_garden_client package")
+        response_data = client.videos.upload(
+            device_id=device_id,
+            video_data=video_data,
+            description=f"Test video upload at {request_timestamp}",
+            timestamp=request_timestamp,
+            metadata={"test": True, "source": "test_post_api.py"}
+        )
+        
+        print(f"Response body: {json.dumps(response_data, indent=2)}")
+        print(f"\n✅ Video API upload request successful!")
+        success = True
+            
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Video API request failed: {str(e)}")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
+        success = False
+    except Exception as e:
+        print(f"❌ Error in test: {str(e)}")
+        success = False
+    
+    return success, request_timestamp
+
 def test_post_classification_with_invalid_model(device_id, timestamp):
     """Test the classification API POST endpoint with an invalid model_id"""
     # Create a random UUID that won't exist in the database
@@ -257,15 +311,17 @@ def test_post_classification_with_invalid_model(device_id, timestamp):
         return False, request_timestamp
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
-    """Add test data for detections and classifications"""
+    """Add test data for detections, classifications, and videos"""
     print(f"\nAdding {num_entries} test entries for device {device_id}")
     
     for i in range(num_entries):
-        # Alternate between detection and classification
-        if i % 2 == 0:
+        # Rotate between detection, classification, and video
+        if i % 3 == 0:
             test_post_detection(device_id, model_id, timestamp)
-        else:
+        elif i % 3 == 1:
             test_post_classification(device_id, model_id, timestamp)
+        else:
+            test_post_video(device_id, timestamp)
 
 if __name__ == "__main__":
     # Parse command line arguments
@@ -274,6 +330,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-id', type=str, required=True, help='Model ID to use for testing')
     parser.add_argument('--timestamp', type=str, help='Optional timestamp to use for testing')
     parser.add_argument('--num-entries', type=int, default=10, help='Number of test entries to add')
+    parser.add_argument('--video', action='store_true', help='Test only the video API endpoint')
     
     args = parser.parse_args()
     
@@ -283,17 +340,26 @@ if __name__ == "__main__":
     # Run the appropriate tests
     success = True
     
-    # Test detection endpoints
-    detection_success, _ = test_post_detection(args.device_id, args.model_id, timestamp)
-    success &= detection_success
-    detection_invalid_success, _ = test_post_detection_with_invalid_model(args.device_id, timestamp)
-    success &= detection_invalid_success
+    # If only video testing is requested, skip other tests
+    if args.video:
+        video_success, _ = test_post_video(args.device_id, timestamp)
+        success = video_success
+    else:
+        # Test detection endpoints
+        detection_success, _ = test_post_detection(args.device_id, args.model_id, timestamp)
+        success &= detection_success
+        detection_invalid_success, _ = test_post_detection_with_invalid_model(args.device_id, timestamp)
+        success &= detection_invalid_success
     
     # Test classification endpoints
     classification_success, _ = test_post_classification(args.device_id, args.model_id, timestamp)
     success &= classification_success
     classification_invalid_success, _ = test_post_classification_with_invalid_model(args.device_id, timestamp)
     success &= classification_invalid_success
+    
+    # Test video endpoint
+    video_success, _ = test_post_video(args.device_id, timestamp)
+    success &= video_success
     
     # Add multiple test entries
     add_test_data(args.device_id, args.model_id, timestamp, args.num_entries)

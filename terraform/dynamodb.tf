@@ -125,3 +125,39 @@ resource "aws_dynamodb_table" "models" {
     ignore_changes = all
   }
 }
+
+# Create videos table
+resource "aws_dynamodb_table" "videos" {
+  name         = "sensing-garden-videos"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "device_id"
+  range_key    = "timestamp"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  attribute {
+    name = "type"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name               = "type_index"
+    hash_key           = "type"
+    projection_type    = "ALL"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
+    # This will prevent Terraform from trying to recreate the table if it already exists
+    create_before_destroy = true
+  }
+}

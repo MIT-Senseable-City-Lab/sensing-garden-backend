@@ -10,6 +10,7 @@ python = "^3.9"
 boto3 = "^1.24.0"
 python-dotenv = "^0.20.0"
 pillow = "^9.1.0"
+sensing-garden-client = {path = "sensing_garden_client", develop = true}
 
 [tool.poetry.group.dev.dependencies]
 # Use local package in development mode

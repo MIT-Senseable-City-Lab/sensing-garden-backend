@@ -94,3 +94,52 @@ def prepare_image_payload(
     }
     
     return payload
+
+
+def prepare_video_payload(
+    device_id: str,
+    video_data: bytes,
+    description: str,
+    timestamp: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Prepare payload data for API requests with videos.
+    
+    Args:
+        device_id: Unique identifier for the device
+        video_data: Raw video data as bytes
+        description: Description of the video content
+        timestamp: ISO-8601 formatted timestamp (optional)
+        metadata: Additional metadata about the video (optional)
+        
+    Returns:
+        Dictionary with video payload fields
+    """
+    if not device_id:
+        raise ValueError("device_id must be provided")
+    
+    if not video_data:
+        raise ValueError("video_data cannot be empty")
+    
+    if not description:
+        raise ValueError("description must be provided")
+    
+    # Convert video to base64
+    base64_video = base64.b64encode(video_data).decode('utf-8')
+    
+    # Create payload with required fields
+    payload = {
+        "device_id": device_id,
+        "video": base64_video,
+        "description": description
+    }
+    
+    # Add optional fields if provided
+    if timestamp:
+        payload["timestamp"] = timestamp
+        
+    if metadata:
+        payload["metadata"] = metadata
+    
+    return payload

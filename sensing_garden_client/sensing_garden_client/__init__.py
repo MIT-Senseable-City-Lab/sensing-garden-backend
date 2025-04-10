@@ -4,7 +4,7 @@ Sensing Garden Client
 A Python client for interacting with the Sensing Garden API.
 """
 
-__version__ = "0.0.2"
+__version__ = "0.0.5"
 
 from .client import SensingGardenClient
 

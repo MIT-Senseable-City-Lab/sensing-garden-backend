@@ -131,3 +131,19 @@ resource "aws_apigatewayv2_route" "post_classifications" {
   target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
+
+# GET for videos
+resource "aws_apigatewayv2_route" "get_videos" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /videos"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST for videos
+resource "aws_apigatewayv2_route" "post_videos" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /videos"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}

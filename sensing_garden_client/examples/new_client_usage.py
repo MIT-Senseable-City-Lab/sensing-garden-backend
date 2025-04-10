@@ -5,6 +5,7 @@ This script demonstrates how to use the new object-oriented API client.
 """
 import os
 from datetime import datetime
+import requests
 import sensing_garden_client
 
 # Load API credentials from environment variables
@@ -86,3 +87,46 @@ try:
     print(f"Retrieved {len(classifications.get('items', []))} classifications")
 except Exception as e:
     print(f"Error with classifications API: {str(e)}")
+
+# Examples of using the videos client
+print("\n=== Videos API ===")
+"""
+# To use this example, uncomment and provide actual video data
+with open("example_video.mp4", "rb") as f:
+    video_data = f.read()
+
+# Upload a video
+video_result = sgc.videos.upload(
+    device_id="device-123",
+    video_data=video_data,
+    description="Example time-lapse video",
+    timestamp=datetime.utcnow().isoformat(),
+    metadata={"location": "greenhouse-A", "duration_seconds": 120}
+)
+print(f"Uploaded video: {video_result}")
+"""
+
+# Fetch videos
+try:
+    # Fetch videos for a specific device with time range filtering
+    start_time = datetime(2025, 1, 1).isoformat()
+    end_time = datetime.utcnow().isoformat()
+    
+    videos = sgc.videos.fetch(
+        device_id="device-123",
+        start_time=start_time,
+        end_time=end_time,
+        limit=5
+    )
+    print(f"Retrieved {len(videos.get('items', []))} videos")
+    
+    if videos.get('items') and len(videos['items']) > 0:
+        print(f"First video URL: {videos['items'][0].get('url')}")
+except requests.exceptions.HTTPError as e:
+    if e.response.status_code == 404:
+        print("Videos API endpoint is not available yet. The API Gateway needs to be updated with the video routes.")
+        print("To fix this, deploy the API Gateway with the video endpoint routes added to the configuration.")
+    else:
+        print(f"HTTP error with videos API: {str(e)}")
+except Exception as e:
+    print(f"Error with videos API: {str(e)}")

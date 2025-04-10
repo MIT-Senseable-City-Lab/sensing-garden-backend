@@ -136,11 +136,53 @@
           "description": "Type of model (detection, classification, etc.)"
         }
       }
+    },
+    "videos": {
+      "type": "object",
+      "required": [
+        "device_id",
+        "timestamp",
+        "video_key",
+        "video_bucket",
+        "description",
+        "type"
+      ],
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "Unique identifier for the device"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO-8601 formatted timestamp when the video was uploaded"
+        },
+        "video_key": {
+          "type": "string",
+          "description": "S3 key for the stored video"
+        },
+        "video_bucket": {
+          "type": "string",
+          "description": "S3 bucket containing the video"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the video content"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of data (always 'video')"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata about the video"
+        }
+      }
     }
   },
   "required": [
     "sensor_detections",
     "sensor_classifications",
-    "models"
+    "models",
+    "videos"
   ]
 }

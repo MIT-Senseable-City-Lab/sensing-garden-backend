@@ -27,6 +27,7 @@ s3 = boto3.client('s3')
 
 # Resource names
 IMAGES_BUCKET = "scl-sensing-garden-images"
+VIDEOS_BUCKET = "scl-sensing-garden-videos"
 
 # Load the API schema once
 def _load_api_schema():
@@ -75,6 +76,24 @@ def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     # We'll generate presigned URLs when needed
     return s3_key
 
+def _upload_video_to_s3(video_data, device_id, timestamp=None):
+    """Upload base64 encoded video to S3"""
+    # Decode base64 video and upload to S3
+    if timestamp is None:
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    s3_key = f"videos/{device_id}/{timestamp}.mp4"
+    
+    s3.put_object(
+        Bucket=VIDEOS_BUCKET,
+        Key=s3_key,
+        Body=base64.b64decode(video_data),
+        ContentType='video/mp4'
+    )
+    
+    # Store the S3 key rather than a direct URL
+    # We'll generate presigned URLs when needed
+    return s3_key
+
 def _parse_request(event):
     """Parse the incoming request from API Gateway or direct invocation"""
     # Print the event structure for debugging
@@ -115,7 +134,8 @@ def _validate_api_request(body, request_type):
     schema_type_map = {
         'detection_request': 'DetectionData',
         'classification_request': 'ClassificationData',
-        'model_request': 'ModelData'
+        'model_request': 'ModelData',
+        'video_request': 'VideoData'
     }
     
     # Get schema from the OpenAPI spec
@@ -150,13 +170,17 @@ def _validate_api_request(body, request_type):
     
     return True, ""
 
-def generate_presigned_url(s3_key, expiration=3600):
+def generate_presigned_url(s3_key, bucket=None, expiration=3600):
     """Generate a presigned URL for accessing an S3 object"""
     try:
+        # Default to images bucket if no bucket is specified
+        if bucket is None:
+            bucket = IMAGES_BUCKET
+            
         url = s3.generate_presigned_url(
             'get_object',
             Params={
-                'Bucket': IMAGES_BUCKET,
+                'Bucket': bucket,
                 'Key': s3_key
             },
             ExpiresIn=expiration
@@ -167,10 +191,14 @@ def generate_presigned_url(s3_key, expiration=3600):
         return None
 
 def _add_presigned_urls(result: Dict) -> Dict:
-    """Add presigned URLs to image items"""
+    """Add presigned URLs to image and video items"""
     for item in result['items']:
+        # Handle image URLs
         if 'image_key' in item and 'image_bucket' in item:
-            item['image_url'] = generate_presigned_url(item['image_key'])
+            item['image_url'] = generate_presigned_url(item['image_key'], item['image_bucket'])
+        # Handle video URLs
+        if 'video_key' in item and 'video_bucket' in item:
+            item['video_url'] = generate_presigned_url(item['video_key'], item['video_bucket'])
     return result
 
 def handle_get_detections(event: Dict) -> Dict:
@@ -256,6 +284,45 @@ def _store_model(body: Dict) -> Dict:
 def handle_post_model(event: Dict) -> Dict:
     """Handle POST /models endpoint"""
     return _common_post_handler(event, 'model', _store_model)
+
+def handle_get_videos(event: Dict) -> Dict:
+    """Handle GET /videos endpoint"""
+    return _common_get_handler(event, 'video', _add_presigned_urls)
+
+def _store_video(body: Dict) -> Dict:
+    """Process and store video data"""
+    # Get or generate timestamp
+    timestamp = body.get('timestamp')
+    if timestamp:
+        # Use the provided timestamp for the S3 key
+        timestamp_str = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).strftime('%Y-%m-%d-%H-%M-%S')
+    else:
+        # Generate a new timestamp if not provided
+        timestamp = datetime.utcnow().isoformat()
+        timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    
+    # Upload video to S3
+    s3_key = _upload_video_to_s3(body['video'], body['device_id'], timestamp_str)
+    
+    # Prepare data for DynamoDB
+    data = {
+        'device_id': body['device_id'],
+        'timestamp': timestamp,
+        'video_key': s3_key,
+        'video_bucket': VIDEOS_BUCKET,
+        'description': body['description'],
+        'type': 'video'  # Set the type field required by the schema
+    }
+    
+    # Include metadata if present
+    if 'metadata' in body:
+        data['metadata'] = body['metadata']
+    
+    return dynamodb.store_video_data(data)
+
+def handle_post_video(event: Dict) -> Dict:
+    """Handle POST /videos endpoint"""
+    return _common_post_handler(event, 'video', _store_video)
 
 def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[Dict], Dict]) -> Dict:
     """Common handler for all POST endpoints"""
@@ -385,10 +452,12 @@ def handler(event: Dict, context) -> Dict:
             ('GET', '/models'): handle_get_models,
             ('GET', '/detections'): handle_get_detections,
             ('GET', '/classifications'): handle_get_classifications,
+            ('GET', '/videos'): handle_get_videos,
             # Write endpoints (POST)
             ('POST', '/models'): handle_post_model,
             ('POST', '/detections'): handle_post_detection,
             ('POST', '/classifications'): handle_post_classification,
+            ('POST', '/videos'): handle_post_video,
         }
         
         print(f"Processing {http_method} {path} request")

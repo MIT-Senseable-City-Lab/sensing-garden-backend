@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .models import ModelsClient
     from .detections import DetectionsClient
     from .classifications import ClassificationsClient
+    from .videos import VideosClient
 
 
 class BaseClient:
@@ -94,7 +95,9 @@ class SensingGardenClient:
         from .models import ModelsClient
         from .detections import DetectionsClient
         from .classifications import ClassificationsClient
+        from .videos import VideosClient
         
         self.models = ModelsClient(self._base_client)
         self.detections = DetectionsClient(self._base_client)
         self.classifications = ClassificationsClient(self._base_client)
+        self.videos = VideosClient(self._base_client)

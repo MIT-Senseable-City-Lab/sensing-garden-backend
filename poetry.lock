@@ -325,7 +325,7 @@ crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
 
 [[package]]
 name = "sensing-garden-client"
-version = "0.1.0"
+version = "0.0.4"
 description = "Sensing Garden Client for API interaction"
 optional = false
 python-versions = ">=3.8"
@@ -337,7 +337,7 @@ requests = "^2.32.3"
 
 [package.source]
 type = "directory"
-url = "sensing-garden-client"
+url = "sensing_garden_client"
 
 [[package]]
 name = "six"
@@ -386,4 +386,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "bff9f5f314673e9a70918ae7213361a3986e717c2af360f5d35064c4de9f1932"
+content-hash = "7eebf8131ccb350b5252bc9657bd16c32af2cbcb3e64b4f7546b6ef92453f037"
