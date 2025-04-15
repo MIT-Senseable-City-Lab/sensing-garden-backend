@@ -5,7 +5,9 @@ This script demonstrates how to use the new object-oriented API client.
 """
 import os
 from datetime import datetime
+
 import requests
+
 import sensing_garden_client
 
 # Load API credentials from environment variables
@@ -88,23 +90,48 @@ try:
 except Exception as e:
     print(f"Error with classifications API: {str(e)}")
 
-# Examples of using the videos client
+# Examples of using the videos client (new API)
 print("\n=== Videos API ===")
-"""
-# To use this example, uncomment and provide actual video data
-with open("example_video.mp4", "rb") as f:
-    video_data = f.read()
 
-# Upload a video
-video_result = sgc.videos.upload(
+from sensing_garden_client.videos import VideosClient
+
+# Load AWS credentials from environment variables
+aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+aws_region = os.environ.get("AWS_REGION", "us-east-1")
+aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
+
+# Initialize the videos client (explicit credentials)
+videos_client = VideosClient(
+    base_client=sgc._base_client,  # Use the base client from the main SensingGardenClient
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
+    region_name=aws_region,
+    aws_session_token=aws_session_token
+)
+
+# Example 1: Upload by file path
+video_path = os.path.join(os.path.dirname(__file__), "../../tests/data/sample_video.mp4")
+result = videos_client.upload_video(
     device_id="device-123",
-    video_data=video_data,
-    description="Example time-lapse video",
     timestamp=datetime.utcnow().isoformat(),
+    video_path_or_data=video_path,
+    content_type="video/mp4",
     metadata={"location": "greenhouse-A", "duration_seconds": 120}
 )
-print(f"Uploaded video: {video_result}")
-"""
+print(f"Uploaded video from file: {result}")
+
+# Example 2: Upload by bytes
+with open(video_path, "rb") as f:
+    video_bytes = f.read()
+result2 = videos_client.upload_video(
+    device_id="device-123",
+    timestamp=datetime.utcnow().isoformat(),
+    video_path_or_data=video_bytes,
+    content_type="video/mp4",
+    metadata={"location": "greenhouse-A", "duration_seconds": 120, "source": "bytes"}
+)
+print(f"Uploaded video from bytes: {result2}")
 
 # Fetch videos
 try:

@@ -38,7 +38,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 def get_client() -> SensingGardenClient:
     """
-    Get an initialized SensingGardenClient instance.
+    Get an initialized SensingGardenClient instance, with AWS credentials if present.
     
     Returns:
         SensingGardenClient: Initialized client
@@ -46,18 +46,31 @@ def get_client() -> SensingGardenClient:
     Raises:
         ValueError: If required environment variables are not set
     """
-    # Initialize the client with API key and base URL from environment
     api_key = os.environ.get('SENSING_GARDEN_API_KEY')
     if not api_key:
         raise ValueError("SENSING_GARDEN_API_KEY environment variable is not set")
-    
+
     api_base_url = os.environ.get('API_BASE_URL')
     if not api_base_url:
         raise ValueError("API_BASE_URL environment variable is not set")
-    
-    # No need to check for AWS credentials - client handles this internally
-    
-    return SensingGardenClient(base_url=api_base_url, api_key=api_key)
+
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_region = os.environ.get("AWS_REGION", "us-east-1")
+    aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
+
+    # Patch SensingGardenClient to pass AWS credentials to VideosClient if present
+    from sensing_garden_client.client import SensingGardenClient as _SGC
+
+    client = _SGC(
+        base_url=api_base_url,
+        api_key=api_key,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        aws_region=aws_region,
+        aws_session_token=aws_session_token
+    )
+    return client
 
 def create_test_image() -> bytes:
     """

@@ -63,7 +63,9 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
         ]
         Resource = [
           aws_s3_bucket.sensor_images.arn,
-          "${aws_s3_bucket.sensor_images.arn}/*"
+          "${aws_s3_bucket.sensor_images.arn}/*",
+          aws_s3_bucket.sensor_videos.arn,
+          "${aws_s3_bucket.sensor_videos.arn}/*"
         ]
       }
     ]

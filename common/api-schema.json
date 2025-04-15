@@ -608,7 +608,6 @@
         "required": [
           "model_id",
           "name",
-          "description",
           "version"
         ],
         "properties": {
@@ -623,10 +622,6 @@
           "name": {
             "type": "string",
             "description": "Name of the model"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the model"
           },
           "version": {
             "type": "string",
@@ -699,7 +694,7 @@
         "required": [
           "device_id",
           "video",
-          "description"
+          "timestamp"
         ],
         "properties": {
           "device_id": {
@@ -714,10 +709,6 @@
             "type": "string",
             "description": "Base64 encoded video data"
           },
-          "description": {
-            "type": "string",
-            "description": "Description of the video content"
-          },
           "metadata": {
             "type": "object",
             "description": "Additional metadata about the video"
@@ -728,7 +719,6 @@
         "type": "object",
         "required": [
           "device_id",
-          "description",
           "content_type",
           "total_parts",
           "total_size_bytes"
@@ -737,10 +727,6 @@
           "device_id": {
             "type": "string",
             "description": "Unique identifier for the device"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the video content"
           },
           "timestamp": {
             "type": "string",
@@ -802,17 +788,12 @@
         "type": "object",
         "required": [
           "device_id",
-          "description",
           "video_key"
         ],
         "properties": {
           "device_id": {
             "type": "string",
             "description": "Unique identifier for the device"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the video content"
           },
           "video_key": {
             "type": "string",

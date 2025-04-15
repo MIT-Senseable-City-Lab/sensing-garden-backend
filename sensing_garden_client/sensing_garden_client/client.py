@@ -93,23 +93,45 @@ class BaseClient:
 class SensingGardenClient:
     """Main client for interacting with the Sensing Garden API."""
     
-    def __init__(self, base_url: str, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        base_url: str,
+        api_key: Optional[str] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_region: str = "us-east-1",
+        aws_session_token: Optional[str] = None
+    ):
         """
         Initialize the Sensing Garden API client with domain-specific sub-clients.
-        
+
         Args:
             base_url: Base URL for the API without trailing slash
             api_key: API key for authenticated endpoints (required for POST operations)
+            aws_access_key_id: AWS access key ID for VideosClient (optional)
+            aws_secret_access_key: AWS secret access key for VideosClient (optional)
+            aws_region: AWS region (default 'us-east-1')
+            aws_session_token: AWS session token (optional)
         """
         self._base_client = BaseClient(base_url, api_key)
-        
+
         # Initialize domain-specific clients
         from .models import ModelsClient
         from .detections import DetectionsClient
         from .classifications import ClassificationsClient
         from .videos import VideosClient
-        
+
         self.models = ModelsClient(self._base_client)
         self.detections = DetectionsClient(self._base_client)
         self.classifications = ClassificationsClient(self._base_client)
-        self.videos = VideosClient(self._base_client)
+        if aws_access_key_id and aws_secret_access_key:
+            self.videos = VideosClient(
+                self._base_client,
+                aws_access_key_id,
+                aws_secret_access_key,
+                aws_region,
+                aws_session_token
+            )
+        else:
+            self.videos = None  # Or raise an error if videos are required
+

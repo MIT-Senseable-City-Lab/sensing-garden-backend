@@ -147,7 +147,6 @@ def prepare_video_payload(
 
 def prepare_multipart_initiate_payload(
     device_id: str,
-    description: str,
     content_type: str,
     total_parts: int,
     total_size_bytes: int,
@@ -159,25 +158,14 @@ def prepare_multipart_initiate_payload(
     
     Args:
         device_id: Unique identifier for the device
-        description: Description of the video content
         content_type: MIME type of the video (e.g., 'video/mp4')
         total_parts: Total number of parts in the multipart upload
         total_size_bytes: Total size of the video in bytes
-        timestamp: ISO-8601 formatted timestamp (optional)
-        metadata: Additional metadata about the video (optional)
-        
+        timestamp: Optional ISO-8601 timestamp
+        metadata: Optional metadata dict
     Returns:
-        Dictionary with multipart initiate payload fields
+        Payload dict for multipart upload initiation
     """
-    if not device_id:
-        raise ValueError("device_id must be provided")
-    
-    if not description:
-        raise ValueError("description must be provided")
-    
-    if not content_type:
-        raise ValueError("content_type must be provided")
-    
     if total_parts <= 0:
         raise ValueError("total_parts must be greater than 0")
     
@@ -187,7 +175,6 @@ def prepare_multipart_initiate_payload(
     # Create payload with required fields
     payload = {
         "device_id": device_id,
-        "description": description,
         "content_type": content_type,
         "total_parts": total_parts,
         "total_size_bytes": total_size_bytes
@@ -196,8 +183,6 @@ def prepare_multipart_initiate_payload(
     # Add optional fields if provided
     if timestamp:
         payload["timestamp"] = timestamp
-        
     if metadata:
         payload["metadata"] = metadata
-    
     return payload

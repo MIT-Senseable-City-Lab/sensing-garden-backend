@@ -111,7 +111,6 @@
         "id",
         "timestamp",
         "version",
-        "description",
         "type"
       ],
       "properties": {
@@ -127,10 +126,6 @@
           "type": "string",
           "description": "Version identifier for the model"
         },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description of the model"
-        },
         "type": {
           "type": "string",
           "description": "Type of model (detection, classification, etc.)"
@@ -144,7 +139,6 @@
         "timestamp",
         "video_key",
         "video_bucket",
-        "description",
         "type"
       ],
       "properties": {
@@ -163,10 +157,6 @@
         "video_bucket": {
           "type": "string",
           "description": "S3 bucket containing the video"
-        },
-        "description": {
-          "type": "string",
-          "description": "Human-readable description of the video content"
         },
         "type": {
           "type": "string",

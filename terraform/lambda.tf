@@ -58,6 +58,7 @@ resource "aws_lambda_function" "api_handler_function" {
   environment {
     variables = {
       IMAGES_BUCKET = "scl-sensing-garden-images"
+      VIDEOS_BUCKET = "scl-sensing-garden-videos"
     }
   }
 }
