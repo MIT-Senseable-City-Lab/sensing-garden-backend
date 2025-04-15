@@ -12,9 +12,9 @@ Backend services for the Sensing Garden project, including Lambda functions for 
 - `sensing_garden_client/`: Python package for API interaction
   - `sensing_garden_client/`: Source code for the API client and endpoints
     - `client.py`: Core client for interacting with the API
-    - `get_endpoints.py`: GET endpoint functions
-    - `post_endpoints.py`: POST endpoint functions
-    - `model_endpoints.py`: Model-related endpoint functions
+    - `videos.py`: Video upload and retrieval client
+    - `models.py`, `detections.py`, `classifications.py`: Domain-specific clients
+    - (Legacy endpoint function files have been removed; use the new client API)
 - `test_get_api.py`: Script for testing the GET API endpoints
 - `test_post_api.py`: Script for testing the POST API endpoints
 
@@ -39,23 +39,38 @@ export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
 
 ## Using the Sensing Garden Client Package
 
-The `sensing_garden_client` package provides functions to interact with the API endpoints.
+The `sensing_garden_client` package now provides a modern, object-oriented client for all API operations.
 
 ```python
-# Import the client and endpoint functions
 from sensing_garden_client import SensingGardenClient
-from sensing_garden_client import get_models, get_detections, get_classifications
-from sensing_garden_client import send_detection_request, send_classification_request, send_model_request
 
-# Create a client instance
 client = SensingGardenClient(
     base_url="https://your-api-endpoint.execute-api.region.amazonaws.com",
-    api_key="your-api-key"
+    api_key="your-api-key",
+    aws_access_key_id="your-aws-access-key-id",         # Required for video upload
+    aws_secret_access_key="your-aws-secret-access-key"  # Required for video upload
 )
 
-# Use the endpoint functions
-models = get_models(client, device_id="my-device")
-detections = get_detections(client, device_id="my-device")
+# Example: Upload a video
+with open("my_video.mp4", "rb") as f:
+    video_data = f.read()
+
+result = client.videos.upload_video(
+    device_id="my-device",
+    timestamp="2025-04-15T18:53:46-04:00",
+    video_path_or_data=video_data,
+    content_type="video/mp4"
+)
+print(result)
+```
+
+**Note:** The video upload API no longer requires or accepts a `description` field. Only `device_id`, `timestamp`, `video_key`, and optional `metadata` are supported.
+
+### Troubleshooting
+If you see errors like `ModuleNotFoundError: No module named 'botocore.vendored.six.moves'`, ensure you are running tests and scripts inside your Poetry-managed environment, and update boto3/botocore using:
+
+```sh
+poetry update boto3 botocore
 ```
 
 For development, install the package in development mode:

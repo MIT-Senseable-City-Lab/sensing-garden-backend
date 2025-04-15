@@ -337,7 +337,6 @@ def _store_video(body: Dict) -> Dict:
         'timestamp': timestamp,
         'video_key': s3_key,
         'video_bucket': VIDEOS_BUCKET,
-        'description': body['description'],
         'type': 'video'  # Set the type field required by the schema
     }
     
@@ -383,7 +382,6 @@ def handle_post_video_register(event: Dict) -> Dict:
             'timestamp': timestamp,
             'video_key': body['video_key'],
             'video_bucket': VIDEOS_BUCKET,
-            'description': body['description'],
             'type': 'video'  # Set the type field required by the schema
         }
         

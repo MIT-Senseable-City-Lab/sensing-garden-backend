@@ -71,19 +71,29 @@ classifications = sgc.classifications.fetch(model_id="model-456")
 # Working with videos
 with open("plant_video.mp4", "rb") as f:
     video_data = f.read()
-    
-video = sgc.videos.upload(
+
+video = sgc.videos.upload_video(
     device_id="device-123",
-    video_data=video_data,
-    description="Time-lapse of plant growth",
     timestamp="2023-06-01T12:34:56Z",
+    video_path_or_data=video_data,
+    content_type="video/mp4",
     metadata={"location": "greenhouse-A", "duration_seconds": 120}
 )
+
 videos = sgc.videos.fetch(
     device_id="device-123",
     start_time="2023-06-01T00:00:00Z",
     end_time="2023-06-02T00:00:00Z"
 )
+```
+
+**Note:** The video upload API no longer requires or accepts a `description` field. Only `device_id`, `timestamp`, `video_key`, and optional `metadata` are supported.
+
+### Troubleshooting
+If you see errors like `ModuleNotFoundError: No module named 'botocore.vendored.six.moves'`, ensure you are running inside your Poetry-managed environment and update boto3/botocore using:
+
+```sh
+poetry update boto3 botocore
 ```
 
 ### Environment Variables
