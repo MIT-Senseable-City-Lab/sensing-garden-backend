@@ -19,6 +19,22 @@ pip install sensing_garden_client/sensing_garden_client
 
 ## Usage
 
+**New in v0.0.7:** The client is published on PyPI and uses constructor-based initialization. All tests use the real client logic (no mocks/stubs). Legacy endpoint files have been removed—use the client API for all operations.
+
+### Installation
+
+Install from PyPI:
+
+```bash
+pip install sensing_garden_client
+```
+
+Or for development:
+
+```bash
+poetry add sensing_garden_client
+```
+
 ### Basic Usage
 
 The modern API provides a more intuitive, object-oriented interface:
