@@ -23,11 +23,6 @@ from sensing_garden_client import SensingGardenClient
 # Load environment variables
 load_dotenv()
 
-# Default test device ID - use this across all tests for consistency
-DEFAULT_TEST_DEVICE_ID = "test-device"
-
-# Default test model ID - use this for classification and detection tests
-DEFAULT_TEST_MODEL_ID = "test-model-2025"
 
 # Custom JSON encoder to handle Decimal objects
 class DecimalEncoder(json.JSONEncoder):

@@ -12,9 +12,7 @@ from typing import Optional, Tuple, Dict, Any, List
 
 import requests
 
-from test_utils import (
-    DEFAULT_TEST_DEVICE_ID,
-    DEFAULT_TEST_MODEL_ID,
+from .test_utils import (
     get_client,
     create_test_image,
     generate_random_confidence,
@@ -26,9 +24,9 @@ from test_utils import (
 )
 
 def test_add_classification(
-    device_id: str,
-    model_id: str,
-    timestamp: Optional[str] = None
+    device_id,
+    model_id,
+    timestamp=None
 ) -> Tuple[bool, Optional[str]]:
     """
     Test uploading a classification to the Sensing Garden API.
@@ -88,11 +86,12 @@ def test_add_classification(
         print(f"❌ Error in test: {str(e)}")
         success = False
     
-    return success, request_timestamp
+    assert success, f"Classification test failed at {request_timestamp}"
 
 def test_add_classification_with_invalid_model(
-    device_id: str,
-    timestamp: Optional[str] = None
+    device_id,
+    nonexistent_model_id,
+    timestamp=None
 ) -> Tuple[bool, Optional[str]]:
     """
     Test uploading a classification with an invalid model ID.

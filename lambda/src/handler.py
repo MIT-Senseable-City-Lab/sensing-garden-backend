@@ -2,7 +2,7 @@ import base64
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Union, Any, Tuple, Callable
 
@@ -63,7 +63,7 @@ def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     """Upload base64 encoded image to S3"""
     # Decode base64 image and upload to S3
     if timestamp is None:
-        timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     s3_key = f"{data_type}/{device_id}/{timestamp}.jpg"
     
     s3.put_object(
@@ -81,7 +81,7 @@ def _upload_video_to_s3(video_data, device_id, timestamp=None, content_type='vid
     """Upload base64 encoded video to S3"""
     # Decode base64 video and upload to S3
     if timestamp is None:
-        timestamp = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     
     # Determine file extension based on content type
     extension = 'mp4'  # Default
@@ -235,14 +235,14 @@ def handle_get_detections(event: Dict) -> Dict:
 def _store_detection(body: Dict) -> Dict:
     """Process and store detection data"""
     # Upload image to S3
-    timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     s3_key = _upload_image_to_s3(body['image'], body['device_id'], 'detection', timestamp_str)
     
     # Prepare data for DynamoDB
     data = {
         'device_id': body['device_id'],
         'model_id': body['model_id'],
-        'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+        'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat()),
         'image_key': s3_key,
         'image_bucket': IMAGES_BUCKET
     }
@@ -264,14 +264,14 @@ def handle_get_classifications(event: Dict) -> Dict:
 def _store_classification(body: Dict) -> Dict:
     """Process and store classification data"""
     # Upload image to S3
-    timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+    timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     s3_key = _upload_image_to_s3(body['image'], body['device_id'], 'classification', timestamp_str)
     
     # Prepare data for DynamoDB
     data = {
         'device_id': body['device_id'],
         'model_id': body['model_id'],
-        'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+        'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat()),
         'image_key': s3_key,
         'image_bucket': IMAGES_BUCKET,
         'family': body['family'],
@@ -297,7 +297,7 @@ def _store_model(body: Dict) -> Dict:
     # Prepare data for DynamoDB
     data = {
         'id': body['model_id'],  # Use model_id as the primary key (id)
-        'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
+        'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat()),
         'name': body['name'],
         'description': body['description'],
         'version': body['version']
@@ -325,8 +325,8 @@ def _store_video(body: Dict) -> Dict:
         timestamp_str = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).strftime('%Y-%m-%d-%H-%M-%S')
     else:
         # Generate a new timestamp if not provided
-        timestamp = datetime.utcnow().isoformat()
-        timestamp_str = datetime.utcnow().strftime('%Y-%m-%d-%H-%M-%S')
+        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     
     # Upload video to S3
     s3_key = _upload_video_to_s3(body['video'], body['device_id'], timestamp_str)
@@ -374,7 +374,7 @@ def handle_post_video_register(event: Dict) -> Dict:
         timestamp = body.get('timestamp')
         if not timestamp:
             # Generate a new timestamp if not provided
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = datetime.now(timezone.utc).isoformat()
         
         # Prepare data for DynamoDB
         data = {

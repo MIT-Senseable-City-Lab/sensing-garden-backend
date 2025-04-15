@@ -12,9 +12,7 @@ from typing import Optional, Tuple, Dict, Any, List
 
 import requests
 
-from test_utils import (
-    DEFAULT_TEST_DEVICE_ID,
-    DEFAULT_TEST_MODEL_ID,
+from .test_utils import (
     get_client,
     create_test_image,
     generate_random_confidence,
@@ -23,10 +21,10 @@ from test_utils import (
 )
 
 def test_add_detection(
-    device_id: str,
-    model_id: str,
-    timestamp: Optional[str] = None,
-    num_detections: int = 3
+    device_id,
+    model_id,
+    timestamp=None,
+    num_detections=3
 ) -> Tuple[bool, Optional[str]]:
     """
     Test uploading a detection to the Sensing Garden API.
@@ -77,11 +75,13 @@ def test_add_detection(
         print(f"❌ Error in test: {str(e)}")
         success = False
     
-    return success, request_timestamp
+    assert success, f"Detection test failed at {request_timestamp}"
 
 def test_add_detection_with_invalid_model(
-    device_id: str,
-    timestamp: Optional[str] = None
+    device_id,
+    nonexistent_model_id,
+    timestamp=None,
+    num_detections=3
 ) -> Tuple[bool, Optional[str]]:
     """
     Test uploading a detection with an invalid model ID.

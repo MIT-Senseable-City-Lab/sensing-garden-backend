@@ -10,18 +10,17 @@ from typing import Optional, Tuple, Dict, Any, List
 
 import requests
 
-from test_utils import (
-    DEFAULT_TEST_DEVICE_ID,
-    DEFAULT_TEST_MODEL_ID,
+from .test_utils import (
     get_client,
     generate_random_string,
     print_response
 )
 
-def test_create_model(
-    model_id: Optional[str] = None,
-    timestamp: Optional[str] = None
-) -> Tuple[bool, str, Optional[str]]:
+import pytest
+from tests.conftest import test_vars
+
+@pytest.mark.usefixtures('model_id', 'timestamp')
+def test_create_model(model_id=None, timestamp=None) -> None:
     """
     Test uploading a model to the Sensing Garden API.
     
@@ -32,19 +31,12 @@ def test_create_model(
     Returns:
         Tuple of (success, model_id, timestamp)
     """
-    # Create a unique model ID if not provided
-    model_id = model_id or f"test-model-{generate_random_string(8)}"
-    
-    # Create a unique timestamp for this request
-    request_timestamp = timestamp or datetime.now().isoformat()
-    
-    # Get the client
+    # Use the shared static model_id and timestamp
+    model_id = model_id or test_vars['model_id']
+    request_timestamp = timestamp or test_vars['timestamp']
     client = get_client()
-    
     print(f"\n\nTesting MODEL UPLOAD with model_id: {model_id}")
-    
     try:
-        # Create the model
         response_data = client.models.create(
             model_id=model_id,
             name=f"Test Model {model_id}",
@@ -52,11 +44,9 @@ def test_create_model(
             description=f"Test model created at {request_timestamp}",
             timestamp=request_timestamp
         )
-        
         print_response(response_data)
         print(f"\n✅ Model creation successful!")
         success = True
-            
     except requests.exceptions.RequestException as e:
         print(f"❌ Model upload failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
@@ -65,10 +55,67 @@ def test_create_model(
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
         success = False
-    
-    return success, model_id, request_timestamp
+    assert success, f"Model test failed at {request_timestamp}"
 
 def test_fetch_models(
+    model_id: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False
+) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """
+    Test retrieving models from the Sensing Garden API.
+    
+    Args:
+        model_id: Optional model ID to filter by
+        start_time: Optional start time for filtering (ISO-8601)
+        end_time: Optional end time for filtering (ISO-8601)
+        sort_by: Optional field to sort by
+        sort_desc: Whether to sort descending
+    Returns:
+        Tuple of (success, response_data)
+    """
+    client = get_client()
+    
+    print(f"\n\nTesting MODEL FETCH")
+    try:
+        response_data = client.models.fetch(
+            model_id=model_id,
+            start_time=start_time,
+            end_time=end_time,
+            sort_by=sort_by,
+            sort_desc=sort_desc
+        )
+        print_response(response_data)
+        print(f"\n✅ Model fetch successful!")
+        success = True
+    except Exception as e:
+        print(f"❌ Error in fetching models: {str(e)}")
+        response_data = None
+        success = False
+    return success, response_data
+
+
+def test_fetch_all_models_and_check_created():
+    """
+    Fetch all models and assert the test model is present in the results.
+    """
+    from tests.conftest import test_vars
+    client = get_client()
+    print("\n\nTesting FETCH ALL MODELS")
+    try:
+        response_data = client.models.fetch()
+        print_response(response_data)
+        all_ids = [item.get('id') for item in response_data.get('items', [])]
+        print(f"All model IDs: {all_ids}")
+        assert test_vars['model_id'] in all_ids, f"Test model_id {test_vars['model_id']} not found in model list!"
+        print(f"✅ Newly created model_id {test_vars['model_id']} found in model list!")
+    except Exception as e:
+        print(f"❌ Error in fetching all models: {str(e)}")
+        assert False, f"Exception during fetch all models: {e}"
+
+def test_fetch_models_with_time_range(
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
@@ -132,19 +179,19 @@ def test_fetch_models(
                 if 'metadata' in model:
                     print(f"  Metadata: {model.get('metadata')}")
             
-            return True, data
+            assert True
         else:
             print(f"❌ No models found in the specified time range.")
-            return False, data
+            assert False
             
     except requests.exceptions.RequestException as e:
         print(f"❌ Model fetch request failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return False, None
+        assert False
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        return False, None
+        assert False
 
 def add_test_models(num_models: int = 3) -> List[str]:
     """
@@ -164,13 +211,13 @@ def add_test_models(num_models: int = 3) -> List[str]:
         if success:
             model_ids.append(model_id)
     
-    return model_ids
+    assert len(model_ids) == num_models
 
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Test the Sensing Garden API model endpoints')
-    parser.add_argument('--model-id', type=str, default=DEFAULT_TEST_MODEL_ID,
-                      help=f'Model ID to use for testing (default: {DEFAULT_TEST_MODEL_ID})')
+    parser.add_argument('--model-id', type=str, default=None,
+                      help='Model ID to use for testing')
     parser.add_argument('--timestamp', type=str, help='Optional timestamp to use for testing')
     parser.add_argument('--upload', action='store_true', help='Test model creation')
     parser.add_argument('--fetch', action='store_true', help='Test model fetch')

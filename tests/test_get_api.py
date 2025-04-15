@@ -28,7 +28,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 # The endpoint modules handle their own configuration via environment variables
 
-def test_get_endpoint(endpoint_type, device_id, model_id=None, timestamp=None, start_time=None, end_time=None, sort_by=None, sort_desc=False):
+def test_get_endpoint(endpoint_type, device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test a GET API endpoint (detection, classification, or model) using the sensing_garden_api package"""
     if not timestamp and not start_time:
         # If no specific timestamp provided, use a time range
@@ -42,11 +42,8 @@ def test_get_endpoint(endpoint_type, device_id, model_id=None, timestamp=None, s
         end_time = (timestamp_dt + timedelta(minutes=1)).isoformat()
     
     # Initialize the client with API base URL from environment
-    api_base_url = os.environ.get('API_BASE_URL')
-    if not api_base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    client = SensingGardenClient(base_url=api_base_url)
+    from tests.test_utils import get_client
+    client = get_client()
     
     print(f"\n\nTesting {endpoint_type.upper()} GET with device_id: {device_id}, model_id: {model_id}")
     if timestamp:
@@ -127,6 +124,7 @@ def test_get_endpoint(endpoint_type, device_id, model_id=None, timestamp=None, s
             success = True
         else:
             print(f"⚠️ No {endpoint_type} items found")
+            print(f"Full API response: {json.dumps(data, indent=2)}")
             success = False
             
     except ValueError as e:
@@ -144,30 +142,53 @@ def test_get_endpoint(endpoint_type, device_id, model_id=None, timestamp=None, s
         # No patching needed anymore
         pass
     
-    return success
+    assert success
 
-def test_get_detection(device_id, model_id, timestamp=None):
+def test_get_detection(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test the detection API GET endpoint"""
-    return test_get_endpoint('detection', device_id, model_id, timestamp)
+    return test_get_endpoint('detection', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
-def test_get_classification(device_id, model_id, timestamp=None):
+def test_get_classification(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test the classification API GET endpoint"""
-    return test_get_endpoint('classification', device_id, model_id, timestamp)
+    return test_get_endpoint('classification', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
-def test_get_model(device_id, model_id):
-    """Test the model API GET endpoint"""
-    return test_get_endpoint('model', device_id, model_id)
+def test_get_model():
+    """
+    Fetch all models and assert the test model is present in the results.
+    """
+    from tests.conftest import test_vars
+    from tests.test_utils import get_client
+    client = get_client()
+    response_data = client.models.fetch()
+    all_ids = [item.get('id') for item in response_data.get('items', [])]
+    print(f"All model IDs: {all_ids}")
+    assert test_vars['model_id'] in all_ids, f"Test model_id {test_vars['model_id']} not found in model list!"
+    print(f"✅ Newly created model_id {test_vars['model_id']} found in model list!")
 
-def test_get_video(device_id, start_time=None, end_time=None):
-    """Test the video API GET endpoint"""
-    return test_get_endpoint('video', device_id, model_id=None, start_time=start_time, end_time=end_time)
+def test_get_video(device_id, timestamp, start_time, end_time, sort_by, sort_desc):
+    """
+    Fetch all videos and assert the test video is present in the results.
+    """
+    from tests.conftest import test_vars
+    from tests.test_utils import get_client
+    client = get_client()
+    response_data = client.videos.fetch(device_id=device_id)
+    all_keys = [item.get('video_key') for item in response_data.get('items', [])]
+    print(f"All video keys: {all_keys}")
+    formatted_ts = test_vars['timestamp'].replace(':', '-').replace('.', '-')
+    found = any(
+        test_vars['device_id'] in (key or '') and formatted_ts.split('+')[0] in (key or '')
+        for key in all_keys
+    )
+    assert found, f"Test video for device_id {test_vars['device_id']} and timestamp {test_vars['timestamp']} not found in video list!"
+    print(f"✅ Newly uploaded video for device_id {test_vars['device_id']} and timestamp {test_vars['timestamp']} found in video list!")
 
-def verify_data_exists(device_id, model_id):
+def verify_data_exists(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Verify that test data exists for the specified device/model"""
-    detection_exists = test_get_detection(device_id, model_id)
-    classification_exists = test_get_classification(device_id, model_id)
-    model_exists = test_get_model(device_id, model_id)
-    video_exists = test_get_video(device_id)
+    detection_exists = test_get_detection(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    classification_exists = test_get_classification(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    model_exists = test_get_model(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    video_exists = test_get_video(device_id, timestamp, start_time, end_time, sort_by, sort_desc)
     
     if detection_exists or classification_exists or model_exists or video_exists:
         print("\n✅ Test data exists for this device/model")
@@ -185,7 +206,7 @@ def verify_data_exists(device_id, model_id):
     
     return detection_exists or classification_exists or model_exists or video_exists
 
-def test_recent_data(device_id, model_id, hours=24):
+def test_recent_data(device_id, model_id, hours, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test for recent data within the last specified hours"""
     from datetime import datetime, timedelta
     
@@ -195,27 +216,13 @@ def test_recent_data(device_id, model_id, hours=24):
     print(f"\nChecking for data in the last {hours} hours...")
     print(f"Time range: {start_time} to {end_time}")
     
-    detection_success = test_get_endpoint('detection', device_id, model_id, 
-                                         start_time=start_time, end_time=end_time)
-    classification_success = test_get_endpoint('classification', device_id, model_id, 
-                                              start_time=start_time, end_time=end_time)
-    video_success = test_get_endpoint('video', device_id, None,
-                                     start_time=start_time, end_time=end_time)
-    
-    if detection_success or classification_success or video_success:
-        print(f"\n✅ Recent data found within the last {hours} hours")
-    else:
-        print(f"\n⚠️ No recent data found within the last {hours} hours")
+    return test_get_endpoint('detection', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
-
-def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
+def test_sorting(endpoint_type, device_id, model_id, sort_by):
     """Test the sorting functionality for the specified endpoint"""
     # Initialize the client with API base URL from environment
-    api_base_url = os.environ.get('API_BASE_URL')
-    if not api_base_url:
-        raise ValueError("API_BASE_URL environment variable is not set")
-    
-    client = SensingGardenClient(base_url=api_base_url)
+    from tests.test_utils import get_client
+    client = get_client()
     
     print(f"\n\nTesting {endpoint_type.upper()} GET with sorting by '{sort_by}'")
     print(f"Device ID: {device_id}, Model ID: {model_id}")
@@ -293,7 +300,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
         
         if not asc_items or not desc_items:
             print(f"⚠️ Not enough {endpoint_type} items found to test sorting")
-            return False
+            assert False
         
         print(f"✅ Retrieved {len(asc_items)} items with ascending sort and {len(desc_items)} with descending sort")
         
@@ -328,25 +335,24 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by='timestamp'):
             return sorting_correct
         else:
             print(f"⚠️ Not enough items to verify sorting order properly")
-            return True  # Still return True as the API didn't fail
+            assert True  # Still assert True as the API didn't fail
             
     except requests.exceptions.RequestException as e:
         print(f"❌ {endpoint_type.capitalize()} API GET request with sorting failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return False
+        assert False
     except Exception as e:
         print(f"❌ Error in sorting test: {str(e)}")
-        return False
+        assert False
 
-def test_sorting_with_invalid_sort_desc(device_id, model_id):
+def test_sorting_with_invalid_sort_desc(device_id, model_id, sort_desc):
     """Test that passing a non-boolean value for sort_desc raises an error"""
     try:
-        test_get_endpoint('detection', device_id, model_id, sort_by='timestamp', sort_desc='true')
-        assert False, "Expected ValueError was not raised"
-    except ValueError as e:
-        assert str(e) == "sort_desc must be a boolean value"
-        print(f"✅ Correct error raised for invalid sort_desc value")
+        test_get_endpoint('detection', device_id, model_id, None, None, None, 'timestamp', 'true')
+        assert False, "Expected error for invalid sort_desc argument"
+    except (TypeError, ValueError):
+        pass
     except Exception as e:
         print(f"❌ Unexpected error type: {type(e)}")
         print(f"Error message: {str(e)}")

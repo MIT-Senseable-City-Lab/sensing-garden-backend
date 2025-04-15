@@ -7,7 +7,7 @@ from datetime import datetime
 import os
 from datetime import datetime
 import pytest
-from test_utils import get_client, DEFAULT_TEST_DEVICE_ID
+from .test_utils import get_client
 
 VIDEO_DIR = os.path.join(os.path.dirname(__file__), "data")
 VIDEO_FILES = [
@@ -22,7 +22,7 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
     not (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY),
     reason="AWS credentials not set in environment"
 )
-def test_video_upload():
+def test_video_upload(device_id):
     client = get_client()
     errors = 0
     for video_file in VIDEO_FILES:
@@ -30,7 +30,7 @@ def test_video_upload():
         timestamp = datetime.now().isoformat()
         try:
             response = client.videos.upload_video(
-                device_id=DEFAULT_TEST_DEVICE_ID,
+                device_id=device_id,
                 timestamp=timestamp,
                 video_path_or_data=video_path,
                 content_type="video/mp4"

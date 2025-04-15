@@ -10,6 +10,7 @@ import boto3
 from botocore.exceptions import ClientError
 from typing import Dict, Optional, Any, Union, Callable
 from .client import BaseClient
+from .shared import build_common_params
 
 
 class VideosClient:

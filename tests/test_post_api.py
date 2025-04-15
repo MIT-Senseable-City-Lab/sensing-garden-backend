@@ -92,7 +92,7 @@ def get_random_test_name(name_list):
 def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
     """Test a POST API endpoint (detection or classification) using sensing_garden_api package"""
     # Create a unique timestamp for this request to avoid DynamoDB key conflicts
-    request_timestamp = datetime.now().isoformat()
+    request_timestamp = timestamp
     
     # Determine which endpoint to use
     is_detection = endpoint_type == 'detection'
@@ -140,28 +140,22 @@ def test_post_endpoint(endpoint_type, device_id, model_id, timestamp):
         
         print(f"Response body: {json.dumps(response_data, indent=2)}")
         print(f"\n✅ {endpoint_type.capitalize()} API write request successful!")
-        success = True
+        assert True, f"{endpoint_type.capitalize()} API write request failed at {request_timestamp}"
             
     except requests.exceptions.RequestException as e:
         print(f"❌ {endpoint_type.capitalize()} API request failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        success = False
+        assert False, f"{endpoint_type.capitalize()} API request failed at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        success = False
-    finally:
-        # No patching needed anymore
-        pass
-    
-    return success, request_timestamp
+        assert False, f"{endpoint_type.capitalize()} API request failed at {request_timestamp}"
 
 def test_post_detection(device_id, model_id, timestamp):
     """Test the detection API POST endpoint"""
-    success, timestamp = test_post_endpoint('detection', device_id, model_id, timestamp)
-    return success, timestamp
+    test_post_endpoint('detection', device_id, model_id, timestamp)
 
-def test_post_detection_with_invalid_model(device_id, timestamp):
+def test_post_detection_with_invalid_model(device_id, nonexistent_model_id, timestamp):
     """Test the detection API POST endpoint with an invalid model_id"""
     # Create a random UUID that won't exist in the database
     invalid_model_id = str(uuid.uuid4())
@@ -180,7 +174,7 @@ def test_post_detection_with_invalid_model(device_id, timestamp):
     
     # Create test image bytes
     image_data = create_test_image()
-    request_timestamp = datetime.now().isoformat()
+    request_timestamp = timestamp
     
     try:
         # Try to send a detection with an invalid model_id
@@ -195,27 +189,27 @@ def test_post_detection_with_invalid_model(device_id, timestamp):
         # If we get here without an exception, the test failed
         print(f"❌ Detection with invalid model_id succeeded but should have failed!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        return False, request_timestamp
+        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
             
     except requests.exceptions.RequestException as e:
         # We expect an error, so this is success
         print(f"✅ Detection with invalid model_id failed as expected!")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return True, request_timestamp
+        assert True, f"Detection with invalid model_id failed as expected at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        return False, request_timestamp
+        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
 
 def test_post_classification(device_id, model_id, timestamp):
     """Test the classification API POST endpoint"""
-    success, timestamp = test_post_endpoint('classification', device_id, model_id, timestamp)
-    return success, timestamp
+    test_post_endpoint('classification', device_id, model_id, timestamp)
 
-def test_post_video(device_id, timestamp, video_file_path=None):
-    """Test the video API POST endpoint"""
-    # Create a unique timestamp for this request to avoid DynamoDB key conflicts
-    request_timestamp = datetime.now().isoformat()
+def test_post_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp):
+    """Test the classification API POST endpoint with an invalid model_id"""
+    # Create a random UUID that won't exist in the database
+    invalid_model_id = str(uuid.uuid4())
+    print(f"\nTesting CLASSIFICATION POST with invalid model_id: {invalid_model_id}")
     
     # Initialize the client with API key and base URL from environment
     api_key = os.environ.get('SENSING_GARDEN_API_KEY')
@@ -226,13 +220,50 @@ def test_post_video(device_id, timestamp, video_file_path=None):
     if not api_base_url:
         raise ValueError("API_BASE_URL environment variable is not set")
     
-    # Set AWS credentials for S3 access
-    aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
-    aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    if not aws_access_key or not aws_secret_key:
-        print("Warning: AWS credentials not set. S3 operations may fail.")
-    
     client = SensingGardenClient(base_url=api_base_url, api_key=api_key)
+    
+    # Create test image bytes
+    image_data = create_test_image()
+    request_timestamp = timestamp
+    
+    try:
+        # Try to send a classification with an invalid model_id
+        response_data = client.classifications.add(
+            device_id=device_id,
+            model_id=invalid_model_id,
+            image_data=image_data,
+            family=get_random_test_name(TEST_FAMILIES),
+            genus=get_random_test_name(TEST_GENERA),
+            species=get_random_test_name(TEST_SPECIES),
+            family_confidence=generate_random_confidence(),
+            genus_confidence=generate_random_confidence(),
+            species_confidence=generate_random_confidence(),
+            timestamp=request_timestamp
+        )
+        
+        # If we get here without an exception, the test failed
+        print(f"❌ Classification with invalid model_id succeeded but should have failed!")
+        print(f"Response: {json.dumps(response_data, indent=2)}")
+        assert False, f"Classification with invalid model_id did not fail as expected at {request_timestamp}"
+            
+    except requests.exceptions.RequestException as e:
+        # We expect an error, so this is success
+        print(f"✅ Classification with invalid model_id failed as expected!")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
+        assert True, f"Classification with invalid model_id failed as expected at {request_timestamp}"
+    except Exception as e:
+        print(f"❌ Error in test: {str(e)}")
+        assert False, f"Classification with invalid model_id did not fail as expected at {request_timestamp}"
+
+def test_post_video(device_id, timestamp, video_file_path):
+    """Test the video API POST endpoint"""
+    # Create a unique timestamp for this request to avoid DynamoDB key conflicts
+    request_timestamp = timestamp
+    
+    # Initialize the client with API key and base URL from environment
+    from tests.test_utils import get_client
+    client = get_client()
     
     print(f"\n\nTesting VIDEO POST with device_id: {device_id}")
     
@@ -245,11 +276,10 @@ def test_post_video(device_id, timestamp, video_file_path=None):
             print(f"Video file size: {file_size / (1024 * 1024):.2f} MB")
             
             # Use the upload_file method which handles S3 multipart uploads directly
-            response_data = client.videos.upload_file(
+            response_data = client.videos.upload_video(
                 device_id=device_id,
-                video_file_path=video_file_path,
-                description=f"Test video upload at {request_timestamp}",
-                timestamp=request_timestamp,
+                video_path_or_data=video_file_path,
+                                timestamp=request_timestamp,
                 metadata={"test": True, "source": "test_post_api.py"}
             )
         else:
@@ -266,11 +296,10 @@ def test_post_video(device_id, timestamp, video_file_path=None):
             
             try:
                 # Use the upload_file method with the temporary file
-                response_data = client.videos.upload_file(
+                response_data = client.videos.upload_video(
                     device_id=device_id,
-                    video_file_path=temp_file_path,
-                    description=f"Test video upload at {request_timestamp}",
-                    timestamp=request_timestamp,
+                    video_path_or_data=temp_file_path,
+                                        timestamp=request_timestamp,
                     metadata={"test": True, "source": "test_post_api.py"}
                 )
             finally:
@@ -291,9 +320,9 @@ def test_post_video(device_id, timestamp, video_file_path=None):
         print(f"❌ Error in test: {str(e)}")
         success = False
     
-    return success, request_timestamp
+    assert success, f"POST endpoint failed at {request_timestamp}"
 
-def test_post_classification_with_invalid_model(device_id, timestamp):
+def test_post_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp):
     """Test the classification API POST endpoint with an invalid model_id"""
     # Create a random UUID that won't exist in the database
     invalid_model_id = str(uuid.uuid4())
@@ -312,7 +341,7 @@ def test_post_classification_with_invalid_model(device_id, timestamp):
     
     # Create test image bytes
     image_data = create_test_image()
-    request_timestamp = datetime.now().isoformat()
+    request_timestamp = timestamp
     
     try:
         # Try to send a classification with an invalid model_id
@@ -332,17 +361,17 @@ def test_post_classification_with_invalid_model(device_id, timestamp):
         # If we get here without an exception, the test failed
         print(f"❌ Classification with invalid model_id succeeded but should have failed!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        return False, request_timestamp
+        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
             
     except requests.exceptions.RequestException as e:
         # We expect an error, so this is success
         print(f"✅ Classification with invalid model_id failed as expected!")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
         print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        return True, request_timestamp
+        assert True, f"Detection with invalid model_id failed as expected at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        return False, request_timestamp
+        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
     """Add test data for detections, classifications, and videos"""
