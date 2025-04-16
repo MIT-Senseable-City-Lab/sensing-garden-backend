@@ -206,17 +206,20 @@ def verify_data_exists(device_id, model_id, timestamp, start_time, end_time, sor
     
     return detection_exists or classification_exists or model_exists or video_exists
 
-def test_recent_data(device_id, model_id, hours, timestamp, start_time, end_time, sort_by, sort_desc):
-    """Test for recent data within the last specified hours"""
+def test_recent_data(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
+    """Test for recent data within the last 24 hours"""
+    hours = 24
+    from tests.test_utils import get_client
     from datetime import datetime, timedelta
-    
-    end_time = datetime.now().isoformat()
-    start_time = (datetime.now() - timedelta(hours=hours)).isoformat()
-    
+    client = get_client()
+
+    now = datetime.now()
+    recent_start = (now - timedelta(hours=hours)).isoformat()
+    recent_end = now.isoformat()
     print(f"\nChecking for data in the last {hours} hours...")
-    print(f"Time range: {start_time} to {end_time}")
+    print(f"Time range: {recent_start} to {recent_end}")
     
-    return test_get_endpoint('detection', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    return test_get_endpoint('detection', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
 
 def test_sorting(endpoint_type, device_id, model_id, sort_by):
     """Test the sorting functionality for the specified endpoint"""

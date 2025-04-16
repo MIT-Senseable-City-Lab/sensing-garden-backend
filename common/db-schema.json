@@ -39,7 +39,9 @@
           "items": {
             "type": "number"
           },
-          "description": "Bounding box coordinates for the detection"
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "Bounding box coordinates [xmin, ymin, xmax, ymax] for the detection; must be 4 numbers with xmin < xmax and ymin < ymax."
         }
       }
     },

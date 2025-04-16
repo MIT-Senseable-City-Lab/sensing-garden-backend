@@ -11,6 +11,7 @@ test_vars = {
     "endpoint_type": "detection",  # Can be parameterized in tests
     "sort_by": "timestamp",
     "sort_desc": False,
+    "hours": 24,
     "start_time": "2025-04-15T00:00:00-04:00",
     "end_time": "2025-04-16T00:00:00-04:00"
 }
@@ -47,9 +48,6 @@ def sort_by():
 def sort_desc():
     return test_vars["sort_desc"]
 
-@pytest.fixture
-def hours():
-    return test_vars["hours"]
 
 @pytest.fixture
 def start_time():

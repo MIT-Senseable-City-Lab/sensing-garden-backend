@@ -119,13 +119,21 @@ def _validate_data(data, table_type):
                         print(error_msg)
                         return False, error_msg
                 
-                # Array validation for bounding_box
+                # Array validation for bounding_box: must be [xmin, ymin, xmax, ymax]
                 elif field == "bounding_box" and isinstance(value, list):
+                    if len(value) != 4:
+                        error_msg = f"Bounding box must be a list of 4 numbers [xmin, ymin, xmax, ymax], got {value}"
+                        print(error_msg)
+                        return False, error_msg
                     if not all(isinstance(coord, (int, float, Decimal)) for coord in value):
                         error_msg = f"All bounding box coordinates should be numbers, got {value}"
                         print(error_msg)
                         return False, error_msg
-                    
+                    xmin, ymin, xmax, ymax = value
+                    if not (xmin < xmax and ymin < ymax):
+                        error_msg = f"Bounding box coordinates must satisfy xmin < xmax and ymin < ymax, got {value}"
+                        print(error_msg)
+                        return False, error_msg
                     # Convert all coordinates to Decimal for DynamoDB compatibility
                     try:
                         for i, coord in enumerate(value):
