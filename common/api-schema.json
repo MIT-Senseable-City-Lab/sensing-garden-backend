@@ -122,6 +122,32 @@
         }
       }
     },
+    "/models/count": {
+      "get": {
+        "summary": "Get a count of models",
+        "parameters": [
+          {"$ref": "#/paths/~1models/get/parameters/0"},
+          {"$ref": "#/paths/~1models/get/parameters/1"},
+          {"$ref": "#/paths/~1models/get/parameters/2"},
+          {"$ref": "#/paths/~1models/get/parameters/3"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count of models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/detections": {
       "get": {
         "summary": "Get a list of detections",
@@ -238,6 +264,34 @@
         }
       }
     },
+    "/detections/count": {
+      "get": {
+        "summary": "Get a count of detections",
+        "parameters": [
+          {"$ref": "#/paths/~1detections/get/parameters/0"},
+          {"$ref": "#/paths/~1detections/get/parameters/1"},
+          {"$ref": "#/paths/~1detections/get/parameters/2"},
+          {"$ref": "#/paths/~1detections/get/parameters/3"},
+          {"$ref": "#/paths/~1detections/get/parameters/4"},
+          {"$ref": "#/paths/~1detections/get/parameters/5"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count of detections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/classifications": {
       "get": {
         "summary": "Get a list of classifications",
@@ -350,6 +404,34 @@
           },
           "500": {
             "description": "Server error"
+          }
+        }
+      }
+    },
+    "/classifications/count": {
+      "get": {
+        "summary": "Get a count of classifications",
+        "parameters": [
+          {"$ref": "#/paths/~1classifications/get/parameters/0"},
+          {"$ref": "#/paths/~1classifications/get/parameters/1"},
+          {"$ref": "#/paths/~1classifications/get/parameters/2"},
+          {"$ref": "#/paths/~1classifications/get/parameters/3"},
+          {"$ref": "#/paths/~1classifications/get/parameters/4"},
+          {"$ref": "#/paths/~1classifications/get/parameters/5"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count of classifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer"}
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -535,6 +617,34 @@
           },
           "500": {
             "description": "Server error"
+          }
+        }
+      }
+    },
+    "/videos/count": {
+      "get": {
+        "summary": "Get a count of videos",
+        "parameters": [
+          {"$ref": "#/paths/~1videos/get/parameters/0"},
+          {"$ref": "#/paths/~1videos/get/parameters/1"},
+          {"$ref": "#/paths/~1videos/get/parameters/2"},
+          {"$ref": "#/paths/~1videos/get/parameters/3"},
+          {"$ref": "#/paths/~1videos/get/parameters/4"},
+          {"$ref": "#/paths/~1videos/get/parameters/5"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count of videos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer"}
+                  }
+                }
+              }
+            }
           }
         }
       }

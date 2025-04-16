@@ -143,6 +143,36 @@ resource "aws_apigatewayv2_route" "get_videos" {
   authorization_type = "NONE"
 }
 
+# Count endpoints (moved to end of file)
+resource "aws_apigatewayv2_route" "get_models_count" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /models/count"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_detections_count" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /detections/count"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_classifications_count" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /classifications/count"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_videos_count" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /videos/count"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+
 # POST for videos
 resource "aws_apigatewayv2_route" "post_videos" {
   api_id    = aws_apigatewayv2_api.http_api.id

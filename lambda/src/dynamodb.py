@@ -236,6 +236,86 @@ def store_video_data(data):
         
     return _store_data(data, VIDEOS_TABLE, 'video')
 
+def count_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, end_time: str = None):
+    """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""
+    if table_type not in ['detection', 'classification', 'model', 'video']:
+        raise ValueError(f"Invalid table_type: {table_type}")
+    
+    table_name = {
+        'detection': DETECTIONS_TABLE,
+        'classification': CLASSIFICATIONS_TABLE,
+        'model': MODELS_TABLE,
+        'video': VIDEOS_TABLE
+    }[table_type]
+    table = dynamodb.Table(table_name)
+    from boto3.dynamodb.conditions import Key, Attr
+    query_params = {
+        'Select': 'COUNT'
+    }
+    # Filtering logic (same as query_data)
+    key_condition = None
+    filter_expression = None
+    if table_type in ['detection', 'classification', 'video']:
+        if device_id:
+            key_condition = Key('device_id').eq(device_id)
+        if start_time and end_time:
+            if key_condition is not None:
+                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
+            else:
+                key_condition = Key('timestamp').between(start_time, end_time)
+        elif start_time:
+            if key_condition is not None:
+                key_condition = key_condition & Key('timestamp').gte(start_time)
+            else:
+                key_condition = Key('timestamp').gte(start_time)
+        elif end_time:
+            if key_condition is not None:
+                key_condition = key_condition & Key('timestamp').lte(end_time)
+            else:
+                key_condition = Key('timestamp').lte(end_time)
+        if key_condition is not None:
+            query_params['KeyConditionExpression'] = key_condition
+        if model_id and table_type in ['detection', 'classification']:
+            filter_expression = Attr('model_id').eq(model_id)
+            query_params['FilterExpression'] = filter_expression
+        response = table.query(**query_params) if 'KeyConditionExpression' in query_params else table.scan(**query_params)
+    elif table_type == 'model':
+        # Models table: primary key is 'id', so we have to scan for device_id/model_id
+        filter_expression = None
+        if device_id:
+            filter_expression = Attr('device_id').eq(device_id)
+        if model_id:
+            if filter_expression is not None:
+                filter_expression = filter_expression & Attr('id').eq(model_id)
+            else:
+                filter_expression = Attr('id').eq(model_id)
+        if start_time:
+            if filter_expression is not None:
+                filter_expression = filter_expression & Attr('timestamp').gte(start_time)
+            else:
+                filter_expression = Attr('timestamp').gte(start_time)
+        if end_time:
+            if filter_expression is not None:
+                filter_expression = filter_expression & Attr('timestamp').lte(end_time)
+            else:
+                filter_expression = Attr('timestamp').lte(end_time)
+        if filter_expression is not None:
+            query_params['FilterExpression'] = filter_expression
+        response = table.scan(**query_params)
+    else:
+        response = table.scan(**query_params)
+    count = response.get('Count', 0)
+    # If paginated, sum all pages
+    while 'LastEvaluatedKey' in response:
+        if 'KeyConditionExpression' in query_params:
+            query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            response = table.query(**query_params)
+        else:
+            query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
+            response = table.scan(**query_params)
+        count += response.get('Count', 0)
+    return {'count': count}
+
 def query_data(table_type: str, device_id: str = None, model_id: str = None, start_time: str = None, 
                end_time: str = None, limit: int = 100, next_token: str = None, 
                sort_by: str = None, sort_desc: bool = False):

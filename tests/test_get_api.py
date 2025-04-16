@@ -146,11 +146,11 @@ def test_get_endpoint(endpoint_type, device_id, model_id, timestamp, start_time,
 
 def test_get_detection(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test the detection API GET endpoint"""
-    return test_get_endpoint('detection', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    test_get_endpoint('detection', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
 def test_get_classification(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test the classification API GET endpoint"""
-    return test_get_endpoint('classification', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
+    test_get_endpoint('classification', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
 def test_get_model():
     """
@@ -164,6 +164,29 @@ def test_get_model():
     print(f"All model IDs: {all_ids}")
     assert test_vars['model_id'] in all_ids, f"Test model_id {test_vars['model_id']} not found in model list!"
     print(f"✅ Newly created model_id {test_vars['model_id']} found in model list!")
+
+def test_count_endpoints():
+    """Test the new /count endpoints for all resource types using the client."""
+    from tests.test_utils import get_client
+    client = get_client()
+    # Models count
+    model_count = client.models.count()
+    print(f"Model count: {model_count}")
+    assert isinstance(model_count, int)
+    # Detections count
+    detection_count = client.detections.count()
+    print(f"Detection count: {detection_count}")
+    assert isinstance(detection_count, int)
+    # Classifications count
+    classification_count = client.classifications.count()
+    print(f"Classification count: {classification_count}")
+    assert isinstance(classification_count, int)
+    # Videos count
+    if client.videos:
+        video_count = client.videos.count()
+        print(f"Video count: {video_count}")
+        assert isinstance(video_count, int)
+    print("✅ Count endpoints tested successfully.")
 
 def test_get_video(device_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """
@@ -204,7 +227,7 @@ def verify_data_exists(device_id, model_id, timestamp, start_time, end_time, sor
         print("\n❌ No test data found for this device/model")
         print("You may want to run test_post_api.py first to create test data")
     
-    return detection_exists or classification_exists or model_exists or video_exists
+    assert detection_exists or classification_exists or model_exists or video_exists
 
 def test_recent_data(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
     """Test for recent data within the last 24 hours"""
@@ -219,7 +242,7 @@ def test_recent_data(device_id, model_id, timestamp, start_time, end_time, sort_
     print(f"\nChecking for data in the last {hours} hours...")
     print(f"Time range: {recent_start} to {recent_end}")
     
-    return test_get_endpoint('detection', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
+    test_get_endpoint('detection', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
 
 def test_sorting(endpoint_type, device_id, model_id, sort_by):
     """Test the sorting functionality for the specified endpoint"""
@@ -335,7 +358,7 @@ def test_sorting(endpoint_type, device_id, model_id, sort_by):
             
             if sorting_correct:
                 print(f"✅ Sorting verification passed for {sort_by}!")
-            return sorting_correct
+            assert sorting_correct
         else:
             print(f"⚠️ Not enough items to verify sorting order properly")
             assert True  # Still assert True as the API didn't fail

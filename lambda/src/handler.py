@@ -228,6 +228,25 @@ def _add_presigned_urls(result: Dict) -> Dict:
             item['video_url'] = generate_presigned_url(item['video_key'], item['video_bucket'])
     return result
 
+def handle_count_detections(event: Dict) -> Dict:
+    """Handle GET /detections/count endpoint"""
+    try:
+        params = event.get('queryStringParameters', {}) or {}
+        device_id = params.get('device_id')
+        model_id = params.get('model_id')
+        start_time = params.get('start_time')
+        end_time = params.get('end_time')
+        result = dynamodb.count_data('detection', device_id, model_id, start_time, end_time)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
 def handle_get_detections(event: Dict) -> Dict:
     """Handle GET /detections endpoint"""
     return _common_get_handler(event, 'detection', _add_presigned_urls)
@@ -256,6 +275,25 @@ def _store_detection(body: Dict) -> Dict:
 def handle_post_detection(event: Dict) -> Dict:
     """Handle POST /detections endpoint"""
     return _common_post_handler(event, 'detection', _store_detection)
+
+def handle_count_classifications(event: Dict) -> Dict:
+    """Handle GET /classifications/count endpoint"""
+    try:
+        params = event.get('queryStringParameters', {}) or {}
+        device_id = params.get('device_id')
+        model_id = params.get('model_id')
+        start_time = params.get('start_time')
+        end_time = params.get('end_time')
+        result = dynamodb.count_data('classification', device_id, model_id, start_time, end_time)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
 
 def handle_get_classifications(event: Dict) -> Dict:
     """Handle GET /classifications endpoint"""
@@ -288,6 +326,26 @@ def handle_post_classification(event: Dict) -> Dict:
     """Handle POST /classifications endpoint"""
     return _common_post_handler(event, 'classification', _store_classification)
 
+def handle_count_models(event: Dict) -> Dict:
+    """Handle GET /models/count endpoint"""
+    try:
+        # Parse query params
+        params = event.get('queryStringParameters', {}) or {}
+        device_id = params.get('device_id')
+        model_id = params.get('model_id')
+        start_time = params.get('start_time')
+        end_time = params.get('end_time')
+        result = dynamodb.count_data('model', device_id, model_id, start_time, end_time)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
 def handle_get_models(event: Dict) -> Dict:
     """Handle GET /models endpoint"""
     return _common_get_handler(event, 'model')
@@ -311,6 +369,24 @@ def _store_model(body: Dict) -> Dict:
 def handle_post_model(event: Dict) -> Dict:
     """Handle POST /models endpoint"""
     return _common_post_handler(event, 'model', _store_model)
+
+def handle_count_videos(event: Dict) -> Dict:
+    """Handle GET /videos/count endpoint"""
+    try:
+        params = event.get('queryStringParameters', {}) or {}
+        device_id = params.get('device_id')
+        start_time = params.get('start_time')
+        end_time = params.get('end_time')
+        result = dynamodb.count_data('video', device_id, None, start_time, end_time)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
 
 def handle_get_videos(event: Dict) -> Dict:
     """Handle GET /videos endpoint"""
@@ -539,9 +615,13 @@ def handler(event: Dict, context) -> Dict:
         handlers = {
             # Read endpoints (GET)
             ('GET', '/models'): handle_get_models,
+            ('GET', '/models/count'): handle_count_models,
             ('GET', '/detections'): handle_get_detections,
+            ('GET', '/detections/count'): handle_count_detections,
             ('GET', '/classifications'): handle_get_classifications,
+            ('GET', '/classifications/count'): handle_count_classifications,
             ('GET', '/videos'): handle_get_videos,
+            ('GET', '/videos/count'): handle_count_videos,
             # Write endpoints (POST)
             ('POST', '/models'): handle_post_model,
             ('POST', '/detections'): handle_post_detection,

@@ -23,13 +23,13 @@ from .test_utils import (
     print_response
 )
 
-def test_add_classification(
-    device_id,
-    model_id,
-    timestamp=None
-) -> Tuple[bool, Optional[str]]:
+def test_add_classification(device_id, model_id, timestamp=None):
+    success, request_timestamp = _add_classification(device_id, model_id, timestamp)
+    assert success, f"Classification test failed at {request_timestamp}"
+
+def _add_classification(device_id, model_id, timestamp=None):
     """
-    Test uploading a classification to the Sensing Garden API.
+    Helper function to upload a classification to the Sensing Garden API.
     
     Args:
         device_id: Device ID to use for testing
@@ -86,19 +86,20 @@ def test_add_classification(
         print(f"❌ Error in test: {str(e)}")
         success = False
     
-    assert success, f"Classification test failed at {request_timestamp}"
+    return success, request_timestamp
 
-def test_add_classification_with_invalid_model(
-    device_id,
-    nonexistent_model_id,
-    timestamp=None
-) -> Tuple[bool, Optional[str]]:
+def test_add_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp=None):
+    success, request_timestamp = _add_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp)
+    assert success, f"Classification with invalid model_id was accepted unexpectedly at {request_timestamp}"
+
+def _add_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp=None):
     """
-    Test uploading a classification with an invalid model ID.
+    Helper function to test uploading a classification with an invalid model ID.
     This should fail with an appropriate error message.
     
     Args:
         device_id: Device ID to use for testing
+        nonexistent_model_id: Non-existent model ID to use for testing
         timestamp: Optional timestamp to use (defaults to current time)
         
     Returns:
@@ -156,16 +157,13 @@ def test_add_classification_with_invalid_model(
         print(f"❌ Error in test: {str(e)}")
         return False, request_timestamp
 
-def test_fetch_classifications(
-    device_id: str,
-    model_id: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    sort_by: Optional[str] = None,
-    sort_desc: bool = False
-) -> Tuple[bool, Optional[Dict[str, Any]]]:
+def test_fetch_classifications(device_id: str, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False):
+    success, data = _fetch_classifications(device_id, model_id, start_time, end_time, sort_by, sort_desc)
+    assert success, f"No classifications found for device {device_id} in the specified time range. Data: {data}"
+
+def _fetch_classifications(device_id: str, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False):
     """
-    Test retrieving classifications from the Sensing Garden API.
+    Helper function to retrieve classifications from the Sensing Garden API.
     
     Args:
         device_id: Device ID to filter by
@@ -241,7 +239,7 @@ def test_fetch_classifications(
         print(f"❌ Error in test: {str(e)}")
         return False, None
 
-def add_test_classifications(
+def _add_test_classifications(
     device_id: str,
     model_id: str,
     num_classifications: int = 3

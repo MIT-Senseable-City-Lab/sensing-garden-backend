@@ -77,6 +77,35 @@ class ClassificationsClient:
         # Make API request
         return self._client.post("classifications", payload)
     
+    def count(
+        self,
+        device_id: Optional[str] = None,
+        model_id: Optional[str] = None,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None
+    ) -> int:
+        """
+        Get the count of classifications matching the filter parameters.
+        Args:
+            device_id: Optional filter by device ID
+            model_id: Optional filter by model ID
+            start_time: Optional start time for filtering (ISO-8601)
+            end_time: Optional end time for filtering (ISO-8601)
+        Returns:
+            Integer count of matching classifications
+        Raises:
+            requests.HTTPError: For HTTP error responses
+        """
+        params = build_common_params(
+            device_id=device_id,
+            model_id=model_id,
+            start_time=start_time,
+            end_time=end_time,
+            limit=None, next_token=None, sort_by=None, sort_desc=None
+        )
+        resp = self._client.get("classifications/count", params)
+        return resp["count"]
+
     def fetch(
         self,
         device_id: Optional[str] = None,

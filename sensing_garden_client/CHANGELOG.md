@@ -2,6 +2,16 @@
 
 All notable changes to the Sensing Garden Client will be documented in this file.
 
+## [0.0.8] - 2025-04-15
+
+### Added
+- `.count()` methods for models, detections, classifications, and videos clients for efficient counting without retrieving all data
+- Documentation and usage examples for count endpoints in the README
+
+### Changed
+- All test helpers now use `assert` and do not return values, ensuring pytest best practices
+- Recommend using Poetry to run tests: `poetry run pytest`
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

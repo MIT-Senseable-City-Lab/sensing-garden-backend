@@ -57,7 +57,11 @@ def test_create_model(model_id=None, timestamp=None) -> None:
         success = False
     assert success, f"Model test failed at {request_timestamp}"
 
-def test_fetch_models(
+def test_fetch_models(model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False):
+    success, response_data = _fetch_models(model_id, start_time, end_time, sort_by, sort_desc)
+    assert success, f"Model fetch failed. Data: {response_data}"
+
+def _fetch_models(
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,

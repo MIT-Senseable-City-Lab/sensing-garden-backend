@@ -19,6 +19,12 @@ pip install sensing_garden_client/sensing_garden_client
 
 ## Usage
 
+**New in v0.0.8:**
+- Added `.count()` methods for models, detections, classifications, and videos clients for efficient counting without retrieving all data.
+- All test helpers now use `assert` and do not return values, ensuring pytest best practices.
+- Use Poetry to run tests: `poetry run pytest`
+
+
 **New in v0.0.7:** The client is published on PyPI and uses constructor-based initialization. All tests use the real client logic (no mocks/stubs). Legacy endpoint files have been removed—use the client API for all operations.
 
 ### Installation
@@ -36,6 +42,25 @@ poetry add sensing_garden_client
 ```
 
 ### Basic Usage
+
+#### Count Endpoints Example
+
+You can efficiently count the number of models, detections, classifications, or videos matching filter parameters without retrieving all data:
+
+```python
+# Count models
+model_count = sgc.models.count()
+
+# Count detections for a device
+count = sgc.detections.count(device_id="device-123")
+
+# Count classifications for a model
+class_count = sgc.classifications.count(model_id="model-456")
+
+# Count videos for a device in a time range
+video_count = sgc.videos.count(device_id="device-123", start_time="2023-06-01T00:00:00Z", end_time="2023-06-02T00:00:00Z")
+```
+
 
 The modern API provides a more intuitive, object-oriented interface:
 
@@ -132,6 +157,11 @@ sgc = sensing_garden_client.SensingGardenClient(
 ```
 
 ## Features
+
+- Efficient `.count()` methods for all major resources (models, detections, classifications, videos)
+- All test helpers use `assert` for pytest compatibility
+- Poetry-based test and dependency management
+
 
 - Modern, intuitive API with domain-specific clients
 - GET operations for models, detections, classifications, and videos

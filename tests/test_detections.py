@@ -20,12 +20,11 @@ from .test_utils import (
     print_response
 )
 
-def test_add_detection(
-    device_id,
-    model_id,
-    timestamp=None,
-    num_detections=3
-) -> Tuple[bool, Optional[str]]:
+def test_add_detection(device_id, model_id, timestamp=None, num_detections=3):
+    success, request_timestamp = _add_detection(device_id, model_id, timestamp, num_detections)
+    assert success, f"Detection test failed at {request_timestamp}"
+
+def _add_detection(device_id, model_id, timestamp=None, num_detections=3):
     """
     Test uploading a detection to the Sensing Garden API.
     
@@ -65,7 +64,6 @@ def test_add_detection(
         print_response(response_data)
         print(f"\n✅ Detection upload successful!")
         success = True
-            
     except requests.exceptions.RequestException as e:
         print(f"❌ Detection upload failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
@@ -74,10 +72,13 @@ def test_add_detection(
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
         success = False
-    
-    assert success, f"Detection test failed at {request_timestamp}"
+    return success, request_timestamp
 
-def test_add_detection_with_invalid_model(
+def test_add_detection_with_invalid_model(device_id, nonexistent_model_id, timestamp=None, num_detections=3):
+    success, request_timestamp = _add_detection_with_invalid_model(device_id, nonexistent_model_id, timestamp, num_detections)
+    assert success, f"Detection with invalid model_id was accepted unexpectedly at {request_timestamp}"
+
+def _add_detection_with_invalid_model(
     device_id,
     nonexistent_model_id,
     timestamp=None,
@@ -136,7 +137,11 @@ def test_add_detection_with_invalid_model(
         print(f"❌ Error in test: {str(e)}")
         return False, request_timestamp
 
-def test_fetch_detections(
+def test_fetch_detections(device_id: str, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False):
+    success, data = _fetch_detections(device_id, model_id, start_time, end_time, sort_by, sort_desc)
+    assert success, f"No detections found for device {device_id} in the specified time range. Data: {data}"
+
+def _fetch_detections(
     device_id: str,
     model_id: Optional[str] = None,
     start_time: Optional[str] = None,
