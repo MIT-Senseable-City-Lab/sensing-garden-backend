@@ -47,6 +47,61 @@ def add_device(device_id: str, created: str = None):
         result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
     return result
 
+def store_device_if_not_exists(device_id: str):
+    """
+    Check if a device exists in the devices table. If not, add it. Idempotent.
+    """
+    if not device_id:
+        raise ValueError("device_id is required")
+    table = dynamodb.Table(DEVICES_TABLE)
+    try:
+        response = table.get_item(Key={'device_id': device_id})
+        if 'Item' in response and response['Item'].get('device_id') == device_id:
+            # Device already exists
+            return {'statusCode': 200, 'body': json.dumps({'message': 'Device already exists', 'device_id': device_id})}
+        # Device does not exist, add it
+        return add_device(device_id)
+    except Exception as e:
+        print(f"[store_device_if_not_exists] ERROR: {str(e)}")
+        raise
+
+    """
+    Check if a device exists in the devices table. If not, add it. Idempotent.
+    """
+    if not device_id:
+        raise ValueError("device_id is required")
+    table = dynamodb.Table(DEVICES_TABLE)
+    try:
+        response = table.get_item(Key={'device_id': device_id})
+        if 'Item' in response and response['Item'].get('device_id') == device_id:
+            # Device already exists
+            return {'statusCode': 200, 'body': json.dumps({'message': 'Device already exists', 'device_id': device_id})}
+        # Device does not exist, add it
+        return add_device(device_id)
+    except Exception as e:
+        print(f"[store_device_if_not_exists] ERROR: {str(e)}")
+        raise
+
+    """Add a device to the devices table."""
+    table = dynamodb.Table(DEVICES_TABLE)
+    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
+    if not device_id:
+        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
+        return result
+    item = {'device_id': device_id}
+    if created:
+        item['created'] = created
+    else:
+        from datetime import datetime, timezone
+        item['created'] = datetime.now(timezone.utc).isoformat()
+    try:
+        table.put_item(Item=item)
+        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device added', 'device': item}, cls=DynamoDBEncoder)}
+    except Exception as e:
+        print(f"[add_device] ERROR: {str(e)}")
+        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+    return result
+
 def delete_device(device_id: str):
     """Delete a device from the devices table by device_id."""
     table = dynamodb.Table(DEVICES_TABLE)

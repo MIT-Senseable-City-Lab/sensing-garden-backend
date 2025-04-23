@@ -518,6 +518,14 @@ def handle_post_video_register(event: Dict) -> Dict:
             # Generate a new timestamp if not provided
             timestamp = datetime.now(timezone.utc).isoformat()
         
+        # Ensure device is present in devices table
+        device_id = body.get('device_id')
+        if device_id:
+            try:
+                dynamodb.store_device_if_not_exists(device_id)
+            except Exception as e:
+                print(f"Warning: Failed to store device_id {device_id} in devices table: {str(e)}")
+
         # Prepare data for DynamoDB
         data = {
             'device_id': body['device_id'],
