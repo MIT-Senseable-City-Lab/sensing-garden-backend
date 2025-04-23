@@ -2,6 +2,14 @@
 
 All notable changes to the Sensing Garden Client will be documented in this file.
 
+## [0.0.9] - 2025-04-23
+
+### Changed
+- `get_devices` now supports filtering, pagination, and sorting options matching backend API
+- Client, Lambda handler, and tests updated for new device management logic
+- Improved error handling and logging for device API
+- All tests passing, including new video checks in recent data test
+
 ## [0.0.8] - 2025-04-15
 
 ### Added
