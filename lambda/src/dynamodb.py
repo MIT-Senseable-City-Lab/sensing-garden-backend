@@ -26,6 +26,42 @@ DEVICES_TABLE = 'sensing-garden-devices'
 
 import traceback
 
+def add_device(device_id: str, created: str = None):
+    """Add a device to the devices table."""
+    table = dynamodb.Table(DEVICES_TABLE)
+    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
+    if not device_id:
+        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
+        return result
+    item = {'device_id': device_id}
+    if created:
+        item['created'] = created
+    else:
+        from datetime import datetime, timezone
+        item['created'] = datetime.now(timezone.utc).isoformat()
+    try:
+        table.put_item(Item=item)
+        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device added', 'device': item}, cls=DynamoDBEncoder)}
+    except Exception as e:
+        print(f"[add_device] ERROR: {str(e)}")
+        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+    return result
+
+def delete_device(device_id: str):
+    """Delete a device from the devices table by device_id."""
+    table = dynamodb.Table(DEVICES_TABLE)
+    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
+    if not device_id:
+        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
+        return result
+    try:
+        table.delete_item(Key={'device_id': device_id})
+        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device deleted', 'device_id': device_id}, cls=DynamoDBEncoder)}
+    except Exception as e:
+        print(f"[delete_device] ERROR: {str(e)}")
+        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+    return result
+
 def get_devices(device_id: str = None, created: str = None, limit: int = 100, next_token: str = None, sort_by: str = None, sort_desc: bool = False):
     """Query devices table with optional filters and pagination."""
     from boto3.dynamodb.conditions import Key, Attr

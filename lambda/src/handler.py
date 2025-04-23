@@ -352,37 +352,72 @@ def handle_get_models(event: Dict) -> Dict:
 
 def handle_get_devices(event: Dict) -> Dict:
     """Handle GET /devices endpoint with filtering, pagination, and sorting."""
-    try:
-        params = event.get('queryStringParameters') or {}
-        device_id = params.get('device_id')
-        created = params.get('created')
-        limit = int(params['limit']) if params.get('limit') else 100
-        next_token = params.get('next_token')
-        sort_by = params.get('sort_by')
-        sort_desc = params.get('sort_desc', 'false').lower() == 'true'
+    params = event.get('queryStringParameters', {}) or {}
+    device_id = params.get('device_id')
+    created = params.get('created')
+    limit = int(params.get('limit', 100))
+    next_token = params.get('next_token')
+    sort_by = params.get('sort_by')
+    sort_desc = params.get('sort_desc', 'false').lower() == 'true'
+    result = dynamodb.get_devices(device_id, created, limit, next_token, sort_by, sort_desc)
+    return {
+        'statusCode': 200,
+        'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+    }
 
-        result = dynamodb.get_devices(
-            device_id=device_id,
-            created=created,
-            limit=limit,
-            next_token=next_token,
-            sort_by=sort_by,
-            sort_desc=sort_desc
-        )
-        return {
-            'statusCode': 200,
-            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
-        }
+def handle_post_device(event: Dict) -> Dict:
+    """Handle POST /devices endpoint."""
+    try:
+        body = event.get('body')
+        if body is None:
+            raise ValueError("Request body is required")
+        if isinstance(body, str):
+            body = json.loads(body)
+        device_id = body.get('device_id')
+        created = body.get('created')
+        if not device_id:
+            raise ValueError("device_id is required in body")
+        return dynamodb.add_device(device_id, created)
     except Exception as e:
-        print(f"Error in handle_get_devices: {str(e)}")
+        print(f"[handle_post_device] ERROR: {str(e)}")
         return {
-            'statusCode': 500,
+            'statusCode': 400,
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
+def handle_delete_device(event: Dict) -> Dict:
+    """Handle DELETE /devices endpoint."""
+    import traceback
+    try:
+        body = event.get('body')
+        print(f"[handle_delete_device] Raw body: {body}")
+        if body is None:
+            raise ValueError("Request body is required")
+        if isinstance(body, str):
+            try:
+                body_json = json.loads(body)
+            except Exception as decode_err:
+                print(f"[handle_delete_device] Could not decode body: {decode_err}")
+                raise ValueError(f"Could not decode body: {decode_err}")
+        else:
+            body_json = body
+        device_id = body_json.get('device_id')
+        if not device_id:
+            raise ValueError("device_id is required in body")
+        resp = dynamodb.delete_device(device_id)
+        print(f"[handle_delete_device] DynamoDB response: {resp}")
+        return resp
+    except Exception as e:
+        trace = traceback.format_exc()
+        print(f"[handle_delete_device] ERROR: {str(e)}\n{trace}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e), 'trace': trace, 'event': str(event)}, cls=dynamodb.DynamoDBEncoder)
+        }
 
 def _store_model(body: Dict) -> Dict:
     """Process and store model data"""
+    # ... (rest of the code remains the same)
     # Prepare data for DynamoDB
     data = {
         'id': body['model_id'],  # Use model_id as the primary key (id)
@@ -628,6 +663,10 @@ def handler(event: Dict, context) -> Dict:
         # Routing logic
         if http_method == 'GET' and path == '/devices':
             return handle_get_devices(event)
+        elif http_method == 'POST' and path == '/devices':
+            return handle_post_device(event)
+        elif http_method == 'DELETE' and path == '/devices':
+            return handle_delete_device(event)
         elif http_method == 'GET' and path == '/detections':
             return handle_get_detections(event)
         elif http_method == 'GET' and path == '/classifications':

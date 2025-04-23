@@ -155,6 +155,7 @@ def test_get_classification(device_id, model_id, timestamp, start_time, end_time
 def test_get_devices(client):
     # Test fetch all
     items, next_token = client.get_devices()
+    print("Devices returned by get_devices:", items)
     assert isinstance(items, list)
     for device in items:
         assert 'device_id' in device

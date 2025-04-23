@@ -91,6 +91,69 @@ class BaseClient:
 
 
 class SensingGardenClient:
+    def add_device(self, device_id: str, created: str = None) -> dict:
+        """
+        Add a device to the sensing-garden backend.
+        Args:
+            device_id: Unique device identifier
+            created: Optional ISO timestamp string
+        Returns:
+            API response as dict
+        Raises:
+            ValueError, requests.HTTPError
+        """
+        payload = {'device_id': device_id}
+        if created:
+            payload['created'] = created
+        resp = self._base_client.post("devices", payload)
+        # Always parse the body as JSON and attach statusCode
+        if isinstance(resp, dict) and 'body' in resp and 'statusCode' in resp:
+            parsed = resp.copy()
+            parsed.update(json.loads(resp['body']))
+            return parsed
+        # Fallback: if resp is just dict with message/error, mimic statusCode
+        if isinstance(resp, dict):
+            if 'message' in resp:
+                return {'statusCode': 200, **resp}
+            if 'error' in resp:
+                return {'statusCode': 400, **resp}
+        return resp
+
+    def delete_device(self, device_id: str) -> dict:
+        """
+        Delete a device from the sensing-garden backend.
+        Args:
+            device_id: Unique device identifier
+        Returns:
+            API response as dict
+        Raises:
+            ValueError, requests.HTTPError
+        """
+        if not self._base_client.api_key:
+            raise ValueError("API key is required for DELETE operations")
+        url = f"{self._base_client.base_url}/devices"
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self._base_client.api_key
+        }
+        payload = {'device_id': device_id}
+        import requests
+        response = requests.delete(url, json=payload, headers=headers)
+        response.raise_for_status()
+        resp = response.json()
+        # Always parse the body as JSON and attach statusCode
+        if isinstance(resp, dict) and 'body' in resp and 'statusCode' in resp:
+            parsed = resp.copy()
+            parsed.update(json.loads(resp['body']))
+            return parsed
+        # Fallback: if resp is just dict with message/error, mimic statusCode
+        if isinstance(resp, dict):
+            if 'message' in resp:
+                return {'statusCode': 200, **resp}
+            if 'error' in resp:
+                return {'statusCode': 400, **resp}
+        return resp
+
     def get_devices(self, device_id=None, created=None, limit=100, next_token=None, sort_by=None, sort_desc=False):
         """Fetch devices from the sensing-garden backend with optional filters and pagination."""
         params = {}

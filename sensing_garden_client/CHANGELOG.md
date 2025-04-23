@@ -2,6 +2,17 @@
 
 All notable changes to the Sensing Garden Client will be documented in this file.
 
+## [0.0.10] - 2025-04-23
+
+### Added
+- One-time migration script for syncing device IDs from videos table to devices table
+- Automated device ID deduplication and migration logic
+
+### Changed
+- Improved error handling and logging for device and video APIs
+- Bugfixes and stability improvements for device management endpoints
+- All tests passing after migration and Lambda redeploy
+
 ## [0.0.9] - 2025-04-23
 
 ### Changed
