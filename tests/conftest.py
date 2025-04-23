@@ -41,6 +41,11 @@ def endpoint_type():
     return test_vars["endpoint_type"]
 
 @pytest.fixture
+def client():
+    from tests.test_utils import get_client
+    return get_client()
+
+@pytest.fixture
 def sort_by():
     return test_vars["sort_by"]
 

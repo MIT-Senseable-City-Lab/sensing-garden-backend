@@ -37,6 +37,24 @@ resource "aws_dynamodb_table" "sensor_detections" {
   }
 }
 
+# Create devices table
+resource "aws_dynamodb_table" "devices" {
+  name         = "sensing-garden-devices"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "device_id"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
+  }
+}
+
 # Create classifications table
 resource "aws_dynamodb_table" "sensor_classifications" {
   name         = "sensing-garden-classifications"

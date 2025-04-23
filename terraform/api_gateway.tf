@@ -144,6 +144,13 @@ resource "aws_apigatewayv2_route" "get_videos" {
 }
 
 # Count endpoints (moved to end of file)
+resource "aws_apigatewayv2_route" "get_devices" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /devices"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 resource "aws_apigatewayv2_route" "get_models_count" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /models/count"
