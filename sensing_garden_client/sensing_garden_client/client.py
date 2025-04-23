@@ -91,6 +91,24 @@ class BaseClient:
 
 
 class SensingGardenClient:
+    def get_devices(self, device_id=None, created=None, limit=100, next_token=None, sort_by=None, sort_desc=False):
+        """Fetch devices from the sensing-garden backend with optional filters and pagination."""
+        params = {}
+        if device_id is not None:
+            params['device_id'] = device_id
+        if created is not None:
+            params['created'] = created
+        if limit is not None:
+            params['limit'] = str(limit)
+        if next_token is not None:
+            params['next_token'] = next_token
+        if sort_by is not None:
+            params['sort_by'] = sort_by
+        if sort_desc:
+            params['sort_desc'] = 'true'
+        response = self._base_client.get("devices", params=params)
+        return response.get('items', []), response.get('next_token')
+
     """Main client for interacting with the Sensing Garden API."""
     
     def __init__(

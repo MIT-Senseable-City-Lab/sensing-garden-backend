@@ -350,6 +350,37 @@ def handle_get_models(event: Dict) -> Dict:
     """Handle GET /models endpoint"""
     return _common_get_handler(event, 'model')
 
+def handle_get_devices(event: Dict) -> Dict:
+    """Handle GET /devices endpoint with filtering, pagination, and sorting."""
+    try:
+        params = event.get('queryStringParameters') or {}
+        device_id = params.get('device_id')
+        created = params.get('created')
+        limit = int(params['limit']) if params.get('limit') else 100
+        next_token = params.get('next_token')
+        sort_by = params.get('sort_by')
+        sort_desc = params.get('sort_desc', 'false').lower() == 'true'
+
+        result = dynamodb.get_devices(
+            device_id=device_id,
+            created=created,
+            limit=limit,
+            next_token=next_token,
+            sort_by=sort_by,
+            sort_desc=sort_desc
+        )
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        print(f"Error in handle_get_devices: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+
 def _store_model(body: Dict) -> Dict:
     """Process and store model data"""
     # Prepare data for DynamoDB
@@ -494,6 +525,14 @@ def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[
     try:
         # Parse request body
         body = _parse_request(event)
+
+        # Save device_id in devices table if present
+        device_id = body.get('device_id')
+        if device_id:
+            try:
+                dynamodb.store_device_if_not_exists(device_id)
+            except Exception as e:
+                print(f"Warning: Failed to store device_id {device_id} in devices table: {str(e)}")
         
         # Validate request based on data type
         request_type = f"{data_type}_request"
@@ -578,86 +617,48 @@ def handler(event: Dict, context) -> Dict:
             if isinstance(event[key], dict):
                 print(f"Event[{key}] sub-keys: {list(event[key].keys())}")
                 if key == 'requestContext' and 'http' in event[key]:
-                    print(f"HTTP context: {json.dumps(event[key]['http'], cls=dynamodb.DynamoDBEncoder)}")
-            else:
-                if key != 'body':  # Don't print body which might be large
-                    print(f"Event[{key}] = {event[key]}")
-                else:
-                    print(f"Event has body of type {type(event['body']).__name__}")
-                    if isinstance(event['body'], str):
-                        print(f"Body starts with: {event['body'][:30]}...")
+                    print(f"HTTP method: {event[key]['http'].get('method')}, Path: {event[key]['http'].get('path')}")
         
-        # HTTP API v2 stores method and path differently
-        http_method = event.get('requestContext', {}).get('http', {}).get('method')
+        # Determine HTTP method and path
+        http_method = event.get('requestContext', {}).get('http', {}).get('method', '')
         path = event.get('requestContext', {}).get('http', {}).get('path', '')
         
-        # If the HTTP API structure isn't found, fall back to v1 format
-        if not http_method or not path:
-            http_method = event.get('httpMethod')
-            path = event.get('path', '')
-            print(f"Using fallback method detection: {http_method} {path}")
+        print(f"Dispatching to handler for {http_method} {path}")
+        
+        # Routing logic
+        if http_method == 'GET' and path == '/devices':
+            return handle_get_devices(event)
+        elif http_method == 'GET' and path == '/detections':
+            return handle_get_detections(event)
+        elif http_method == 'GET' and path == '/classifications':
+            return handle_get_classifications(event)
+        elif http_method == 'GET' and path == '/models':
+            return handle_get_models(event)
+        elif http_method == 'GET' and path == '/videos':
+            return handle_get_videos(event)
+        elif http_method == 'POST' and path == '/detections':
+            return handle_post_detection(event)
+        elif http_method == 'POST' and path == '/classifications':
+            return handle_post_classification(event)
+        elif http_method == 'POST' and path == '/models':
+            return handle_post_model(event)
+        elif http_method == 'POST' and path == '/videos':
+            return handle_post_video(event)
+        elif http_method == 'POST' and path == '/videos/register':
+            return handle_post_video_register(event)
+        elif http_method == 'GET' and path == '/detections/count':
+            return handle_count_detections(event)
+        elif http_method == 'GET' and path == '/classifications/count':
+            return handle_count_classifications(event)
+        elif http_method == 'GET' and path == '/models/count':
+            return handle_count_models(event)
+        elif http_method == 'GET' and path == '/videos/count':
+            return handle_count_videos(event)
         else:
-            print(f"Using HTTP API v2 method detection: {http_method} {path}")
-            
-        # Special handling for HTTP API v2 POST requests
-        if http_method == 'POST' and 'body' in event:
-            print(f"API Gateway is sending POST body of type: {type(event['body']).__name__}")
-            if isinstance(event['body'], str):
-                # Try to parse it to see if it's properly formatted
-                try:
-                    test_parse = json.loads(event['body'])
-                    print(f"Body parsed successfully as JSON with keys: {list(test_parse.keys())}")
-                except json.JSONDecodeError as e:
-                    print(f"Body is not valid JSON: {str(e)}")
-                    print(f"Body content (first 100 chars): {event['body'][:100]}")
-        
-        # Define endpoint handlers using only plural endpoints for consistency
-        handlers = {
-            # Read endpoints (GET)
-            ('GET', '/models'): handle_get_models,
-            ('GET', '/models/count'): handle_count_models,
-            ('GET', '/detections'): handle_get_detections,
-            ('GET', '/detections/count'): handle_count_detections,
-            ('GET', '/classifications'): handle_get_classifications,
-            ('GET', '/classifications/count'): handle_count_classifications,
-            ('GET', '/videos'): handle_get_videos,
-            ('GET', '/videos/count'): handle_count_videos,
-            # Write endpoints (POST)
-            ('POST', '/models'): handle_post_model,
-            ('POST', '/detections'): handle_post_detection,
-            ('POST', '/classifications'): handle_post_classification,
-            ('POST', '/videos'): handle_post_video,
-            # Video registration endpoint (for direct S3 uploads)
-            ('POST', '/videos/register'): handle_post_video_register
-        }
-        
-        print(f"Processing {http_method} {path} request")
-        
-        # Find handler for the endpoint
-        handler_func = handlers.get((http_method, path))
-        if not handler_func:
-            print(f"No handler found for {http_method} {path}")
-            print(f"Available handlers: {list(handlers.keys())}")
             return {
                 'statusCode': 404,
-                'body': json.dumps({
-                    'error': f'No handler found for {http_method} {path}'
-                }, cls=dynamodb.DynamoDBEncoder)
+                'body': json.dumps({'error': f'No handler for {http_method} {path}'}, cls=dynamodb.DynamoDBEncoder)
             }
-        
-        print(f"Found handler {handler_func.__name__} for {http_method} {path}")
-        
-        # Call the handler
-        result = handler_func(event)
-        print(f"Handler result: {json.dumps(result, cls=dynamodb.DynamoDBEncoder)}")
-        
-        # Add CORS headers
-        if 'headers' not in result:
-            result['headers'] = {}
-        result['headers'].update({
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        })
         
         return result
         

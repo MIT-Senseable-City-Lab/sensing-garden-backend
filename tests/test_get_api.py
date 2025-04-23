@@ -152,6 +152,25 @@ def test_get_classification(device_id, model_id, timestamp, start_time, end_time
     """Test the classification API GET endpoint"""
     test_get_endpoint('classification', device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc)
 
+def test_get_devices(client):
+    # Test fetch all
+    items, next_token = client.get_devices()
+    assert isinstance(items, list)
+    for device in items:
+        assert 'device_id' in device
+        assert 'created' in device
+    # Test limit and pagination
+    items2, next_token2 = client.get_devices(limit=1)
+    assert len(items2) <= 1
+    if next_token2:
+        items3, _ = client.get_devices(limit=1, next_token=next_token2)
+        assert isinstance(items3, list)
+    # Test filtering (if items exist)
+    if items:
+        device_id = items[0]['device_id']
+        filtered, _ = client.get_devices(device_id=device_id)
+        assert all(d['device_id'] == device_id for d in filtered)
+
 def test_get_model():
     """
     Fetch all models and assert the test model is present in the results.

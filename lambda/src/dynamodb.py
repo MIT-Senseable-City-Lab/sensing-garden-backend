@@ -22,6 +22,54 @@ DETECTIONS_TABLE = 'sensing-garden-detections'
 CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
 MODELS_TABLE = 'sensing-garden-models'
 VIDEOS_TABLE = 'sensing-garden-videos'
+DEVICES_TABLE = 'sensing-garden-devices'
+
+import traceback
+
+def get_devices(device_id: str = None, created: str = None, limit: int = 100, next_token: str = None, sort_by: str = None, sort_desc: bool = False):
+    """Query devices table with optional filters and pagination."""
+    from boto3.dynamodb.conditions import Key, Attr
+    table = dynamodb.Table(DEVICES_TABLE)
+    base_params = {}
+    try:
+        base_params['Limit'] = min(limit, 100) if limit else 100
+        if next_token:
+            try:
+                base_params['ExclusiveStartKey'] = json.loads(next_token)
+            except json.JSONDecodeError:
+                raise ValueError('Invalid next_token format')
+        filter_expressions = []
+        if device_id:
+            filter_expressions.append(Attr('device_id').eq(device_id))
+        if created:
+            filter_expressions.append(Attr('created').eq(created))
+        if filter_expressions:
+            combined_filter = filter_expressions[0]
+            for expr in filter_expressions[1:]:
+                combined_filter = combined_filter & expr
+            base_params['FilterExpression'] = combined_filter
+        # Only set projection if both fields are known to exist
+        base_params['ProjectionExpression'] = "device_id, created"
+        print(f"[get_devices] SCAN params: {base_params}")
+        response = table.scan(**base_params)
+        items = response.get('Items', [])
+        if sort_by and items:
+            if any(sort_by in item for item in items):
+                reverse_sort = bool(sort_desc)
+                items = sorted(
+                    items,
+                    key=lambda x: (sort_by in x, x.get(sort_by)),
+                    reverse=reverse_sort
+                )
+                print(f"[get_devices] Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
+        result = {
+            'items': items,
+            'next_token': json.dumps(response.get('LastEvaluatedKey')) if response.get('LastEvaluatedKey') else None
+        }
+        return result
+    except Exception as e:
+        print(f"[get_devices] ERROR: {str(e)}\n{traceback.format_exc()}")
+        return {'items': [], 'next_token': None, 'error': str(e), 'traceback': traceback.format_exc()}
 
 def _load_schema():
     """Load the DB schema from the appropriate location"""
