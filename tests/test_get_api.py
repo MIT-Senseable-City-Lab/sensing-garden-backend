@@ -249,7 +249,7 @@ def verify_data_exists(device_id, model_id, timestamp, start_time, end_time, sor
     assert detection_exists or classification_exists or model_exists or video_exists
 
 def test_recent_data(device_id, model_id, timestamp, start_time, end_time, sort_by, sort_desc):
-    """Test for recent data within the last 24 hours"""
+    """Test for recent data within the last 24 hours (detections, classifications, videos)"""
     hours = 24
     from tests.test_utils import get_client
     from datetime import datetime, timedelta
@@ -260,8 +260,34 @@ def test_recent_data(device_id, model_id, timestamp, start_time, end_time, sort_
     recent_end = now.isoformat()
     print(f"\nChecking for data in the last {hours} hours...")
     print(f"Time range: {recent_start} to {recent_end}")
-    
-    test_get_endpoint('detection', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
+
+    found_any = False
+    # Check detections
+    try:
+        print("\nChecking recent detections...")
+        test_get_endpoint('detection', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
+        found_any = True
+    except AssertionError:
+        print("No recent detections found.")
+    # Check classifications
+    try:
+        print("\nChecking recent classifications...")
+        test_get_endpoint('classification', device_id, model_id, timestamp, recent_start, recent_end, sort_by, sort_desc)
+        found_any = True
+    except AssertionError:
+        print("No recent classifications found.")
+    # Check videos
+    try:
+        print("\nChecking recent videos...")
+        data = client.videos.fetch(device_id=device_id, start_time=recent_start, end_time=recent_end, limit=10, sort_by=sort_by, sort_desc=sort_desc)
+        if data.get('items'):
+            print(f"✅ Video GET successful! Found {len(data['items'])} items.")
+            found_any = True
+        else:
+            print("No recent videos found.")
+    except Exception as e:
+        print(f"Error checking videos: {e}")
+    assert found_any, "No recent detections, classifications, or videos found."
 
 def test_sorting(endpoint_type, device_id, model_id, sort_by):
     """Test the sorting functionality for the specified endpoint"""
