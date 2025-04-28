@@ -120,7 +120,7 @@ def _upload_video_to_s3(video_data, device_id, timestamp=None, content_type='vid
 
 
 
-def _parse_request(event):
+def _parse_request(event: Dict[str, Any]) -> Dict[str, Any]:
     """Parse the incoming request from API Gateway or direct invocation"""
     # Print the event structure for debugging
     print(f"Event structure: {json.dumps({k: type(v).__name__ for k, v in event.items()}, cls=dynamodb.DynamoDBEncoder)}")
@@ -154,7 +154,7 @@ def _parse_request(event):
     
     return body
 
-def _validate_api_request(body, request_type):
+def _validate_api_request(body: Dict[str, Any], request_type: str) -> (bool, str):
     """Validate API request against schema"""
     # Map from request_type to actual schema name in the OpenAPI spec
     schema_type_map = {
@@ -197,7 +197,7 @@ def _validate_api_request(body, request_type):
     
     return True, ""
 
-def generate_presigned_url(s3_key, bucket=None, expiration=3600):
+def generate_presigned_url(s3_key: str, bucket: Optional[str] = None, expiration: int = 3600) -> Optional[str]:
     """Generate a presigned URL for accessing an S3 object"""
     try:
         # Default to images bucket if no bucket is specified
@@ -217,7 +217,7 @@ def generate_presigned_url(s3_key, bucket=None, expiration=3600):
         print(f"Error generating presigned URL: {str(e)}")
         return None
 
-def _add_presigned_urls(result: Dict) -> Dict:
+def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
     """Add presigned URLs to image and video items"""
     for item in result['items']:
         # Handle image URLs
@@ -228,7 +228,7 @@ def _add_presigned_urls(result: Dict) -> Dict:
             item['video_url'] = generate_presigned_url(item['video_key'], item['video_bucket'])
     return result
 
-def handle_count_detections(event: Dict) -> Dict:
+def handle_count_detections(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /detections/count endpoint"""
     try:
         params = event.get('queryStringParameters', {}) or {}
@@ -247,11 +247,11 @@ def handle_count_detections(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handle_get_detections(event: Dict) -> Dict:
+def handle_get_detections(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /detections endpoint"""
     return _common_get_handler(event, 'detection', _add_presigned_urls)
 
-def _store_detection(body: Dict) -> Dict:
+def _store_detection(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store detection data"""
     # Upload image to S3
     timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
@@ -272,11 +272,11 @@ def _store_detection(body: Dict) -> Dict:
     
     return dynamodb.store_detection_data(data)
 
-def handle_post_detection(event: Dict) -> Dict:
+def handle_post_detection(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /detections endpoint"""
     return _common_post_handler(event, 'detection', _store_detection)
 
-def handle_count_classifications(event: Dict) -> Dict:
+def handle_count_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /classifications/count endpoint"""
     try:
         params = event.get('queryStringParameters', {}) or {}
@@ -295,11 +295,11 @@ def handle_count_classifications(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handle_get_classifications(event: Dict) -> Dict:
+def handle_get_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /classifications endpoint"""
     return _common_get_handler(event, 'classification', _add_presigned_urls)
 
-def _store_classification(body: Dict) -> Dict:
+def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store classification data"""
     # Upload image to S3
     timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
@@ -322,11 +322,11 @@ def _store_classification(body: Dict) -> Dict:
     
     return dynamodb.store_classification_data(data)
 
-def handle_post_classification(event: Dict) -> Dict:
+def handle_post_classification(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /classifications endpoint"""
     return _common_post_handler(event, 'classification', _store_classification)
 
-def handle_count_models(event: Dict) -> Dict:
+def handle_count_models(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /models/count endpoint"""
     try:
         # Parse query params
@@ -346,11 +346,11 @@ def handle_count_models(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handle_get_models(event: Dict) -> Dict:
+def handle_get_models(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /models endpoint"""
     return _common_get_handler(event, 'model')
 
-def handle_get_devices(event: Dict) -> Dict:
+def handle_get_devices(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /devices endpoint with filtering, pagination, and sorting."""
     params = event.get('queryStringParameters', {}) or {}
     device_id = params.get('device_id')
@@ -365,7 +365,7 @@ def handle_get_devices(event: Dict) -> Dict:
         'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
     }
 
-def handle_post_device(event: Dict) -> Dict:
+def handle_post_device(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /devices endpoint."""
     try:
         body = event.get('body')
@@ -385,7 +385,7 @@ def handle_post_device(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handle_delete_device(event: Dict) -> Dict:
+def handle_delete_device(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle DELETE /devices endpoint."""
     import traceback
     try:
@@ -415,7 +415,7 @@ def handle_delete_device(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e), 'trace': trace, 'event': str(event)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def _store_model(body: Dict) -> Dict:
+def _store_model(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store model data"""
     # ... (rest of the code remains the same)
     # Prepare data for DynamoDB
@@ -432,11 +432,11 @@ def _store_model(body: Dict) -> Dict:
     
     return dynamodb.store_model_data(data)
 
-def handle_post_model(event: Dict) -> Dict:
+def handle_post_model(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /models endpoint"""
     return _common_post_handler(event, 'model', _store_model)
 
-def handle_count_videos(event: Dict) -> Dict:
+def handle_count_videos(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /videos/count endpoint"""
     try:
         params = event.get('queryStringParameters', {}) or {}
@@ -454,11 +454,11 @@ def handle_count_videos(event: Dict) -> Dict:
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handle_get_videos(event: Dict) -> Dict:
+def handle_get_videos(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /videos endpoint"""
     return _common_get_handler(event, 'video', _add_presigned_urls)
 
-def _store_video(body: Dict) -> Dict:
+def _store_video(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store video data"""
     # Get or generate timestamp
     timestamp = body.get('timestamp')
@@ -488,7 +488,7 @@ def _store_video(body: Dict) -> Dict:
     
     return dynamodb.store_video_data(data)
 
-def handle_post_video(event: Dict) -> Dict:
+def handle_post_video(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /videos endpoint"""
     return _common_post_handler(event, 'video', _store_video)
 
@@ -563,7 +563,7 @@ def handle_post_video_register(event: Dict) -> Dict:
             }, cls=dynamodb.DynamoDBEncoder)
         }
 
-def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[Dict], Dict]) -> Dict:
+def _common_post_handler(event: Dict[str, Any], data_type: str, store_function: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Dict[str, Any]:
     """Common handler for all POST endpoints"""
     try:
         # Parse request body
@@ -613,7 +613,7 @@ def _clean_timestamps(items):
             item['timestamp'] = _make_offset_naive(item['timestamp'])
     return items
 
-def _common_get_handler(event: Dict, data_type: str, process_results: Optional[Callable[[Dict], Dict]] = None) -> Dict:
+def _common_get_handler(event: Dict[str, Any], data_type: str, process_results: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None) -> Dict[str, Any]:
     """Common handler for all GET endpoints"""
     try:
         # Get query parameters with defaults, handling HTTP API v2 format
@@ -653,7 +653,9 @@ def _common_get_handler(event: Dict, data_type: str, process_results: Optional[C
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
-def handler(event: Dict, context) -> Dict:
+from typing import Dict, Any, Optional, Callable
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for API Gateway requests
     
     This handler supports the API Gateway HTTP API (v2) format with PayloadFormatVersion 2.0
