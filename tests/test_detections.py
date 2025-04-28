@@ -76,7 +76,7 @@ def _add_detection(device_id, model_id, timestamp=None, num_detections=3):
 
 def test_add_detection_with_invalid_model(device_id, nonexistent_model_id, timestamp=None, num_detections=3):
     success, request_timestamp = _add_detection_with_invalid_model(device_id, nonexistent_model_id, timestamp, num_detections)
-    assert success, f"Detection with invalid model_id was accepted unexpectedly at {request_timestamp}"
+    assert success, f"Detection with random/nonexistent model_id failed at {request_timestamp}"
 
 def _add_detection_with_invalid_model(
     device_id,
@@ -121,20 +121,11 @@ def _add_detection_with_invalid_model(
             bounding_box=bounding_box,
             timestamp=request_timestamp
         )
-        
-        # If we get here, the test failed because the request should have been rejected
-        print(f"❌ Detection with invalid model_id was accepted unexpectedly!")
+        print(f"✅ Detection with random/nonexistent model_id succeeded as expected!")
         print_response(response_data)
-        return False, request_timestamp
-            
-    except requests.exceptions.RequestException as e:
-        # This is the expected outcome - request should fail
-        print(f"✅ Detection with invalid model_id failed as expected!")
-        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
-        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
         return True, request_timestamp
     except Exception as e:
-        print(f"❌ Error in test: {str(e)}")
+        print(f"❌ Detection upload failed: {str(e)}")
         return False, request_timestamp
 
 def test_fetch_detections(device_id: str, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False):

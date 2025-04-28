@@ -177,7 +177,7 @@ def test_post_detection_with_invalid_model(device_id, nonexistent_model_id, time
     request_timestamp = timestamp
     
     try:
-        # Try to send a detection with an invalid model_id
+        # Try to send a detection with a random/nonexistent model_id
         response_data = client.detections.add(
             device_id=device_id,
             model_id=invalid_model_id,
@@ -186,20 +186,13 @@ def test_post_detection_with_invalid_model(device_id, nonexistent_model_id, time
             bounding_box=generate_random_bounding_box()
         )
         
-        # If we get here without an exception, the test failed
-        print(f"❌ Detection with invalid model_id succeeded but should have failed!")
+        print(f"✅ Detection with random/nonexistent model_id succeeded as expected!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
+        assert True, f"Detection with random/nonexistent model_id succeeded at {request_timestamp}"
             
-    except requests.exceptions.RequestException as e:
-        # We expect an error, so this is success
-        print(f"✅ Detection with invalid model_id failed as expected!")
-        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
-        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        assert True, f"Detection with invalid model_id failed as expected at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
+        assert False, f"Detection with random/nonexistent model_id failed at {request_timestamp}"
 
 def test_post_classification(device_id, model_id, timestamp):
     """Test the classification API POST endpoint"""
@@ -240,21 +233,12 @@ def test_post_classification_with_invalid_model(device_id, nonexistent_model_id,
             species_confidence=generate_random_confidence(),
             timestamp=request_timestamp
         )
-        
-        # If we get here without an exception, the test failed
-        print(f"❌ Classification with invalid model_id succeeded but should have failed!")
+        print(f"✅ Classification with random/nonexistent model_id succeeded as expected!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        assert False, f"Classification with invalid model_id did not fail as expected at {request_timestamp}"
-            
-    except requests.exceptions.RequestException as e:
-        # We expect an error, so this is success
-        print(f"✅ Classification with invalid model_id failed as expected!")
-        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
-        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        assert True, f"Classification with invalid model_id failed as expected at {request_timestamp}"
+        assert True, f"Classification with random/nonexistent model_id succeeded at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        assert False, f"Classification with invalid model_id did not fail as expected at {request_timestamp}"
+        assert False, f"Classification with random/nonexistent model_id failed at {request_timestamp}"
 
 def test_post_video(device_id, timestamp, video_file_path):
     """Test the video API POST endpoint"""
@@ -357,21 +341,12 @@ def test_post_classification_with_invalid_model(device_id, nonexistent_model_id,
             species_confidence=generate_random_confidence(),
             timestamp=request_timestamp
         )
-        
-        # If we get here without an exception, the test failed
-        print(f"❌ Classification with invalid model_id succeeded but should have failed!")
+        print(f"✅ Classification with random/nonexistent model_id succeeded as expected!")
         print(f"Response: {json.dumps(response_data, indent=2)}")
-        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
-            
-    except requests.exceptions.RequestException as e:
-        # We expect an error, so this is success
-        print(f"✅ Classification with invalid model_id failed as expected!")
-        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
-        print(f"Response body: {getattr(e.response, 'text', 'N/A')}")
-        assert True, f"Detection with invalid model_id failed as expected at {request_timestamp}"
+        assert True, f"Classification with random/nonexistent model_id succeeded at {request_timestamp}"
     except Exception as e:
         print(f"❌ Error in test: {str(e)}")
-        assert False, f"Detection with invalid model_id did not fail as expected at {request_timestamp}"
+        assert False, f"Classification with random/nonexistent model_id failed at {request_timestamp}"
 
 def add_test_data(device_id, model_id, timestamp, num_entries=10):
     """Add test data for detections, classifications, and videos"""

@@ -295,32 +295,6 @@ def _validate_data(data: Dict[str, Any], table_type: str) -> (bool, str):
         print(error_msg)
         return False, error_msg
 
-def _validate_model_exists(model_id: str) -> (bool, str):
-    """Validate that a model_id exists in the models table"""
-    if not model_id:
-        return True, ""  # No model_id to validate
-    
-    print(f"Validating model_id exists: {model_id}")
-    models_table = dynamodb.Table(MODELS_TABLE)
-    
-    try:
-        # Use query instead of get_item since we have a composite key
-        from boto3.dynamodb.conditions import Key
-        
-        response = models_table.query(
-            KeyConditionExpression=Key('id').eq(model_id)
-        )
-        
-        if not response.get('Items'):
-            error_msg = f"Model with id '{model_id}' not found in models table"
-            print(error_msg)
-            return False, error_msg
-        
-        return True, ""
-    except Exception as e:
-        error_msg = f"Error validating model_id: {str(e)}"
-        print(error_msg)
-        return False, error_msg
 
 def _store_data(data: Dict[str, Any], table_name: str, data_type: str) -> Dict[str, Any]:
     """Generic function to store data in DynamoDB"""
@@ -331,11 +305,7 @@ def _store_data(data: Dict[str, Any], table_name: str, data_type: str) -> Dict[s
         print(detailed_error)
         raise ValueError(detailed_error)
     
-    # For detection and classification, validate that model_id exists if provided
-    if data_type in ['detection', 'classification'] and 'model_id' in data:
-        model_exists, model_error = _validate_model_exists(data['model_id'])
-        if not model_exists:
-            raise ValueError(f"Invalid model_id: {model_error}")
+
     
     # Store in DynamoDB
     table = dynamodb.Table(table_name)
@@ -482,11 +452,6 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
     # model_id field for filtering (optional)
     model_id_field = 'model_id' if table_type in ['detection', 'classification', 'video'] else 'id'
 
-    # Validate model_id if needed
-    if table_type in ['detection', 'classification'] and model_id:
-        model_exists, error = _validate_model_exists(model_id)
-        if not model_exists:
-            raise ValueError(f"Invalid model_id: {error}")
 
     from boto3.dynamodb.conditions import Key, Attr
     base_params = {'Limit': min(limit, 100) if limit else 100}
