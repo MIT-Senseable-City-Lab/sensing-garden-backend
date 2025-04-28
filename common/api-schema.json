@@ -798,6 +798,13 @@
           "species_confidence": {
             "type": "number",
             "description": "Confidence score for species classification (0-1)"
+          },
+          "bounding_box": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Optional bounding box coordinates [xmin, ymin, xmax, ymax] for the classification; must be 4 numbers with xmin < xmax and ymin < ymax."
           }
         }
       },

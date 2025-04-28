@@ -2,6 +2,18 @@
 
 All notable changes to the Sensing Garden Client will be documented in this file.
 
+## [0.0.11] - 2025-04-28
+
+### Added
+- Support for optional `bounding_box` field in classifications, matching detections API
+- Client: `ClassificationsClient.add` now accepts `bounding_box` argument
+- Tests: Added tests for submitting and verifying bounding boxes in classifications
+
+### Changed
+- Backend: Lambda handler stores bounding_box as Decimal for DynamoDB compatibility
+- Infra: Terraform and Lambda updated/synced for new schema
+- All tests passing after bounding_box changes
+
 ## [0.0.10] - 2025-04-23
 
 ### Added

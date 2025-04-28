@@ -319,6 +319,13 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         'genus_confidence': Decimal(str(body['genus_confidence'])),
         'species_confidence': Decimal(str(body['species_confidence']))
     }
+    if 'bounding_box' in body:
+        # Convert all bounding_box values to Decimal to avoid float issues with DynamoDB
+        box = body['bounding_box']
+        if isinstance(box, list):
+            data['bounding_box'] = [Decimal(str(x)) for x in box]
+        else:
+            data['bounding_box'] = box
     
     return dynamodb.store_classification_data(data)
 

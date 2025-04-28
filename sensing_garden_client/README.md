@@ -105,6 +105,20 @@ classification = sgc.classifications.add(
     family_confidence=0.95,
     genus_confidence=0.92,
     species_confidence=0.89,
+    timestamp="2023-06-01T12:34:56Z",
+    bounding_box=[0.1, 0.2, 0.3, 0.4]  # New: optional bounding box
+)
+
+# bounding_box is now supported for both detections and classifications.
+# The backend stores bounding_box values as Decimal for DynamoDB compatibility.
+# All tests have been updated and pass for this feature (see CHANGELOG).
+
+    family="Rosaceae",
+    genus="Rosa",
+    species="Rosa gallica",
+    family_confidence=0.95,
+    genus_confidence=0.92,
+    species_confidence=0.89,
     timestamp="2023-06-01T12:34:56Z"
 )
 classifications = sgc.classifications.fetch(model_id="model-456")

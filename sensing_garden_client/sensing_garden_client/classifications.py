@@ -32,7 +32,8 @@ class ClassificationsClient:
         family_confidence: Union[float, str],
         genus_confidence: Union[float, str],
         species_confidence: Union[float, str],
-        timestamp: str
+        timestamp: str,
+        bounding_box: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
         Submit a classification to the Sensing Garden API.
@@ -48,6 +49,7 @@ class ClassificationsClient:
             genus_confidence: Confidence score for genus classification (0-1)
             species_confidence: Confidence score for species classification (0-1)
             timestamp: ISO-8601 formatted timestamp
+            bounding_box: Optional bounding box coordinates [x1, y1, x2, y2] or similar structure
             
         Returns:
             API response with the created classification
@@ -73,6 +75,8 @@ class ClassificationsClient:
             "genus_confidence": genus_confidence,
             "species_confidence": species_confidence
         })
+        if bounding_box is not None:
+            payload["bounding_box"] = bounding_box
         
         # Make API request
         return self._client.post("classifications", payload)

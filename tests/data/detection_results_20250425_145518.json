@@ -1,0 +1,5969 @@
+{
+  "frame_0158.jpg": [
+    {
+      "image_data": "frame_0158.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8460185527801514,
+      "genus_confidence": 0.7867431044578552,
+      "species_confidence": 0.8426627516746521,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.5052223205566406,
+        0.5693835020065308,
+        0.1731969565153122,
+        0.2970392107963562
+      ]
+    }
+  ],
+  "frame_0021.jpg": [
+    {
+      "image_data": "frame_0021.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9996271133422852,
+      "genus_confidence": 0.9993168115615845,
+      "species_confidence": 0.9999414682388306,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.3924526274204254,
+        0.6410901546478271,
+        0.20447365939617157,
+        0.3616214692592621
+      ]
+    }
+  ],
+  "frame_0313.jpg": [
+    {
+      "image_data": "frame_0313.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5829569101333618,
+      "genus_confidence": 0.5487614274024963,
+      "species_confidence": 0.7868775725364685,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.5139754414558411,
+        0.48245421051979065,
+        0.20078793168067932,
+        0.3208417594432831
+      ]
+    }
+  ],
+  "frame_0186.jpg": [
+    {
+      "image_data": "frame_0186.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9995831847190857,
+      "genus_confidence": 0.9993785619735718,
+      "species_confidence": 0.9995155334472656,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.4307703673839569,
+        0.720900297164917,
+        0.2182493507862091,
+        0.3443071246147156
+      ]
+    }
+  ],
+  "frame_0172.jpg": [
+    {
+      "image_data": "frame_0172.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8270411491394043,
+      "genus_confidence": 0.7919536232948303,
+      "species_confidence": 0.8330408334732056,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.4116784930229187,
+        0.6789177656173706,
+        0.22619451582431793,
+        0.3524295389652252
+      ]
+    }
+  ],
+  "frame_0328.jpg": [],
+  "frame_0238.jpg": [
+    {
+      "image_data": "frame_0238.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9707713723182678,
+      "genus_confidence": 0.9693052768707275,
+      "species_confidence": 0.9959337115287781,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.49681827425956726,
+        0.46341171860694885,
+        0.29600152373313904,
+        0.4393036365509033
+      ]
+    }
+  ],
+  "frame_0290.jpg": [
+    {
+      "image_data": "frame_0290.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6752310395240784,
+      "genus_confidence": 0.8011136651039124,
+      "species_confidence": 0.6584645509719849,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.5144267082214355,
+        0.4312761127948761,
+        0.21822376549243927,
+        0.3310061991214752
+      ]
+    }
+  ],
+  "frame_0266.jpg": [
+    {
+      "image_data": "frame_0266.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.683540940284729,
+      "genus_confidence": 0.7604352235794067,
+      "species_confidence": 0.45323315262794495,
+      "timestamp": "20250425_145508",
+      "bbox": [
+        0.5213977694511414,
+        0.4048742651939392,
+        0.20558929443359375,
+        0.34842649102211
+      ]
+    }
+  ],
+  "frame_0008.jpg": [
+    {
+      "image_data": "frame_0008.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8064353466033936,
+      "genus_confidence": 0.8593121767044067,
+      "species_confidence": 0.905199408531189,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.393243670463562,
+        0.622177004814148,
+        0.3161787688732147,
+        0.40753334760665894
+      ]
+    }
+  ],
+  "frame_0106.jpg": [
+    {
+      "image_data": "frame_0106.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.548381507396698,
+      "genus_confidence": 0.6839354634284973,
+      "species_confidence": 0.5787125825881958,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.43371134996414185,
+        0.5200066566467285,
+        0.24555644392967224,
+        0.3125377893447876
+      ]
+    }
+  ],
+  "frame_0100.jpg": [
+    {
+      "image_data": "frame_0100.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8753394484519958,
+      "genus_confidence": 0.7794594168663025,
+      "species_confidence": 0.789356529712677,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.43158280849456787,
+        0.5041844844818115,
+        0.1649663895368576,
+        0.29329031705856323
+      ]
+    }
+  ],
+  "frame_0133.jpg": [
+    {
+      "image_data": "frame_0133.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5011354684829712,
+      "genus_confidence": 0.5005604028701782,
+      "species_confidence": 0.5341519713401794,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.47575682401657104,
+        0.549683690071106,
+        0.17484667897224426,
+        0.2905072569847107
+      ]
+    }
+  ],
+  "frame_0257.jpg": [
+    {
+      "image_data": "frame_0257.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9417315125465393,
+      "genus_confidence": 0.9650024175643921,
+      "species_confidence": 0.9894217848777771,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5138875246047974,
+        0.45293280482292175,
+        0.22043780982494354,
+        0.4018734395503998
+      ]
+    }
+  ],
+  "frame_0175.jpg": [
+    {
+      "image_data": "frame_0175.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8141823410987854,
+      "genus_confidence": 0.8049608469009399,
+      "species_confidence": 0.5353680849075317,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.41735076904296875,
+        0.698893129825592,
+        0.21477320790290833,
+        0.33649885654449463
+      ]
+    }
+  ],
+  "frame_0278.jpg": [
+    {
+      "image_data": "frame_0278.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.968220055103302,
+      "genus_confidence": 0.966563880443573,
+      "species_confidence": 0.9832327961921692,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4966943860054016,
+        0.4329643249511719,
+        0.22220900654792786,
+        0.3943178057670593
+      ]
+    }
+  ],
+  "frame_0066.jpg": [
+    {
+      "image_data": "frame_0066.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9983604550361633,
+      "genus_confidence": 0.9952934384346008,
+      "species_confidence": 0.9974114298820496,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.40540310740470886,
+        0.5267284512519836,
+        0.18723392486572266,
+        0.29545485973358154
+      ]
+    }
+  ],
+  "frame_0321.jpg": [
+    {
+      "image_data": "frame_0321.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.4292272627353668,
+      "genus_confidence": 0.5096257925033569,
+      "species_confidence": 0.3367045819759369,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.1674208641052246,
+        0.5031677484512329,
+        0.2352149933576584,
+        0.3529737591743469
+      ]
+    }
+  ],
+  "frame_0025.jpg": [
+    {
+      "image_data": "frame_0025.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9987677335739136,
+      "genus_confidence": 0.9983378648757935,
+      "species_confidence": 0.9995205402374268,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.3966473340988159,
+        0.6330384016036987,
+        0.2158602774143219,
+        0.373761922121048
+      ]
+    }
+  ],
+  "frame_0062.jpg": [
+    {
+      "image_data": "frame_0062.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6554036736488342,
+      "genus_confidence": 0.7622143626213074,
+      "species_confidence": 0.4896627962589264,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4043211042881012,
+        0.4686957895755768,
+        0.20859387516975403,
+        0.33745676279067993
+      ]
+    }
+  ],
+  "frame_0114.jpg": [
+    {
+      "image_data": "frame_0114.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9507031440734863,
+      "genus_confidence": 0.9186486601829529,
+      "species_confidence": 0.9131272435188293,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4303128123283386,
+        0.4852431118488312,
+        0.18953514099121094,
+        0.3247394859790802
+      ]
+    }
+  ],
+  "frame_0074.jpg": [
+    {
+      "image_data": "frame_0074.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9403517246246338,
+      "genus_confidence": 0.9521393775939941,
+      "species_confidence": 0.978567361831665,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4345608949661255,
+        0.44219326972961426,
+        0.23796042799949646,
+        0.4089863896369934
+      ]
+    }
+  ],
+  "frame_0053.jpg": [
+    {
+      "image_data": "frame_0053.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9753803014755249,
+      "genus_confidence": 0.9804728627204895,
+      "species_confidence": 0.9937763214111328,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4322865605354309,
+        0.4617222249507904,
+        0.22531630098819733,
+        0.5038046836853027
+      ]
+    }
+  ],
+  "frame_0202.jpg": [
+    {
+      "image_data": "frame_0202.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9877436757087708,
+      "genus_confidence": 0.9878361821174622,
+      "species_confidence": 0.9480775594711304,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.42422130703926086,
+        0.5776692628860474,
+        0.21185630559921265,
+        0.3122531473636627
+      ]
+    }
+  ],
+  "frame_0042.jpg": [
+    {
+      "image_data": "frame_0042.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.999875545501709,
+      "genus_confidence": 0.9997058510780334,
+      "species_confidence": 0.9999731779098511,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.40452146530151367,
+        0.5246415734291077,
+        0.23064669966697693,
+        0.5686513185501099
+      ]
+    }
+  ],
+  "frame_0275.jpg": [
+    {
+      "image_data": "frame_0275.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9095675945281982,
+      "genus_confidence": 0.946905791759491,
+      "species_confidence": 0.7765462398529053,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5024114847183228,
+        0.4316891133785248,
+        0.21178728342056274,
+        0.3242340087890625
+      ]
+    }
+  ],
+  "frame_0230.jpg": [
+    {
+      "image_data": "frame_0230.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.4622478783130646,
+      "genus_confidence": 0.6779778599739075,
+      "species_confidence": 0.527403712272644,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.48769721388816833,
+        0.49701622128486633,
+        0.21094563603401184,
+        0.34949102997779846
+      ]
+    }
+  ],
+  "frame_0292.jpg": [
+    {
+      "image_data": "frame_0292.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7688825130462646,
+      "genus_confidence": 0.8526142239570618,
+      "species_confidence": 0.4257071912288666,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5248231291770935,
+        0.41332271695137024,
+        0.2149500548839569,
+        0.34610557556152344
+      ]
+    }
+  ],
+  "frame_0161.jpg": [
+    {
+      "image_data": "frame_0161.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5891069769859314,
+      "genus_confidence": 0.5161111950874329,
+      "species_confidence": 0.3165757954120636,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.43959757685661316,
+        0.5954955220222473,
+        0.20115232467651367,
+        0.2971493899822235
+      ]
+    }
+  ],
+  "frame_0251.jpg": [
+    {
+      "image_data": "frame_0251.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9926367998123169,
+      "genus_confidence": 0.9924150109291077,
+      "species_confidence": 0.9964949488639832,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.546972393989563,
+        0.49742448329925537,
+        0.2340105026960373,
+        0.42463839054107666
+      ]
+    }
+  ],
+  "frame_0034.jpg": [
+    {
+      "image_data": "frame_0034.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9998109936714172,
+      "genus_confidence": 0.9993745684623718,
+      "species_confidence": 0.9999790191650391,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.39644116163253784,
+        0.6170833706855774,
+        0.24050045013427734,
+        0.4430261254310608
+      ]
+    }
+  ],
+  "frame_0040.jpg": [
+    {
+      "image_data": "frame_0040.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9997677206993103,
+      "genus_confidence": 0.9995181560516357,
+      "species_confidence": 0.9999536275863647,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.39250457286834717,
+        0.5581202507019043,
+        0.2423134744167328,
+        0.521606981754303
+      ]
+    }
+  ],
+  "frame_0301.jpg": [
+    {
+      "image_data": "frame_0301.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5250579714775085,
+      "genus_confidence": 0.6093592643737793,
+      "species_confidence": 0.7937340140342712,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.534109890460968,
+        0.4655699133872986,
+        0.20978066325187683,
+        0.29485756158828735
+      ]
+    }
+  ],
+  "frame_0311.jpg": [
+    {
+      "image_data": "frame_0311.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5778530836105347,
+      "genus_confidence": 0.6912581324577332,
+      "species_confidence": 0.733464241027832,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5215548276901245,
+        0.49031639099121094,
+        0.20804189145565033,
+        0.3434985280036926
+      ]
+    }
+  ],
+  "frame_0314.jpg": [
+    {
+      "image_data": "frame_0314.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.508216142654419,
+      "genus_confidence": 0.5440340042114258,
+      "species_confidence": 0.6634488105773926,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5193999409675598,
+        0.48379838466644287,
+        0.20399971306324005,
+        0.31263530254364014
+      ]
+    }
+  ],
+  "frame_0293.jpg": [
+    {
+      "image_data": "frame_0293.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.966590404510498,
+      "genus_confidence": 0.9685283303260803,
+      "species_confidence": 0.8956846594810486,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5328803062438965,
+        0.4009600579738617,
+        0.21999645233154297,
+        0.35482415556907654
+      ]
+    }
+  ],
+  "frame_0287.jpg": [
+    {
+      "image_data": "frame_0287.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.8167323470115662,
+      "genus_confidence": 0.9348301887512207,
+      "species_confidence": 0.5669195055961609,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5086661577224731,
+        0.4429773986339569,
+        0.21135921776294708,
+        0.31778576970100403
+      ]
+    }
+  ],
+  "frame_0044.jpg": [
+    {
+      "image_data": "frame_0044.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9980247020721436,
+      "genus_confidence": 0.9975138902664185,
+      "species_confidence": 0.9997099041938782,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4193599820137024,
+        0.47233250737190247,
+        0.22979074716567993,
+        0.5561510920524597
+      ]
+    }
+  ],
+  "frame_0310.jpg": [
+    {
+      "image_data": "frame_0310.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5006294846534729,
+      "genus_confidence": 0.6155827045440674,
+      "species_confidence": 0.7369657754898071,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5279058218002319,
+        0.49353763461112976,
+        0.20753689110279083,
+        0.3261367678642273
+      ]
+    }
+  ],
+  "frame_0208.jpg": [
+    {
+      "image_data": "frame_0208.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6312817335128784,
+      "genus_confidence": 0.6441541314125061,
+      "species_confidence": 0.35072991251945496,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4539415240287781,
+        0.5515967607498169,
+        0.21036504209041595,
+        0.30751797556877136
+      ]
+    }
+  ],
+  "frame_0304.jpg": [
+    {
+      "image_data": "frame_0304.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.8471758365631104,
+      "genus_confidence": 0.8855270147323608,
+      "species_confidence": 0.5144380927085876,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.533588707447052,
+        0.47519931197166443,
+        0.20317459106445312,
+        0.29525724053382874
+      ]
+    }
+  ],
+  "frame_0296.jpg": [
+    {
+      "image_data": "frame_0296.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9280604720115662,
+      "genus_confidence": 0.9477543830871582,
+      "species_confidence": 0.7507418990135193,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.5387928485870361,
+        0.4168860614299774,
+        0.2145473212003708,
+        0.3524423837661743
+      ]
+    }
+  ],
+  "frame_0065.jpg": [
+    {
+      "image_data": "frame_0065.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9967893958091736,
+      "genus_confidence": 0.9947797060012817,
+      "species_confidence": 0.9942770600318909,
+      "timestamp": "20250425_145509",
+      "bbox": [
+        0.4109708070755005,
+        0.5216115713119507,
+        0.18499842286109924,
+        0.2968660891056061
+      ]
+    }
+  ],
+  "frame_0046.jpg": [
+    {
+      "image_data": "frame_0046.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9839755296707153,
+      "genus_confidence": 0.9808968305587769,
+      "species_confidence": 0.9939233660697937,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.42800378799438477,
+        0.40686798095703125,
+        0.21829649806022644,
+        0.4657759964466095
+      ]
+    }
+  ],
+  "frame_0325.jpg": [],
+  "frame_0197.jpg": [
+    {
+      "image_data": "frame_0197.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9649695754051208,
+      "genus_confidence": 0.9734940528869629,
+      "species_confidence": 0.9740366339683533,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.41580384969711304,
+        0.6177917718887329,
+        0.21630831062793732,
+        0.3153950870037079
+      ]
+    }
+  ],
+  "frame_0023.jpg": [
+    {
+      "image_data": "frame_0023.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9758498072624207,
+      "genus_confidence": 0.9745059013366699,
+      "species_confidence": 0.9921277761459351,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.40347030758857727,
+        0.6516026258468628,
+        0.19380897283554077,
+        0.35073935985565186
+      ]
+    }
+  ],
+  "frame_0099.jpg": [
+    {
+      "image_data": "frame_0099.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.96590256690979,
+      "genus_confidence": 0.9008255004882812,
+      "species_confidence": 0.921668291091919,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.42340317368507385,
+        0.4988805055618286,
+        0.15971197187900543,
+        0.2881848216056824
+      ]
+    }
+  ],
+  "frame_0052.jpg": [
+    {
+      "image_data": "frame_0052.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8359910249710083,
+      "genus_confidence": 0.8823686242103577,
+      "species_confidence": 0.9358934760093689,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4325355589389801,
+        0.4386797249317169,
+        0.2139025330543518,
+        0.4442192018032074
+      ]
+    }
+  ],
+  "frame_0091.jpg": [
+    {
+      "image_data": "frame_0091.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5617288947105408,
+      "genus_confidence": 0.6987653374671936,
+      "species_confidence": 0.6321777701377869,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.41043657064437866,
+        0.5315988659858704,
+        0.2735646367073059,
+        0.35455161333084106
+      ]
+    }
+  ],
+  "frame_0123.jpg": [
+    {
+      "image_data": "frame_0123.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.496660977602005,
+      "genus_confidence": 0.5819574594497681,
+      "species_confidence": 0.38746878504753113,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4158463180065155,
+        0.5766674280166626,
+        0.21685676276683807,
+        0.31396517157554626
+      ]
+    }
+  ],
+  "frame_0204.jpg": [
+    {
+      "image_data": "frame_0204.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9959697723388672,
+      "genus_confidence": 0.9925293326377869,
+      "species_confidence": 0.9283420443534851,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4326406717300415,
+        0.5618824362754822,
+        0.20475775003433228,
+        0.29759132862091064
+      ]
+    }
+  ],
+  "frame_0030.jpg": [
+    {
+      "image_data": "frame_0030.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8977341055870056,
+      "genus_confidence": 0.9437247514724731,
+      "species_confidence": 0.9807189702987671,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.41042956709861755,
+        0.6353422403335571,
+        0.2647542357444763,
+        0.44936442375183105
+      ]
+    }
+  ],
+  "frame_0203.jpg": [
+    {
+      "image_data": "frame_0203.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9855003952980042,
+      "genus_confidence": 0.9834609031677246,
+      "species_confidence": 0.9023215174674988,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4287208616733551,
+        0.5698187351226807,
+        0.20923572778701782,
+        0.3004724383354187
+      ]
+    }
+  ],
+  "frame_0151.jpg": [
+    {
+      "image_data": "frame_0151.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6987280249595642,
+      "genus_confidence": 0.545205295085907,
+      "species_confidence": 0.6778654456138611,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.47291669249534607,
+        0.5243062376976013,
+        0.18063780665397644,
+        0.3013871908187866
+      ]
+    }
+  ],
+  "frame_0029.jpg": [
+    {
+      "image_data": "frame_0029.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.956508994102478,
+      "genus_confidence": 0.9702793955802917,
+      "species_confidence": 0.9925870299339294,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4098893404006958,
+        0.6359705328941345,
+        0.2619531452655792,
+        0.4285612404346466
+      ]
+    }
+  ],
+  "frame_0277.jpg": [
+    {
+      "image_data": "frame_0277.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9406124949455261,
+      "genus_confidence": 0.9382259845733643,
+      "species_confidence": 0.9338247179985046,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.49474668502807617,
+        0.4338514804840088,
+        0.2147303968667984,
+        0.35470959544181824
+      ]
+    }
+  ],
+  "frame_0000.jpg": [
+    {
+      "image_data": "frame_0000.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9993964433670044,
+      "genus_confidence": 0.9982669353485107,
+      "species_confidence": 0.9991521835327148,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.37246572971343994,
+        0.5613780617713928,
+        0.2230394184589386,
+        0.39017418026924133
+      ]
+    }
+  ],
+  "frame_0217.jpg": [
+    {
+      "image_data": "frame_0217.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6658612489700317,
+      "genus_confidence": 0.5993948578834534,
+      "species_confidence": 0.3579176366329193,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.44407838582992554,
+        0.5605665445327759,
+        0.20749984681606293,
+        0.2984466552734375
+      ]
+    }
+  ],
+  "frame_0011.jpg": [
+    {
+      "image_data": "frame_0011.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9605433940887451,
+      "genus_confidence": 0.970180094242096,
+      "species_confidence": 0.9927464127540588,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.3931194245815277,
+        0.6138202548027039,
+        0.2863466441631317,
+        0.46304982900619507
+      ]
+    },
+    {
+      "image_data": "frame_0011.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.692623496055603,
+      "genus_confidence": 0.7592595219612122,
+      "species_confidence": 0.3998636305332184,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.35351479053497314,
+        0.6956678628921509,
+        0.2036910057067871,
+        0.28605374693870544
+      ]
+    }
+  ],
+  "frame_0316.jpg": [
+    {
+      "image_data": "frame_0316.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9224367141723633,
+      "genus_confidence": 0.8930971622467041,
+      "species_confidence": 0.9041240215301514,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.5333261489868164,
+        0.4436144232749939,
+        0.2026655524969101,
+        0.45197874307632446
+      ]
+    }
+  ],
+  "frame_0002.jpg": [
+    {
+      "image_data": "frame_0002.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.999996542930603,
+      "genus_confidence": 0.99997878074646,
+      "species_confidence": 0.9999992847442627,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.38089287281036377,
+        0.568081796169281,
+        0.2156716287136078,
+        0.4077187478542328
+      ]
+    }
+  ],
+  "frame_0241.jpg": [
+    {
+      "image_data": "frame_0241.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7873592972755432,
+      "genus_confidence": 0.8843719959259033,
+      "species_confidence": 0.9347156882286072,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.5039035677909851,
+        0.49037081003189087,
+        0.2723386585712433,
+        0.4047720730304718
+      ]
+    }
+  ],
+  "frame_0060.jpg": [
+    {
+      "image_data": "frame_0060.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8651504516601562,
+      "genus_confidence": 0.9149725437164307,
+      "species_confidence": 0.8945317268371582,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.42826852202415466,
+        0.4732477366924286,
+        0.22352911531925201,
+        0.3564966022968292
+      ]
+    }
+  ],
+  "frame_0109.jpg": [
+    {
+      "image_data": "frame_0109.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6835245490074158,
+      "genus_confidence": 0.7347320318222046,
+      "species_confidence": 0.5856720805168152,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4292753338813782,
+        0.5221925973892212,
+        0.20799154043197632,
+        0.2996048033237457
+      ]
+    }
+  ],
+  "frame_0132.jpg": [
+    {
+      "image_data": "frame_0132.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8713657259941101,
+      "genus_confidence": 0.8166971206665039,
+      "species_confidence": 0.8176026940345764,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4728644788265228,
+        0.5568749904632568,
+        0.1508617401123047,
+        0.2903614342212677
+      ]
+    }
+  ],
+  "frame_0079.jpg": [
+    {
+      "image_data": "frame_0079.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9667843580245972,
+      "genus_confidence": 0.9555487632751465,
+      "species_confidence": 0.6276887059211731,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4564288556575775,
+        0.4857022762298584,
+        0.16989685595035553,
+        0.28019198775291443
+      ]
+    }
+  ],
+  "frame_0134.jpg": [
+    {
+      "image_data": "frame_0134.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7022127509117126,
+      "genus_confidence": 0.7313341498374939,
+      "species_confidence": 0.8320986032485962,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4722484052181244,
+        0.5437116622924805,
+        0.1870085448026657,
+        0.2993779182434082
+      ]
+    }
+  ],
+  "frame_0163.jpg": [
+    {
+      "image_data": "frame_0163.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7296612858772278,
+      "genus_confidence": 0.7382516264915466,
+      "species_confidence": 0.6811792850494385,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4252564311027527,
+        0.6466914415359497,
+        0.22354945540428162,
+        0.3424444794654846
+      ]
+    }
+  ],
+  "frame_0307.jpg": [
+    {
+      "image_data": "frame_0307.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5868673324584961,
+      "genus_confidence": 0.7088775634765625,
+      "species_confidence": 0.6709986329078674,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.5311296582221985,
+        0.47398892045021057,
+        0.2152549773454666,
+        0.33943331241607666
+      ]
+    }
+  ],
+  "frame_0312.jpg": [
+    {
+      "image_data": "frame_0312.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6714414954185486,
+      "genus_confidence": 0.6029002666473389,
+      "species_confidence": 0.4428870379924774,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.5175816416740417,
+        0.5255863666534424,
+        0.2272523194551468,
+        0.4868166744709015
+      ]
+    }
+  ],
+  "frame_0324.jpg": [],
+  "frame_0121.jpg": [
+    {
+      "image_data": "frame_0121.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5191857218742371,
+      "genus_confidence": 0.6544470191001892,
+      "species_confidence": 0.44712063670158386,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4173763692378998,
+        0.5437819957733154,
+        0.2518274188041687,
+        0.3171074092388153
+      ]
+    }
+  ],
+  "frame_0200.jpg": [
+    {
+      "image_data": "frame_0200.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9959138035774231,
+      "genus_confidence": 0.9955443739891052,
+      "species_confidence": 0.9974798560142517,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.41529038548469543,
+        0.6027966737747192,
+        0.2253541648387909,
+        0.34836646914482117
+      ]
+    }
+  ],
+  "frame_0259.jpg": [
+    {
+      "image_data": "frame_0259.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9847717881202698,
+      "genus_confidence": 0.9773874878883362,
+      "species_confidence": 0.9855082631111145,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.5102550387382507,
+        0.4843866527080536,
+        0.22553196549415588,
+        0.40010151267051697
+      ]
+    }
+  ],
+  "frame_0015.jpg": [
+    {
+      "image_data": "frame_0015.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9821494221687317,
+      "genus_confidence": 0.9844798445701599,
+      "species_confidence": 0.9975317716598511,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.38809865713119507,
+        0.6126358509063721,
+        0.2661598026752472,
+        0.43782684206962585
+      ]
+    }
+  ],
+  "frame_0215.jpg": [
+    {
+      "image_data": "frame_0215.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7133748531341553,
+      "genus_confidence": 0.7661768198013306,
+      "species_confidence": 0.7230305671691895,
+      "timestamp": "20250425_145510",
+      "bbox": [
+        0.4382637143135071,
+        0.5763235688209534,
+        0.2306537926197052,
+        0.3452374041080475
+      ]
+    }
+  ],
+  "frame_0291.jpg": [
+    {
+      "image_data": "frame_0291.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8612827658653259,
+      "genus_confidence": 0.9260656237602234,
+      "species_confidence": 0.6245909333229065,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5214055180549622,
+        0.4192142188549042,
+        0.21098245680332184,
+        0.3396691381931305
+      ]
+    }
+  ],
+  "frame_0126.jpg": [
+    {
+      "image_data": "frame_0126.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7406073808670044,
+      "genus_confidence": 0.5811796188354492,
+      "species_confidence": 0.5144550800323486,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.44600817561149597,
+        0.5741506218910217,
+        0.1550433188676834,
+        0.29333123564720154
+      ]
+    }
+  ],
+  "frame_0083.jpg": [
+    {
+      "image_data": "frame_0083.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9453033804893494,
+      "genus_confidence": 0.9187362790107727,
+      "species_confidence": 0.9332857131958008,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.45819205045700073,
+        0.48899683356285095,
+        0.19588902592658997,
+        0.3194703757762909
+      ]
+    }
+  ],
+  "frame_0205.jpg": [
+    {
+      "image_data": "frame_0205.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9970657229423523,
+      "genus_confidence": 0.9946495890617371,
+      "species_confidence": 0.9702281355857849,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.43750226497650146,
+        0.5618187785148621,
+        0.20499134063720703,
+        0.29337701201438904
+      ]
+    }
+  ],
+  "frame_0224.jpg": [
+    {
+      "image_data": "frame_0224.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6273932456970215,
+      "genus_confidence": 0.5633965134620667,
+      "species_confidence": 0.520775318145752,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.48183441162109375,
+        0.5724671483039856,
+        0.2292226403951645,
+        0.3503442406654358
+      ]
+    }
+  ],
+  "frame_0059.jpg": [
+    {
+      "image_data": "frame_0059.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8522100448608398,
+      "genus_confidence": 0.9244409203529358,
+      "species_confidence": 0.8036994934082031,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.43773090839385986,
+        0.4823462665081024,
+        0.2229936271905899,
+        0.38406437635421753
+      ]
+    }
+  ],
+  "frame_0101.jpg": [
+    {
+      "image_data": "frame_0101.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7192447185516357,
+      "genus_confidence": 0.6953025460243225,
+      "species_confidence": 0.6750233173370361,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4396437704563141,
+        0.5044811367988586,
+        0.18745695054531097,
+        0.3031325340270996
+      ]
+    }
+  ],
+  "frame_0221.jpg": [
+    {
+      "image_data": "frame_0221.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6104673147201538,
+      "genus_confidence": 0.5729638338088989,
+      "species_confidence": 0.427123099565506,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4640463888645172,
+        0.5616470575332642,
+        0.20295734703540802,
+        0.2870998680591583
+      ]
+    }
+  ],
+  "frame_0078.jpg": [
+    {
+      "image_data": "frame_0078.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9986302852630615,
+      "genus_confidence": 0.9953793287277222,
+      "species_confidence": 0.9975977540016174,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.43456369638442993,
+        0.5161064863204956,
+        0.2223583161830902,
+        0.3752956688404083
+      ]
+    }
+  ],
+  "frame_0020.jpg": [
+    {
+      "image_data": "frame_0020.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.999453604221344,
+      "genus_confidence": 0.999221682548523,
+      "species_confidence": 0.9999275207519531,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.39031028747558594,
+        0.6289435625076294,
+        0.21571029722690582,
+        0.3837093710899353
+      ]
+    }
+  ],
+  "frame_0320.jpg": [
+    {
+      "image_data": "frame_0320.jpg",
+      "family": "Nymphalidae",
+      "genus": "Lepidoptera",
+      "species": "Aglais urticae",
+      "family_confidence": 0.44226232171058655,
+      "genus_confidence": 0.5003145933151245,
+      "species_confidence": 0.4876607060432434,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.3416813611984253,
+        0.48086774349212646,
+        0.2325897365808487,
+        0.3368768095970154
+      ]
+    }
+  ],
+  "frame_0268.jpg": [
+    {
+      "image_data": "frame_0268.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8220188021659851,
+      "genus_confidence": 0.8763447999954224,
+      "species_confidence": 0.8781797289848328,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5217330455780029,
+        0.4229300022125244,
+        0.21261431276798248,
+        0.3389767110347748
+      ]
+    }
+  ],
+  "frame_0135.jpg": [
+    {
+      "image_data": "frame_0135.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5703701972961426,
+      "genus_confidence": 0.5013996958732605,
+      "species_confidence": 0.4948231279850006,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4648727476596832,
+        0.5456345081329346,
+        0.19893452525138855,
+        0.30936548113822937
+      ]
+    }
+  ],
+  "frame_0038.jpg": [
+    {
+      "image_data": "frame_0038.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9862690567970276,
+      "genus_confidence": 0.9881516098976135,
+      "species_confidence": 0.9970826506614685,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.3946678936481476,
+        0.6064320802688599,
+        0.21856027841567993,
+        0.41670194268226624
+      ]
+    }
+  ],
+  "frame_0300.jpg": [
+    {
+      "image_data": "frame_0300.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5524551868438721,
+      "genus_confidence": 0.701896607875824,
+      "species_confidence": 0.7335828542709351,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5377851724624634,
+        0.463976114988327,
+        0.21137619018554688,
+        0.2886993885040283
+      ]
+    }
+  ],
+  "frame_0309.jpg": [
+    {
+      "image_data": "frame_0309.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7949234843254089,
+      "genus_confidence": 0.8400298953056335,
+      "species_confidence": 0.4917736351490021,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5313248038291931,
+        0.4891049861907959,
+        0.2111680954694748,
+        0.31973397731781006
+      ]
+    }
+  ],
+  "frame_0032.jpg": [
+    {
+      "image_data": "frame_0032.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9841414093971252,
+      "genus_confidence": 0.989559531211853,
+      "species_confidence": 0.9976221919059753,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4004629850387573,
+        0.6219747066497803,
+        0.27161550521850586,
+        0.4582950174808502
+      ]
+    },
+    {
+      "image_data": "frame_0032.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6727191209793091,
+      "genus_confidence": 0.732444167137146,
+      "species_confidence": 0.36287200450897217,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.367838054895401,
+        0.700900137424469,
+        0.19957752525806427,
+        0.2897354066371918
+      ]
+    }
+  ],
+  "frame_0231.jpg": [
+    {
+      "image_data": "frame_0231.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5569437742233276,
+      "genus_confidence": 0.6750840544700623,
+      "species_confidence": 0.6426362991333008,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4860660433769226,
+        0.4958374500274658,
+        0.21514536440372467,
+        0.3566341698169708
+      ]
+    }
+  ],
+  "frame_0143.jpg": [
+    {
+      "image_data": "frame_0143.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7209517955780029,
+      "genus_confidence": 0.6135048866271973,
+      "species_confidence": 0.5215133428573608,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.48749205470085144,
+        0.5401521325111389,
+        0.17923389375209808,
+        0.2915920615196228
+      ]
+    }
+  ],
+  "frame_0129.jpg": [
+    {
+      "image_data": "frame_0129.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8885378837585449,
+      "genus_confidence": 0.8144712448120117,
+      "species_confidence": 0.6257666945457458,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.46705085039138794,
+        0.5668157339096069,
+        0.129109188914299,
+        0.27768605947494507
+      ]
+    }
+  ],
+  "frame_0191.jpg": [
+    {
+      "image_data": "frame_0191.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9955701231956482,
+      "genus_confidence": 0.9949583411216736,
+      "species_confidence": 0.9373299479484558,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.42876332998275757,
+        0.6600834727287292,
+        0.20521675050258636,
+        0.2903781533241272
+      ]
+    }
+  ],
+  "frame_0298.jpg": [
+    {
+      "image_data": "frame_0298.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5415155291557312,
+      "genus_confidence": 0.731319785118103,
+      "species_confidence": 0.8437197804450989,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5413274765014648,
+        0.44065794348716736,
+        0.21030442416667938,
+        0.32277652621269226
+      ]
+    }
+  ],
+  "frame_0050.jpg": [
+    {
+      "image_data": "frame_0050.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8255550861358643,
+      "genus_confidence": 0.9116991758346558,
+      "species_confidence": 0.94701087474823,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4383731782436371,
+        0.39367353916168213,
+        0.20548324286937714,
+        0.3711880147457123
+      ]
+    }
+  ],
+  "frame_0282.jpg": [
+    {
+      "image_data": "frame_0282.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9651341438293457,
+      "genus_confidence": 0.969439685344696,
+      "species_confidence": 0.9789471626281738,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5039231181144714,
+        0.4376996159553528,
+        0.22714385390281677,
+        0.41000983119010925
+      ]
+    }
+  ],
+  "frame_0140.jpg": [
+    {
+      "image_data": "frame_0140.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9382712841033936,
+      "genus_confidence": 0.9050835967063904,
+      "species_confidence": 0.8698340058326721,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.46425944566726685,
+        0.5577714443206787,
+        0.1458398848772049,
+        0.2849525213241577
+      ]
+    }
+  ],
+  "frame_0285.jpg": [
+    {
+      "image_data": "frame_0285.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5550180673599243,
+      "genus_confidence": 0.7313315272331238,
+      "species_confidence": 0.5779822468757629,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5026722550392151,
+        0.4404357969760895,
+        0.2180810272693634,
+        0.32608678936958313
+      ]
+    }
+  ],
+  "frame_0281.jpg": [
+    {
+      "image_data": "frame_0281.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.958101212978363,
+      "genus_confidence": 0.9583995938301086,
+      "species_confidence": 0.9805044531822205,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5046349763870239,
+        0.4230026304721832,
+        0.22231565415859222,
+        0.38821399211883545
+      ]
+    }
+  ],
+  "frame_0219.jpg": [
+    {
+      "image_data": "frame_0219.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7697983384132385,
+      "genus_confidence": 0.6736453771591187,
+      "species_confidence": 0.3392251431941986,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4566117525100708,
+        0.5894034504890442,
+        0.206258162856102,
+        0.3087843060493469
+      ]
+    }
+  ],
+  "frame_0004.jpg": [
+    {
+      "image_data": "frame_0004.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.994884192943573,
+      "genus_confidence": 0.9882071614265442,
+      "species_confidence": 0.9990014433860779,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.3995323181152344,
+        0.5998535752296448,
+        0.23745132982730865,
+        0.3994971215724945
+      ]
+    }
+  ],
+  "frame_0120.jpg": [
+    {
+      "image_data": "frame_0120.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5259172916412354,
+      "genus_confidence": 0.599626898765564,
+      "species_confidence": 0.4253920912742615,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4152969419956207,
+        0.5527890920639038,
+        0.2662084400653839,
+        0.3417912721633911
+      ]
+    }
+  ],
+  "frame_0252.jpg": [
+    {
+      "image_data": "frame_0252.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7632071375846863,
+      "genus_confidence": 0.7059973478317261,
+      "species_confidence": 0.8060702085494995,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.5461509823799133,
+        0.4763472378253937,
+        0.21689605712890625,
+        0.36311182379722595
+      ]
+    }
+  ],
+  "frame_0237.jpg": [
+    {
+      "image_data": "frame_0237.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9855933785438538,
+      "genus_confidence": 0.9838957786560059,
+      "species_confidence": 0.998349666595459,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4913972318172455,
+        0.4572890102863312,
+        0.2949036657810211,
+        0.43860092759132385
+      ]
+    }
+  ],
+  "frame_0166.jpg": [
+    {
+      "image_data": "frame_0166.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9173363447189331,
+      "genus_confidence": 0.9272214770317078,
+      "species_confidence": 0.979164719581604,
+      "timestamp": "20250425_145511",
+      "bbox": [
+        0.4154585897922516,
+        0.6740449070930481,
+        0.24875761568546295,
+        0.393723726272583
+      ]
+    }
+  ],
+  "frame_0122.jpg": [
+    {
+      "image_data": "frame_0122.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.516086220741272,
+      "genus_confidence": 0.623535692691803,
+      "species_confidence": 0.388332724571228,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.41583672165870667,
+        0.5640830993652344,
+        0.24554897844791412,
+        0.32235419750213623
+      ]
+    }
+  ],
+  "frame_0288.jpg": [
+    {
+      "image_data": "frame_0288.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6229655146598816,
+      "genus_confidence": 0.828830897808075,
+      "species_confidence": 0.711555540561676,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5111457705497742,
+        0.44130760431289673,
+        0.21059700846672058,
+        0.326432466506958
+      ]
+    }
+  ],
+  "frame_0273.jpg": [
+    {
+      "image_data": "frame_0273.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8356316089630127,
+      "genus_confidence": 0.8712669610977173,
+      "species_confidence": 0.5487843751907349,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5067558288574219,
+        0.41540098190307617,
+        0.2089683562517166,
+        0.3001936078071594
+      ]
+    }
+  ],
+  "frame_0118.jpg": [
+    {
+      "image_data": "frame_0118.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.577437162399292,
+      "genus_confidence": 0.5619377493858337,
+      "species_confidence": 0.42581093311309814,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.42970743775367737,
+        0.5162891149520874,
+        0.26948603987693787,
+        0.311260461807251
+      ]
+    }
+  ],
+  "frame_0086.jpg": [
+    {
+      "image_data": "frame_0086.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7277846932411194,
+      "genus_confidence": 0.8085903525352478,
+      "species_confidence": 0.8563872575759888,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4536186158657074,
+        0.48238611221313477,
+        0.2517676055431366,
+        0.31911665201187134
+      ]
+    }
+  ],
+  "frame_0302.jpg": [
+    {
+      "image_data": "frame_0302.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.633854329586029,
+      "genus_confidence": 0.536910355091095,
+      "species_confidence": 0.8418196439743042,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5341681838035583,
+        0.47074371576309204,
+        0.2051364928483963,
+        0.28787800669670105
+      ]
+    }
+  ],
+  "frame_0246.jpg": [
+    {
+      "image_data": "frame_0246.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7064529061317444,
+      "genus_confidence": 0.604931116104126,
+      "species_confidence": 0.6939889192581177,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5300211310386658,
+        0.5666493773460388,
+        0.2253435105085373,
+        0.3481679856777191
+      ]
+    }
+  ],
+  "frame_0294.jpg": [
+    {
+      "image_data": "frame_0294.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9293131828308105,
+      "genus_confidence": 0.9453973174095154,
+      "species_confidence": 0.8725443482398987,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5364634394645691,
+        0.406708687543869,
+        0.21822910010814667,
+        0.38038989901542664
+      ]
+    }
+  ],
+  "frame_0234.jpg": [
+    {
+      "image_data": "frame_0234.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5313966274261475,
+      "genus_confidence": 0.5607979893684387,
+      "species_confidence": 0.418964684009552,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4758439064025879,
+        0.47071677446365356,
+        0.25298354029655457,
+        0.3820733428001404
+      ]
+    }
+  ],
+  "frame_0104.jpg": [
+    {
+      "image_data": "frame_0104.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5715409517288208,
+      "genus_confidence": 0.6924049854278564,
+      "species_confidence": 0.6258055567741394,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.43872547149658203,
+        0.5264514684677124,
+        0.22714334726333618,
+        0.32693737745285034
+      ]
+    }
+  ],
+  "frame_0244.jpg": [
+    {
+      "image_data": "frame_0244.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.4143528640270233,
+      "genus_confidence": 0.6433398723602295,
+      "species_confidence": 0.29906323552131653,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5135193467140198,
+        0.5749678015708923,
+        0.2149783819913864,
+        0.3438003957271576
+      ]
+    }
+  ],
+  "frame_0095.jpg": [
+    {
+      "image_data": "frame_0095.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5983362793922424,
+      "genus_confidence": 0.5593557953834534,
+      "species_confidence": 0.3455556333065033,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4009595215320587,
+        0.49843257665634155,
+        0.18482732772827148,
+        0.2931762635707855
+      ]
+    }
+  ],
+  "frame_0145.jpg": [
+    {
+      "image_data": "frame_0145.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7353777289390564,
+      "genus_confidence": 0.7286636233329773,
+      "species_confidence": 0.8380522727966309,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4782238304615021,
+        0.5360570549964905,
+        0.2145799696445465,
+        0.31751057505607605
+      ]
+    }
+  ],
+  "frame_0327.jpg": [],
+  "frame_0283.jpg": [
+    {
+      "image_data": "frame_0283.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8762771487236023,
+      "genus_confidence": 0.9139747023582458,
+      "species_confidence": 0.8919422626495361,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5006672739982605,
+        0.4264170825481415,
+        0.21725806593894958,
+        0.3587990999221802
+      ]
+    }
+  ],
+  "frame_0193.jpg": [
+    {
+      "image_data": "frame_0193.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9907322525978088,
+      "genus_confidence": 0.9910445213317871,
+      "species_confidence": 0.8385698199272156,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.42374667525291443,
+        0.6449577212333679,
+        0.2057817131280899,
+        0.3041993975639343
+      ]
+    }
+  ],
+  "frame_0169.jpg": [
+    {
+      "image_data": "frame_0169.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9750697612762451,
+      "genus_confidence": 0.9555837512016296,
+      "species_confidence": 0.9819796085357666,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4047207236289978,
+        0.6866148710250854,
+        0.22353878617286682,
+        0.32697194814682007
+      ]
+    }
+  ],
+  "frame_0239.jpg": [
+    {
+      "image_data": "frame_0239.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8953476548194885,
+      "genus_confidence": 0.9245811104774475,
+      "species_confidence": 0.9798591136932373,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.49954336881637573,
+        0.46913591027259827,
+        0.29157283902168274,
+        0.44258734583854675
+      ]
+    }
+  ],
+  "frame_0144.jpg": [
+    {
+      "image_data": "frame_0144.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8664193749427795,
+      "genus_confidence": 0.8025104403495789,
+      "species_confidence": 0.8318659067153931,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4852953851222992,
+        0.5349130630493164,
+        0.1973583847284317,
+        0.2982954978942871
+      ]
+    }
+  ],
+  "frame_0113.jpg": [
+    {
+      "image_data": "frame_0113.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9756185412406921,
+      "genus_confidence": 0.9468687176704407,
+      "species_confidence": 0.5785179138183594,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.42414501309394836,
+        0.4864344894886017,
+        0.16366484761238098,
+        0.30837664008140564
+      ]
+    }
+  ],
+  "frame_0303.jpg": [
+    {
+      "image_data": "frame_0303.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6808835864067078,
+      "genus_confidence": 0.764159083366394,
+      "species_confidence": 0.6909822821617126,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5363063812255859,
+        0.4726778268814087,
+        0.206156387925148,
+        0.2970377206802368
+      ]
+    }
+  ],
+  "frame_0090.jpg": [
+    {
+      "image_data": "frame_0090.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8967179656028748,
+      "genus_confidence": 0.9165759682655334,
+      "species_confidence": 0.9747858047485352,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4308212399482727,
+        0.5356102585792542,
+        0.2678680419921875,
+        0.36445921659469604
+      ]
+    }
+  ],
+  "frame_0165.jpg": [
+    {
+      "image_data": "frame_0165.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9788363575935364,
+      "genus_confidence": 0.9800115823745728,
+      "species_confidence": 0.9958315491676331,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.42158225178718567,
+        0.6508229374885559,
+        0.24446417391300201,
+        0.37647706270217896
+      ]
+    }
+  ],
+  "frame_0068.jpg": [
+    {
+      "image_data": "frame_0068.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9812536835670471,
+      "genus_confidence": 0.9807464480400085,
+      "species_confidence": 0.9768203496932983,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.3919661343097687,
+        0.5171857476234436,
+        0.21423670649528503,
+        0.3315991461277008
+      ]
+    }
+  ],
+  "frame_0276.jpg": [
+    {
+      "image_data": "frame_0276.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9383885264396667,
+      "genus_confidence": 0.9539403319358826,
+      "species_confidence": 0.8996947407722473,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.49937769770622253,
+        0.4379240572452545,
+        0.21083523333072662,
+        0.3495149314403534
+      ]
+    }
+  ],
+  "frame_0256.jpg": [
+    {
+      "image_data": "frame_0256.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9661046862602234,
+      "genus_confidence": 0.9802926182746887,
+      "species_confidence": 0.9935503005981445,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.5182538032531738,
+        0.46390995383262634,
+        0.22194017469882965,
+        0.39455169439315796
+      ]
+    }
+  ],
+  "frame_0037.jpg": [
+    {
+      "image_data": "frame_0037.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9721811413764954,
+      "genus_confidence": 0.973141610622406,
+      "species_confidence": 0.9962866306304932,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.3900320827960968,
+        0.616950273513794,
+        0.21175889670848846,
+        0.38996997475624084
+      ]
+    }
+  ],
+  "frame_0075.jpg": [
+    {
+      "image_data": "frame_0075.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9857520461082458,
+      "genus_confidence": 0.984534502029419,
+      "species_confidence": 0.9896960258483887,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.43331536650657654,
+        0.44342607259750366,
+        0.23495909571647644,
+        0.39248886704444885
+      ]
+    }
+  ],
+  "frame_0141.jpg": [
+    {
+      "image_data": "frame_0141.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9280567169189453,
+      "genus_confidence": 0.8920729756355286,
+      "species_confidence": 0.859734296798706,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.46745285391807556,
+        0.5592449903488159,
+        0.1463150680065155,
+        0.28571081161499023
+      ]
+    }
+  ],
+  "frame_0226.jpg": [
+    {
+      "image_data": "frame_0226.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6850034594535828,
+      "genus_confidence": 0.6162377595901489,
+      "species_confidence": 0.618916392326355,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.47715315222740173,
+        0.5677158832550049,
+        0.24596986174583435,
+        0.3661622703075409
+      ]
+    }
+  ],
+  "frame_0174.jpg": [
+    {
+      "image_data": "frame_0174.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.968265950679779,
+      "genus_confidence": 0.9589213132858276,
+      "species_confidence": 0.9814342260360718,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4243486523628235,
+        0.6866647005081177,
+        0.22238069772720337,
+        0.3558463156223297
+      ]
+    }
+  ],
+  "frame_0207.jpg": [
+    {
+      "image_data": "frame_0207.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9802122116088867,
+      "genus_confidence": 0.9773533344268799,
+      "species_confidence": 0.986005425453186,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.4505119323730469,
+        0.5662559866905212,
+        0.20693248510360718,
+        0.31046539545059204
+      ]
+    }
+  ],
+  "frame_0185.jpg": [
+    {
+      "image_data": "frame_0185.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9934451580047607,
+      "genus_confidence": 0.9931886196136475,
+      "species_confidence": 0.988722562789917,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.42779892683029175,
+        0.7262263298034668,
+        0.21705938875675201,
+        0.343017578125
+      ]
+    }
+  ],
+  "frame_0054.jpg": [
+    {
+      "image_data": "frame_0054.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.999703586101532,
+      "genus_confidence": 0.9993873834609985,
+      "species_confidence": 0.9998207688331604,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.44499048590660095,
+        0.4860505163669586,
+        0.22746935486793518,
+        0.5238673090934753
+      ]
+    }
+  ],
+  "frame_0295.jpg": [
+    {
+      "image_data": "frame_0295.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8241196274757385,
+      "genus_confidence": 0.8712123036384583,
+      "species_confidence": 0.45857319235801697,
+      "timestamp": "20250425_145512",
+      "bbox": [
+        0.536492645740509,
+        0.4125733971595764,
+        0.21874850988388062,
+        0.3488836884498596
+      ]
+    }
+  ],
+  "frame_0269.jpg": [
+    {
+      "image_data": "frame_0269.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5304833054542542,
+      "genus_confidence": 0.6513689756393433,
+      "species_confidence": 0.5457803606987,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5153080224990845,
+        0.42152878642082214,
+        0.2127687782049179,
+        0.3226926624774933
+      ]
+    }
+  ],
+  "frame_0171.jpg": [
+    {
+      "image_data": "frame_0171.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6481612324714661,
+      "genus_confidence": 0.6465923190116882,
+      "species_confidence": 0.38247430324554443,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4029172956943512,
+        0.6837889552116394,
+        0.21596701443195343,
+        0.3332824110984802
+      ]
+    }
+  ],
+  "frame_0084.jpg": [
+    {
+      "image_data": "frame_0084.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9336876273155212,
+      "genus_confidence": 0.9355655312538147,
+      "species_confidence": 0.9761933088302612,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.46200427412986755,
+        0.48295000195503235,
+        0.22699131071567535,
+        0.3108350932598114
+      ]
+    }
+  ],
+  "frame_0168.jpg": [
+    {
+      "image_data": "frame_0168.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9751410484313965,
+      "genus_confidence": 0.9516847133636475,
+      "species_confidence": 0.9917928576469421,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.40978920459747314,
+        0.6959632039070129,
+        0.22675618529319763,
+        0.345779150724411
+      ]
+    }
+  ],
+  "frame_0190.jpg": [
+    {
+      "image_data": "frame_0190.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.990562379360199,
+      "genus_confidence": 0.9909533262252808,
+      "species_confidence": 0.9110009670257568,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.43100985884666443,
+        0.676020622253418,
+        0.20345115661621094,
+        0.3073231875896454
+      ]
+    }
+  ],
+  "frame_0027.jpg": [
+    {
+      "image_data": "frame_0027.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9776606559753418,
+      "genus_confidence": 0.9833552241325378,
+      "species_confidence": 0.997506320476532,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4067467749118805,
+        0.6355424523353577,
+        0.25113213062286377,
+        0.4270545542240143
+      ]
+    }
+  ],
+  "frame_0188.jpg": [
+    {
+      "image_data": "frame_0188.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.998976469039917,
+      "genus_confidence": 0.9991477727890015,
+      "species_confidence": 0.997979462146759,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4324932098388672,
+        0.7034822702407837,
+        0.2158016562461853,
+        0.3364088237285614
+      ]
+    }
+  ],
+  "frame_0329.jpg": [],
+  "frame_0184.jpg": [
+    {
+      "image_data": "frame_0184.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9997093081474304,
+      "genus_confidence": 0.9995390176773071,
+      "species_confidence": 0.9993934631347656,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.42528998851776123,
+        0.7281395792961121,
+        0.2161940634250641,
+        0.3475697338581085
+      ]
+    }
+  ],
+  "frame_0319.jpg": [
+    {
+      "image_data": "frame_0319.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5242842435836792,
+      "genus_confidence": 0.6028363108634949,
+      "species_confidence": 0.40417346358299255,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4280792474746704,
+        0.4780465066432953,
+        0.16885776817798615,
+        0.35120388865470886
+      ]
+    }
+  ],
+  "frame_0263.jpg": [
+    {
+      "image_data": "frame_0263.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.87564617395401,
+      "genus_confidence": 0.8932724595069885,
+      "species_confidence": 0.9052988886833191,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5114725828170776,
+        0.46510598063468933,
+        0.2101336419582367,
+        0.3687233030796051
+      ]
+    }
+  ],
+  "frame_0173.jpg": [
+    {
+      "image_data": "frame_0173.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.838623046875,
+      "genus_confidence": 0.8362805247306824,
+      "species_confidence": 0.8638595938682556,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.42049941420555115,
+        0.6816346049308777,
+        0.22679020464420319,
+        0.35815462470054626
+      ]
+    }
+  ],
+  "frame_0154.jpg": [
+    {
+      "image_data": "frame_0154.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9606450200080872,
+      "genus_confidence": 0.9048283100128174,
+      "species_confidence": 0.9891374707221985,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4748311936855316,
+        0.5367570519447327,
+        0.19808132946491241,
+        0.31688281893730164
+      ]
+    }
+  ],
+  "frame_0064.jpg": [
+    {
+      "image_data": "frame_0064.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9114586710929871,
+      "genus_confidence": 0.9332578778266907,
+      "species_confidence": 0.7948194742202759,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.41325804591178894,
+        0.5140361785888672,
+        0.1864931434392929,
+        0.29551318287849426
+      ]
+    }
+  ],
+  "frame_0264.jpg": [
+    {
+      "image_data": "frame_0264.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8119222521781921,
+      "genus_confidence": 0.8382929563522339,
+      "species_confidence": 0.7929744720458984,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5135297775268555,
+        0.4272635579109192,
+        0.20629310607910156,
+        0.3180670738220215
+      ]
+    }
+  ],
+  "frame_0323.jpg": [
+    {
+      "image_data": "frame_0323.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.41643625497817993,
+      "genus_confidence": 0.6045482754707336,
+      "species_confidence": 0.2392599731683731,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.08680973201990128,
+        0.33894670009613037,
+        0.17305925488471985,
+        0.32330557703971863
+      ]
+    }
+  ],
+  "frame_0094.jpg": [
+    {
+      "image_data": "frame_0094.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7420637011528015,
+      "genus_confidence": 0.7363591194152832,
+      "species_confidence": 0.6255548000335693,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.40597084164619446,
+        0.5039166212081909,
+        0.2042895257472992,
+        0.30640462040901184
+      ]
+    }
+  ],
+  "frame_0270.jpg": [
+    {
+      "image_data": "frame_0270.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7782961130142212,
+      "genus_confidence": 0.8341737985610962,
+      "species_confidence": 0.7154580950737,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.51616370677948,
+        0.41834667325019836,
+        0.21186323463916779,
+        0.316376268863678
+      ]
+    }
+  ],
+  "frame_0178.jpg": [
+    {
+      "image_data": "frame_0178.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9700798988342285,
+      "genus_confidence": 0.9572724103927612,
+      "species_confidence": 0.9277853965759277,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4052371382713318,
+        0.7095533013343811,
+        0.20959749817848206,
+        0.327115535736084
+      ]
+    }
+  ],
+  "frame_0014.jpg": [
+    {
+      "image_data": "frame_0014.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9838261008262634,
+      "genus_confidence": 0.9845622181892395,
+      "species_confidence": 0.9981429576873779,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.3877187669277191,
+        0.6152387857437134,
+        0.2668449282646179,
+        0.43730083107948303
+      ]
+    },
+    {
+      "image_data": "frame_0014.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7843933701515198,
+      "genus_confidence": 0.8392294049263,
+      "species_confidence": 0.4127434194087982,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.3558453321456909,
+        0.6828064918518066,
+        0.19461819529533386,
+        0.28486040234565735
+      ]
+    }
+  ],
+  "frame_0057.jpg": [
+    {
+      "image_data": "frame_0057.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9994468092918396,
+      "genus_confidence": 0.9991408586502075,
+      "species_confidence": 0.9997877478599548,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4280266761779785,
+        0.4800174832344055,
+        0.24186891317367554,
+        0.41757774353027344
+      ]
+    }
+  ],
+  "frame_0305.jpg": [
+    {
+      "image_data": "frame_0305.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9281252026557922,
+      "genus_confidence": 0.9388883709907532,
+      "species_confidence": 0.37134048342704773,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5362298488616943,
+        0.47419896721839905,
+        0.20611467957496643,
+        0.3026984930038452
+      ]
+    }
+  ],
+  "frame_0049.jpg": [
+    {
+      "image_data": "frame_0049.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9793786406517029,
+      "genus_confidence": 0.982180118560791,
+      "species_confidence": 0.9960101842880249,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.42806491255760193,
+        0.3844985365867615,
+        0.21839293837547302,
+        0.35919710993766785
+      ]
+    }
+  ],
+  "frame_0035.jpg": [
+    {
+      "image_data": "frame_0035.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9086657762527466,
+      "genus_confidence": 0.9341344833374023,
+      "species_confidence": 0.9887004494667053,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.39645126461982727,
+        0.6429489850997925,
+        0.2085413932800293,
+        0.38022342324256897
+      ]
+    }
+  ],
+  "frame_0070.jpg": [
+    {
+      "image_data": "frame_0070.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8983485698699951,
+      "genus_confidence": 0.9205124378204346,
+      "species_confidence": 0.9633091688156128,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.4055711030960083,
+        0.49805760383605957,
+        0.24044662714004517,
+        0.40830326080322266
+      ]
+    }
+  ],
+  "frame_0006.jpg": [
+    {
+      "image_data": "frame_0006.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5265007019042969,
+      "genus_confidence": 0.6116505861282349,
+      "species_confidence": 0.6144917011260986,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.3984914720058441,
+        0.6201422810554504,
+        0.28803497552871704,
+        0.38959798216819763
+      ]
+    }
+  ],
+  "frame_0249.jpg": [
+    {
+      "image_data": "frame_0249.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9986250400543213,
+      "genus_confidence": 0.9967679977416992,
+      "species_confidence": 0.9992313385009766,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5434814095497131,
+        0.49881190061569214,
+        0.2195257842540741,
+        0.388211727142334
+      ]
+    }
+  ],
+  "frame_0055.jpg": [
+    {
+      "image_data": "frame_0055.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9999825954437256,
+      "genus_confidence": 0.9999459981918335,
+      "species_confidence": 0.9999895095825195,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.44468528032302856,
+        0.50407874584198,
+        0.2386695295572281,
+        0.5077418684959412
+      ]
+    }
+  ],
+  "frame_0213.jpg": [
+    {
+      "image_data": "frame_0213.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8470571637153625,
+      "genus_confidence": 0.9247574210166931,
+      "species_confidence": 0.8761414289474487,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.43998613953590393,
+        0.5778413414955139,
+        0.23706290125846863,
+        0.3646598160266876
+      ]
+    }
+  ],
+  "frame_0250.jpg": [
+    {
+      "image_data": "frame_0250.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9514051675796509,
+      "genus_confidence": 0.9325612187385559,
+      "species_confidence": 0.9873569011688232,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5534652471542358,
+        0.5024811625480652,
+        0.2284984588623047,
+        0.4295867085456848
+      ]
+    }
+  ],
+  "frame_0254.jpg": [
+    {
+      "image_data": "frame_0254.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7800701260566711,
+      "genus_confidence": 0.862932026386261,
+      "species_confidence": 0.9332560896873474,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.5531898736953735,
+        0.47688350081443787,
+        0.2149091362953186,
+        0.24349023401737213
+      ]
+    }
+  ],
+  "frame_0051.jpg": [
+    {
+      "image_data": "frame_0051.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7879638671875,
+      "genus_confidence": 0.8768666386604309,
+      "species_confidence": 0.9262672662734985,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.43849238753318787,
+        0.42004334926605225,
+        0.2113729864358902,
+        0.4100923240184784
+      ]
+    }
+  ],
+  "frame_0177.jpg": [
+    {
+      "image_data": "frame_0177.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9351361393928528,
+      "genus_confidence": 0.9272618889808655,
+      "species_confidence": 0.7650011777877808,
+      "timestamp": "20250425_145513",
+      "bbox": [
+        0.40122783184051514,
+        0.7070808410644531,
+        0.2113254815340042,
+        0.3237181007862091
+      ]
+    }
+  ],
+  "frame_0082.jpg": [
+    {
+      "image_data": "frame_0082.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.858973503112793,
+      "genus_confidence": 0.7730944752693176,
+      "species_confidence": 0.8490647077560425,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.45786067843437195,
+        0.4733411371707916,
+        0.1831735223531723,
+        0.32730138301849365
+      ]
+    }
+  ],
+  "frame_0156.jpg": [
+    {
+      "image_data": "frame_0156.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7455216646194458,
+      "genus_confidence": 0.6532954573631287,
+      "species_confidence": 0.8198081851005554,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4868113100528717,
+        0.5499634742736816,
+        0.1972602903842926,
+        0.31133610010147095
+      ]
+    }
+  ],
+  "frame_0036.jpg": [
+    {
+      "image_data": "frame_0036.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.821564793586731,
+      "genus_confidence": 0.916431725025177,
+      "species_confidence": 0.9633629322052002,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3902954161167145,
+        0.637578547000885,
+        0.20480842888355255,
+        0.362207293510437
+      ]
+    }
+  ],
+  "frame_0016.jpg": [
+    {
+      "image_data": "frame_0016.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9889044165611267,
+      "genus_confidence": 0.9908332228660583,
+      "species_confidence": 0.9991531372070312,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3932848274707794,
+        0.6183412671089172,
+        0.26962628960609436,
+        0.4377588927745819
+      ]
+    },
+    {
+      "image_data": "frame_0016.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.750102162361145,
+      "genus_confidence": 0.8128593564033508,
+      "species_confidence": 0.4018397927284241,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3584752082824707,
+        0.6881783604621887,
+        0.19425155222415924,
+        0.2831374704837799
+      ]
+    }
+  ],
+  "frame_0155.jpg": [
+    {
+      "image_data": "frame_0155.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6817774176597595,
+      "genus_confidence": 0.6498610377311707,
+      "species_confidence": 0.8382039070129395,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4824146330356598,
+        0.544474184513092,
+        0.20481210947036743,
+        0.3170228600502014
+      ]
+    }
+  ],
+  "frame_0045.jpg": [
+    {
+      "image_data": "frame_0045.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9869990944862366,
+      "genus_confidence": 0.9871076941490173,
+      "species_confidence": 0.9968301653862,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4262743890285492,
+        0.43280214071273804,
+        0.22110995650291443,
+        0.5369507074356079
+      ]
+    }
+  ],
+  "frame_0210.jpg": [
+    {
+      "image_data": "frame_0210.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6965973377227783,
+      "genus_confidence": 0.6501235365867615,
+      "species_confidence": 0.6295837759971619,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4570542573928833,
+        0.5485103130340576,
+        0.2240300178527832,
+        0.34151458740234375
+      ]
+    }
+  ],
+  "frame_0108.jpg": [
+    {
+      "image_data": "frame_0108.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5555070042610168,
+      "genus_confidence": 0.6477208137512207,
+      "species_confidence": 0.45396506786346436,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4176492691040039,
+        0.5300162434577942,
+        0.23089583218097687,
+        0.32080045342445374
+      ]
+    }
+  ],
+  "frame_0243.jpg": [
+    {
+      "image_data": "frame_0243.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5207571983337402,
+      "genus_confidence": 0.5142642855644226,
+      "species_confidence": 0.5557442903518677,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.5110337138175964,
+        0.5078532099723816,
+        0.2207525223493576,
+        0.3251417279243469
+      ]
+    }
+  ],
+  "frame_0236.jpg": [
+    {
+      "image_data": "frame_0236.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8987160921096802,
+      "genus_confidence": 0.9217625856399536,
+      "species_confidence": 0.985883891582489,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.49074074625968933,
+        0.4521573781967163,
+        0.3005174696445465,
+        0.421303391456604
+      ]
+    }
+  ],
+  "frame_0315.jpg": [
+    {
+      "image_data": "frame_0315.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.531853437423706,
+      "genus_confidence": 0.5942102670669556,
+      "species_confidence": 0.4561001658439636,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.5246497988700867,
+        0.46484217047691345,
+        0.204294815659523,
+        0.45752063393592834
+      ]
+    }
+  ],
+  "frame_0097.jpg": [
+    {
+      "image_data": "frame_0097.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7801920771598816,
+      "genus_confidence": 0.6607978343963623,
+      "species_confidence": 0.5105499029159546,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4128681719303131,
+        0.4960128664970398,
+        0.14746637642383575,
+        0.2854776978492737
+      ]
+    }
+  ],
+  "frame_0299.jpg": [
+    {
+      "image_data": "frame_0299.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5207622051239014,
+      "genus_confidence": 0.7075698375701904,
+      "species_confidence": 0.8246744871139526,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.538153350353241,
+        0.45329970121383667,
+        0.21013189852237701,
+        0.2963836193084717
+      ]
+    }
+  ],
+  "frame_0271.jpg": [
+    {
+      "image_data": "frame_0271.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.741188645362854,
+      "genus_confidence": 0.810223400592804,
+      "species_confidence": 0.6786772012710571,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.5205879211425781,
+        0.4194048345088959,
+        0.21024148166179657,
+        0.3023799955844879
+      ]
+    }
+  ],
+  "frame_0255.jpg": [
+    {
+      "image_data": "frame_0255.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9784486293792725,
+      "genus_confidence": 0.9803665280342102,
+      "species_confidence": 0.9943113327026367,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.5428289175033569,
+        0.4458794593811035,
+        0.22344017028808594,
+        0.3770017623901367
+      ]
+    }
+  ],
+  "frame_0012.jpg": [
+    {
+      "image_data": "frame_0012.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8899887204170227,
+      "genus_confidence": 0.9311453104019165,
+      "species_confidence": 0.9804059267044067,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.39473769068717957,
+        0.6294050216674805,
+        0.2793802320957184,
+        0.43431416153907776
+      ]
+    },
+    {
+      "image_data": "frame_0012.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.81086665391922,
+      "genus_confidence": 0.8324036002159119,
+      "species_confidence": 0.532845139503479,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.354835569858551,
+        0.6982817053794861,
+        0.1938045620918274,
+        0.2828718423843384
+      ]
+    }
+  ],
+  "frame_0072.jpg": [
+    {
+      "image_data": "frame_0072.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9306986927986145,
+      "genus_confidence": 0.9410450458526611,
+      "species_confidence": 0.9721717834472656,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.41680318117141724,
+        0.478431761264801,
+        0.24294601380825043,
+        0.42064186930656433
+      ]
+    }
+  ],
+  "frame_0116.jpg": [
+    {
+      "image_data": "frame_0116.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7969309091567993,
+      "genus_confidence": 0.8399865627288818,
+      "species_confidence": 0.8469674587249756,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.43991172313690186,
+        0.4980909526348114,
+        0.23204870522022247,
+        0.31406351923942566
+      ]
+    }
+  ],
+  "frame_0289.jpg": [
+    {
+      "image_data": "frame_0289.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.654806911945343,
+      "genus_confidence": 0.8462632894515991,
+      "species_confidence": 0.7085949182510376,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.5112209320068359,
+        0.439639687538147,
+        0.214955136179924,
+        0.33270975947380066
+      ]
+    }
+  ],
+  "frame_0080.jpg": [
+    {
+      "image_data": "frame_0080.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7354543805122375,
+      "genus_confidence": 0.569483757019043,
+      "species_confidence": 0.5226573348045349,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.45846226811408997,
+        0.47897621989250183,
+        0.1630714386701584,
+        0.3030836582183838
+      ]
+    }
+  ],
+  "frame_0088.jpg": [
+    {
+      "image_data": "frame_0088.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7779499888420105,
+      "genus_confidence": 0.8506006002426147,
+      "species_confidence": 0.9271355867385864,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.444729208946228,
+        0.5307499170303345,
+        0.2648923993110657,
+        0.3685724437236786
+      ]
+    }
+  ],
+  "frame_0142.jpg": [
+    {
+      "image_data": "frame_0142.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8856663107872009,
+      "genus_confidence": 0.8677754998207092,
+      "species_confidence": 0.8000229001045227,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.47317376732826233,
+        0.5542821884155273,
+        0.160450741648674,
+        0.2854178547859192
+      ]
+    }
+  ],
+  "frame_0043.jpg": [
+    {
+      "image_data": "frame_0043.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9961094260215759,
+      "genus_confidence": 0.9954999089241028,
+      "species_confidence": 0.9992086291313171,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.40455392003059387,
+        0.4919340908527374,
+        0.23333756625652313,
+        0.5643703937530518
+      ]
+    }
+  ],
+  "frame_0322.jpg": [
+    {
+      "image_data": "frame_0322.jpg",
+      "family": "Nymphalidae",
+      "genus": "Lepidoptera",
+      "species": "Aglais urticae",
+      "family_confidence": 0.5568351745605469,
+      "genus_confidence": 0.6495140790939331,
+      "species_confidence": 0.5342487096786499,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.13862085342407227,
+        0.3170528709888458,
+        0.16487185657024384,
+        0.36765056848526
+      ]
+    }
+  ],
+  "frame_0067.jpg": [
+    {
+      "image_data": "frame_0067.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.98734450340271,
+      "genus_confidence": 0.9857101440429688,
+      "species_confidence": 0.972050130367279,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3961615264415741,
+        0.514744222164154,
+        0.19972924888134003,
+        0.3090656101703644
+      ]
+    }
+  ],
+  "frame_0187.jpg": [
+    {
+      "image_data": "frame_0187.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9925399422645569,
+      "genus_confidence": 0.993510901927948,
+      "species_confidence": 0.993078887462616,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4333093762397766,
+        0.7179768681526184,
+        0.22082887589931488,
+        0.3485589623451233
+      ]
+    }
+  ],
+  "frame_0136.jpg": [
+    {
+      "image_data": "frame_0136.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9188898801803589,
+      "genus_confidence": 0.8859768509864807,
+      "species_confidence": 0.9432751536369324,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.4570154547691345,
+        0.5453872084617615,
+        0.1861008256673813,
+        0.3030660152435303
+      ]
+    }
+  ],
+  "frame_0033.jpg": [
+    {
+      "image_data": "frame_0033.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9835063815116882,
+      "genus_confidence": 0.9886619448661804,
+      "species_confidence": 0.9978886246681213,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3980261981487274,
+        0.6152547597885132,
+        0.26359644532203674,
+        0.4577510952949524
+      ]
+    },
+    {
+      "image_data": "frame_0033.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8295888304710388,
+      "genus_confidence": 0.8582955002784729,
+      "species_confidence": 0.7245397567749023,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.3658808469772339,
+        0.688704252243042,
+        0.193555548787117,
+        0.30280354619026184
+      ]
+    }
+  ],
+  "frame_0073.jpg": [
+    {
+      "image_data": "frame_0073.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9748417735099792,
+      "genus_confidence": 0.9741267561912537,
+      "species_confidence": 0.9929225444793701,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.43093687295913696,
+        0.4535706043243408,
+        0.23664763569831848,
+        0.4138128459453583
+      ]
+    }
+  ],
+  "frame_0235.jpg": [
+    {
+      "image_data": "frame_0235.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9300079941749573,
+      "genus_confidence": 0.9366263151168823,
+      "species_confidence": 0.9893668293952942,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.48599547147750854,
+        0.4565591812133789,
+        0.2896171808242798,
+        0.41744035482406616
+      ]
+    }
+  ],
+  "frame_0153.jpg": [
+    {
+      "image_data": "frame_0153.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7464108467102051,
+      "genus_confidence": 0.6369714736938477,
+      "species_confidence": 0.6279080510139465,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.48979854583740234,
+        0.5260053277015686,
+        0.16113418340682983,
+        0.29074811935424805
+      ]
+    }
+  ],
+  "frame_0093.jpg": [
+    {
+      "image_data": "frame_0093.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5691298246383667,
+      "genus_confidence": 0.6293489336967468,
+      "species_confidence": 0.6246429085731506,
+      "timestamp": "20250425_145514",
+      "bbox": [
+        0.40383440256118774,
+        0.5092070698738098,
+        0.22749033570289612,
+        0.3270267844200134
+      ]
+    }
+  ],
+  "frame_0206.jpg": [
+    {
+      "image_data": "frame_0206.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9822989106178284,
+      "genus_confidence": 0.9748176336288452,
+      "species_confidence": 0.9376205801963806,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4442756772041321,
+        0.5620082020759583,
+        0.20883487164974213,
+        0.2996625304222107
+      ]
+    }
+  ],
+  "frame_0326.jpg": [],
+  "frame_0229.jpg": [
+    {
+      "image_data": "frame_0229.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6145036816596985,
+      "genus_confidence": 0.6375808715820312,
+      "species_confidence": 0.6679181456565857,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4871748685836792,
+        0.5097562670707703,
+        0.2161543220281601,
+        0.35832977294921875
+      ]
+    }
+  ],
+  "frame_0199.jpg": [
+    {
+      "image_data": "frame_0199.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9895142316818237,
+      "genus_confidence": 0.9909992218017578,
+      "species_confidence": 0.9971458315849304,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.41279155015945435,
+        0.6121753454208374,
+        0.22961153090000153,
+        0.3610178530216217
+      ]
+    }
+  ],
+  "frame_0164.jpg": [
+    {
+      "image_data": "frame_0164.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9825491905212402,
+      "genus_confidence": 0.9760937094688416,
+      "species_confidence": 0.9948634505271912,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4234893023967743,
+        0.6487614512443542,
+        0.2305215448141098,
+        0.34753942489624023
+      ]
+    }
+  ],
+  "frame_0085.jpg": [
+    {
+      "image_data": "frame_0085.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8374089002609253,
+      "genus_confidence": 0.8895913362503052,
+      "species_confidence": 0.9558453559875488,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4629441797733307,
+        0.4811529517173767,
+        0.24105854332447052,
+        0.31213754415512085
+      ]
+    }
+  ],
+  "frame_0152.jpg": [
+    {
+      "image_data": "frame_0152.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5998947024345398,
+      "genus_confidence": 0.6071732640266418,
+      "species_confidence": 0.46246713399887085,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.48877963423728943,
+        0.5220227241516113,
+        0.15308304131031036,
+        0.2912265360355377
+      ]
+    }
+  ],
+  "frame_0031.jpg": [
+    {
+      "image_data": "frame_0031.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5734396576881409,
+      "genus_confidence": 0.6653624773025513,
+      "species_confidence": 0.4662986993789673,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.3686479926109314,
+        0.7035948634147644,
+        0.1977037489414215,
+        0.2987252175807953
+      ]
+    },
+    {
+      "image_data": "frame_0031.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.937590479850769,
+      "genus_confidence": 0.9613320827484131,
+      "species_confidence": 0.988709032535553,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.40529754757881165,
+        0.6299079656600952,
+        0.2731590270996094,
+        0.45208024978637695
+      ]
+    }
+  ],
+  "frame_0162.jpg": [
+    {
+      "image_data": "frame_0162.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8572843670845032,
+      "genus_confidence": 0.7930207252502441,
+      "species_confidence": 0.7443093061447144,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.43470269441604614,
+        0.609751284122467,
+        0.2036896049976349,
+        0.2966964840888977
+      ]
+    }
+  ],
+  "frame_0330.jpg": [],
+  "frame_0201.jpg": [
+    {
+      "image_data": "frame_0201.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9968728423118591,
+      "genus_confidence": 0.9977312684059143,
+      "species_confidence": 0.9970334768295288,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.42125383019447327,
+        0.5875669121742249,
+        0.21892264485359192,
+        0.3372519612312317
+      ]
+    }
+  ],
+  "frame_0076.jpg": [
+    {
+      "image_data": "frame_0076.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9972869157791138,
+      "genus_confidence": 0.992403507232666,
+      "species_confidence": 0.9975429773330688,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4279569685459137,
+        0.46135908365249634,
+        0.22707456350326538,
+        0.3705270290374756
+      ]
+    }
+  ],
+  "frame_0220.jpg": [
+    {
+      "image_data": "frame_0220.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8248706459999084,
+      "genus_confidence": 0.8408181667327881,
+      "species_confidence": 0.6718819737434387,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4588127136230469,
+        0.5918319225311279,
+        0.20744475722312927,
+        0.3184448480606079
+      ]
+    }
+  ],
+  "frame_0286.jpg": [
+    {
+      "image_data": "frame_0286.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7309873700141907,
+      "genus_confidence": 0.8840651512145996,
+      "species_confidence": 0.5989342331886292,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.5054411292076111,
+        0.45200034976005554,
+        0.21141745150089264,
+        0.3296670913696289
+      ]
+    }
+  ],
+  "frame_0218.jpg": [
+    {
+      "image_data": "frame_0218.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.835590660572052,
+      "genus_confidence": 0.724258303642273,
+      "species_confidence": 0.536835789680481,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4509124159812927,
+        0.5728970170021057,
+        0.2059507966041565,
+        0.303311824798584
+      ]
+    }
+  ],
+  "frame_0183.jpg": [
+    {
+      "image_data": "frame_0183.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9814162254333496,
+      "genus_confidence": 0.9773594737052917,
+      "species_confidence": 0.9623512625694275,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4215086102485657,
+        0.7137197852134705,
+        0.2194179892539978,
+        0.3354341387748718
+      ]
+    }
+  ],
+  "frame_0147.jpg": [
+    {
+      "image_data": "frame_0147.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6572461128234863,
+      "genus_confidence": 0.6111710667610168,
+      "species_confidence": 0.6881552934646606,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.48105672001838684,
+        0.5299731492996216,
+        0.2094423919916153,
+        0.3187571167945862
+      ]
+    }
+  ],
+  "frame_0225.jpg": [
+    {
+      "image_data": "frame_0225.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.566185474395752,
+      "genus_confidence": 0.5605388879776001,
+      "species_confidence": 0.5475977063179016,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4760268032550812,
+        0.562802791595459,
+        0.24708478152751923,
+        0.3492938280105591
+      ]
+    }
+  ],
+  "frame_0284.jpg": [
+    {
+      "image_data": "frame_0284.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8793745636940002,
+      "genus_confidence": 0.9283717274665833,
+      "species_confidence": 0.8973705172538757,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.5004914999008179,
+        0.4333578646183014,
+        0.21771685779094696,
+        0.33772414922714233
+      ]
+    }
+  ],
+  "frame_0001.jpg": [
+    {
+      "image_data": "frame_0001.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9993963241577148,
+      "genus_confidence": 0.9982650876045227,
+      "species_confidence": 0.9991531372070312,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.3724842667579651,
+        0.5613671541213989,
+        0.22307321429252625,
+        0.3901659846305847
+      ]
+    }
+  ],
+  "frame_0317.jpg": [
+    {
+      "image_data": "frame_0317.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5130056738853455,
+      "genus_confidence": 0.5321654677391052,
+      "species_confidence": 0.5082641243934631,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.5076839923858643,
+        0.4909481406211853,
+        0.18160642683506012,
+        0.27804410457611084
+      ]
+    }
+  ],
+  "frame_0297.jpg": [
+    {
+      "image_data": "frame_0297.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7391688227653503,
+      "genus_confidence": 0.8051870465278625,
+      "species_confidence": 0.5053942203521729,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.540878176689148,
+        0.41848036646842957,
+        0.2118319571018219,
+        0.3295343220233917
+      ]
+    }
+  ],
+  "frame_0216.jpg": [
+    {
+      "image_data": "frame_0216.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7585461735725403,
+      "genus_confidence": 0.7169054746627808,
+      "species_confidence": 0.5584380626678467,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.43671315908432007,
+        0.5735118985176086,
+        0.21878814697265625,
+        0.323868989944458
+      ]
+    }
+  ],
+  "frame_0189.jpg": [
+    {
+      "image_data": "frame_0189.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9990955591201782,
+      "genus_confidence": 0.9992908239364624,
+      "species_confidence": 0.9993662238121033,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4305180311203003,
+        0.6886464357376099,
+        0.2079695761203766,
+        0.3230089545249939
+      ]
+    }
+  ],
+  "frame_0157.jpg": [
+    {
+      "image_data": "frame_0157.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7521384358406067,
+      "genus_confidence": 0.6845442652702332,
+      "species_confidence": 0.8788275122642517,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4782506823539734,
+        0.5771225690841675,
+        0.20815442502498627,
+        0.3331327736377716
+      ]
+    }
+  ],
+  "frame_0024.jpg": [
+    {
+      "image_data": "frame_0024.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9998383522033691,
+      "genus_confidence": 0.9997157454490662,
+      "species_confidence": 0.9999755620956421,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.3975886404514313,
+        0.6370964050292969,
+        0.20413970947265625,
+        0.36137962341308594
+      ]
+    }
+  ],
+  "frame_0058.jpg": [
+    {
+      "image_data": "frame_0058.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9242381453514099,
+      "genus_confidence": 0.9629843831062317,
+      "species_confidence": 0.9752641916275024,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.42659154534339905,
+        0.47214475274086,
+        0.23788174986839294,
+        0.36164945363998413
+      ]
+    }
+  ],
+  "frame_0028.jpg": [
+    {
+      "image_data": "frame_0028.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9555177688598633,
+      "genus_confidence": 0.9713611602783203,
+      "species_confidence": 0.9923306703567505,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4103384017944336,
+        0.6421342492103577,
+        0.25596073269844055,
+        0.43354812264442444
+      ]
+    }
+  ],
+  "frame_0308.jpg": [
+    {
+      "image_data": "frame_0308.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6387889981269836,
+      "genus_confidence": 0.7865920066833496,
+      "species_confidence": 0.6667488813400269,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.5298184156417847,
+        0.4843665659427643,
+        0.21427951753139496,
+        0.338480144739151
+      ]
+    }
+  ],
+  "frame_0318.jpg": [
+    {
+      "image_data": "frame_0318.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.48318740725517273,
+      "genus_confidence": 0.6448718309402466,
+      "species_confidence": 0.5395461916923523,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4415549635887146,
+        0.5043975710868835,
+        0.23898357152938843,
+        0.4994564354419708
+      ]
+    }
+  ],
+  "frame_0182.jpg": [
+    {
+      "image_data": "frame_0182.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9848567247390747,
+      "genus_confidence": 0.9848068952560425,
+      "species_confidence": 0.972894549369812,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.41446247696876526,
+        0.721001923084259,
+        0.21331770718097687,
+        0.34160393476486206
+      ]
+    }
+  ],
+  "frame_0018.jpg": [
+    {
+      "image_data": "frame_0018.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9956516623497009,
+      "genus_confidence": 0.9965137839317322,
+      "species_confidence": 0.9995869994163513,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.39142414927482605,
+        0.6040676236152649,
+        0.2501698136329651,
+        0.44100382924079895
+      ]
+    }
+  ],
+  "frame_0087.jpg": [
+    {
+      "image_data": "frame_0087.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7067571878433228,
+      "genus_confidence": 0.8118461966514587,
+      "species_confidence": 0.8638566732406616,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4488331377506256,
+        0.5019757151603699,
+        0.2586604952812195,
+        0.3416000306606293
+      ]
+    }
+  ],
+  "frame_0138.jpg": [
+    {
+      "image_data": "frame_0138.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8376280665397644,
+      "genus_confidence": 0.7502021789550781,
+      "species_confidence": 0.6868191957473755,
+      "timestamp": "20250425_145515",
+      "bbox": [
+        0.4659464955329895,
+        0.5441721677780151,
+        0.15164686739444733,
+        0.28866326808929443
+      ]
+    }
+  ],
+  "frame_0261.jpg": [
+    {
+      "image_data": "frame_0261.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6900933384895325,
+      "genus_confidence": 0.8140591979026794,
+      "species_confidence": 0.7114460468292236,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5009897351264954,
+        0.4653606414794922,
+        0.2118217796087265,
+        0.3516234755516052
+      ]
+    }
+  ],
+  "frame_0272.jpg": [
+    {
+      "image_data": "frame_0272.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8943953514099121,
+      "genus_confidence": 0.9140042066574097,
+      "species_confidence": 0.7821782231330872,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5126240849494934,
+        0.4170072078704834,
+        0.2080858200788498,
+        0.2965867817401886
+      ]
+    }
+  ],
+  "frame_0214.jpg": [
+    {
+      "image_data": "frame_0214.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.720398485660553,
+      "genus_confidence": 0.8679172992706299,
+      "species_confidence": 0.7347713112831116,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.436464786529541,
+        0.5819790363311768,
+        0.23464615643024445,
+        0.36112773418426514
+      ]
+    }
+  ],
+  "frame_0149.jpg": [
+    {
+      "image_data": "frame_0149.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8606435060501099,
+      "genus_confidence": 0.762634813785553,
+      "species_confidence": 0.8494290709495544,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.47056445479393005,
+        0.5246071219444275,
+        0.1948208212852478,
+        0.3048611879348755
+      ]
+    }
+  ],
+  "frame_0089.jpg": [
+    {
+      "image_data": "frame_0089.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8127111792564392,
+      "genus_confidence": 0.8928651213645935,
+      "species_confidence": 0.9553875923156738,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4417995512485504,
+        0.5320417284965515,
+        0.2642349600791931,
+        0.3611237406730652
+      ]
+    }
+  ],
+  "frame_0253.jpg": [
+    {
+      "image_data": "frame_0253.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.737032413482666,
+      "genus_confidence": 0.8061607480049133,
+      "species_confidence": 0.9538698196411133,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5613699555397034,
+        0.48054102063179016,
+        0.20104503631591797,
+        0.33460113406181335
+      ]
+    }
+  ],
+  "frame_0069.jpg": [
+    {
+      "image_data": "frame_0069.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.820428729057312,
+      "genus_confidence": 0.8685851693153381,
+      "species_confidence": 0.9288061857223511,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.3973287045955658,
+        0.5117167234420776,
+        0.23395808041095734,
+        0.3888714909553528
+      ]
+    }
+  ],
+  "frame_0007.jpg": [
+    {
+      "image_data": "frame_0007.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7484558820724487,
+      "genus_confidence": 0.8431981205940247,
+      "species_confidence": 0.9017698168754578,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.39335525035858154,
+        0.6252601742744446,
+        0.309640496969223,
+        0.4084763824939728
+      ]
+    }
+  ],
+  "frame_0262.jpg": [
+    {
+      "image_data": "frame_0262.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8352744579315186,
+      "genus_confidence": 0.8941226005554199,
+      "species_confidence": 0.8132790923118591,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5033019185066223,
+        0.4659227728843689,
+        0.213917538523674,
+        0.37794676423072815
+      ]
+    }
+  ],
+  "frame_0195.jpg": [
+    {
+      "image_data": "frame_0195.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9934781789779663,
+      "genus_confidence": 0.9932170510292053,
+      "species_confidence": 0.94513338804245,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.42049553990364075,
+        0.6264010667800903,
+        0.20333687961101532,
+        0.3000837564468384
+      ]
+    }
+  ],
+  "frame_0228.jpg": [
+    {
+      "image_data": "frame_0228.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5975183844566345,
+      "genus_confidence": 0.6547249555587769,
+      "species_confidence": 0.592020571231842,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.48568040132522583,
+        0.5168256759643555,
+        0.2254430204629898,
+        0.3612557649612427
+      ]
+    }
+  ],
+  "frame_0112.jpg": [
+    {
+      "image_data": "frame_0112.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9599664211273193,
+      "genus_confidence": 0.9142744541168213,
+      "species_confidence": 0.7678227424621582,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.42448824644088745,
+        0.49607300758361816,
+        0.1600293517112732,
+        0.31513816118240356
+      ]
+    }
+  ],
+  "frame_0115.jpg": [
+    {
+      "image_data": "frame_0115.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9559888243675232,
+      "genus_confidence": 0.9546957612037659,
+      "species_confidence": 0.9617726802825928,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4379068911075592,
+        0.4792296886444092,
+        0.20999488234519958,
+        0.3164239525794983
+      ]
+    }
+  ],
+  "frame_0280.jpg": [
+    {
+      "image_data": "frame_0280.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9966983199119568,
+      "genus_confidence": 0.9946854114532471,
+      "species_confidence": 0.9974796175956726,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5045616626739502,
+        0.4525502324104309,
+        0.23053188621997833,
+        0.4447840452194214
+      ]
+    }
+  ],
+  "frame_0181.jpg": [
+    {
+      "image_data": "frame_0181.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9968987703323364,
+      "genus_confidence": 0.9959518909454346,
+      "species_confidence": 0.9836666584014893,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4104645550251007,
+        0.7257158160209656,
+        0.2093183845281601,
+        0.3340490758419037
+      ]
+    }
+  ],
+  "frame_0009.jpg": [
+    {
+      "image_data": "frame_0009.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7888932228088379,
+      "genus_confidence": 0.8480508923530579,
+      "species_confidence": 0.8821322321891785,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.3914278745651245,
+        0.6155377626419067,
+        0.2957611083984375,
+        0.42989450693130493
+      ]
+    }
+  ],
+  "frame_0039.jpg": [
+    {
+      "image_data": "frame_0039.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9987828135490417,
+      "genus_confidence": 0.998489260673523,
+      "species_confidence": 0.9997360110282898,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.39344483613967896,
+        0.5799363851547241,
+        0.2352575957775116,
+        0.4669467508792877
+      ]
+    }
+  ],
+  "frame_0125.jpg": [
+    {
+      "image_data": "frame_0125.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8189343214035034,
+      "genus_confidence": 0.7075230479240417,
+      "species_confidence": 0.7251865267753601,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4341452419757843,
+        0.5788899660110474,
+        0.17286033928394318,
+        0.296389639377594
+      ]
+    }
+  ],
+  "frame_0170.jpg": [
+    {
+      "image_data": "frame_0170.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.989179253578186,
+      "genus_confidence": 0.9732919931411743,
+      "species_confidence": 0.993238091468811,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4098803699016571,
+        0.6779137253761292,
+        0.2226131409406662,
+        0.3368368148803711
+      ]
+    }
+  ],
+  "frame_0107.jpg": [
+    {
+      "image_data": "frame_0107.jpg",
+      "family": "Apidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.565148115158081,
+      "genus_confidence": 0.5536948442459106,
+      "species_confidence": 0.47481173276901245,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4243689179420471,
+        0.5334342122077942,
+        0.2408277839422226,
+        0.3244803845882416
+      ]
+    }
+  ],
+  "frame_0159.jpg": [
+    {
+      "image_data": "frame_0159.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9436521530151367,
+      "genus_confidence": 0.9063141345977783,
+      "species_confidence": 0.9115428328514099,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.47656911611557007,
+        0.5830869078636169,
+        0.18224382400512695,
+        0.2852608561515808
+      ]
+    }
+  ],
+  "frame_0258.jpg": [
+    {
+      "image_data": "frame_0258.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9961407780647278,
+      "genus_confidence": 0.9947656393051147,
+      "species_confidence": 0.998849630355835,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.5116227865219116,
+        0.4772396981716156,
+        0.22547772526741028,
+        0.4286643862724304
+      ]
+    }
+  ],
+  "frame_0022.jpg": [
+    {
+      "image_data": "frame_0022.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9654194712638855,
+      "genus_confidence": 0.9686399698257446,
+      "species_confidence": 0.991108775138855,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.3965548574924469,
+        0.6423018574714661,
+        0.19859561324119568,
+        0.3416166603565216
+      ]
+    }
+  ],
+  "frame_0150.jpg": [
+    {
+      "image_data": "frame_0150.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6672158241271973,
+      "genus_confidence": 0.534928560256958,
+      "species_confidence": 0.6385496854782104,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.46936529874801636,
+        0.5291672348976135,
+        0.18736213445663452,
+        0.30647918581962585
+      ]
+    }
+  ],
+  "frame_0194.jpg": [
+    {
+      "image_data": "frame_0194.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9963937401771545,
+      "genus_confidence": 0.9958702921867371,
+      "species_confidence": 0.9128620624542236,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4211525022983551,
+        0.6368046998977661,
+        0.20163406431674957,
+        0.2953355610370636
+      ]
+    }
+  ],
+  "frame_0176.jpg": [
+    {
+      "image_data": "frame_0176.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9065232276916504,
+      "genus_confidence": 0.8602010011672974,
+      "species_confidence": 0.7625738382339478,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.41456881165504456,
+        0.7090162038803101,
+        0.20263932645320892,
+        0.3341922461986542
+      ]
+    }
+  ],
+  "frame_0081.jpg": [
+    {
+      "image_data": "frame_0081.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.952609658241272,
+      "genus_confidence": 0.9070540070533752,
+      "species_confidence": 0.9444786310195923,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.449889212846756,
+        0.4775051474571228,
+        0.18238964676856995,
+        0.3292977809906006
+      ]
+    }
+  ],
+  "frame_0137.jpg": [
+    {
+      "image_data": "frame_0137.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8341395854949951,
+      "genus_confidence": 0.7820603847503662,
+      "species_confidence": 0.7761051654815674,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4600815773010254,
+        0.5448452234268188,
+        0.16552384197711945,
+        0.29193419218063354
+      ]
+    }
+  ],
+  "frame_0209.jpg": [
+    {
+      "image_data": "frame_0209.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5696021914482117,
+      "genus_confidence": 0.5965505242347717,
+      "species_confidence": 0.3449670672416687,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.457925409078598,
+        0.5407686233520508,
+        0.2189839631319046,
+        0.32390692830085754
+      ]
+    }
+  ],
+  "frame_0019.jpg": [
+    {
+      "image_data": "frame_0019.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9999394416809082,
+      "genus_confidence": 0.9998757839202881,
+      "species_confidence": 0.9999960660934448,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.3921828269958496,
+        0.6121519207954407,
+        0.23426838219165802,
+        0.4199276268482208
+      ]
+    }
+  ],
+  "frame_0128.jpg": [
+    {
+      "image_data": "frame_0128.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8060119152069092,
+      "genus_confidence": 0.7461477518081665,
+      "species_confidence": 0.5629076361656189,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4584885537624359,
+        0.5799484252929688,
+        0.13885879516601562,
+        0.2831347584724426
+      ]
+    }
+  ],
+  "frame_0232.jpg": [
+    {
+      "image_data": "frame_0232.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6264373660087585,
+      "genus_confidence": 0.6462757587432861,
+      "species_confidence": 0.6457302570343018,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.48329129815101624,
+        0.4846407175064087,
+        0.22372879087924957,
+        0.3649495542049408
+      ]
+    }
+  ],
+  "frame_0198.jpg": [
+    {
+      "image_data": "frame_0198.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9688531756401062,
+      "genus_confidence": 0.9661610126495361,
+      "species_confidence": 0.983803391456604,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.4138435423374176,
+        0.6151145696640015,
+        0.22675777971744537,
+        0.3530917465686798
+      ]
+    }
+  ],
+  "frame_0061.jpg": [
+    {
+      "image_data": "frame_0061.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9994170665740967,
+      "genus_confidence": 0.999352753162384,
+      "species_confidence": 0.9985806941986084,
+      "timestamp": "20250425_145516",
+      "bbox": [
+        0.41873547434806824,
+        0.45630764961242676,
+        0.224757581949234,
+        0.3688572645187378
+      ]
+    }
+  ],
+  "frame_0041.jpg": [
+    {
+      "image_data": "frame_0041.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9998297691345215,
+      "genus_confidence": 0.9995899796485901,
+      "species_confidence": 0.9999570846557617,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4000634253025055,
+        0.5427267551422119,
+        0.2406148910522461,
+        0.5707879066467285
+      ]
+    }
+  ],
+  "frame_0098.jpg": [
+    {
+      "image_data": "frame_0098.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9575875997543335,
+      "genus_confidence": 0.8934375047683716,
+      "species_confidence": 0.9125155806541443,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4143291413784027,
+        0.5003126263618469,
+        0.1569797545671463,
+        0.28746336698532104
+      ]
+    }
+  ],
+  "frame_0240.jpg": [
+    {
+      "image_data": "frame_0240.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.959966778755188,
+      "genus_confidence": 0.9706870913505554,
+      "species_confidence": 0.9933244585990906,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.49957337975502014,
+        0.48504939675331116,
+        0.28798550367355347,
+        0.43297988176345825
+      ]
+    }
+  ],
+  "frame_0092.jpg": [
+    {
+      "image_data": "frame_0092.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5033736824989319,
+      "genus_confidence": 0.6392008066177368,
+      "species_confidence": 0.5055366158485413,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4034263491630554,
+        0.5268974900245667,
+        0.25852203369140625,
+        0.34902071952819824
+      ]
+    }
+  ],
+  "frame_0160.jpg": [
+    {
+      "image_data": "frame_0160.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9874963760375977,
+      "genus_confidence": 0.973053514957428,
+      "species_confidence": 0.9481470584869385,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4730789363384247,
+        0.5881284475326538,
+        0.17921391129493713,
+        0.2805842161178589
+      ]
+    }
+  ],
+  "frame_0245.jpg": [
+    {
+      "image_data": "frame_0245.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7638013958930969,
+      "genus_confidence": 0.707560658454895,
+      "species_confidence": 0.7611601948738098,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5237659215927124,
+        0.5725340247154236,
+        0.22427552938461304,
+        0.3519890606403351
+      ]
+    }
+  ],
+  "frame_0096.jpg": [
+    {
+      "image_data": "frame_0096.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9367372989654541,
+      "genus_confidence": 0.8721039295196533,
+      "species_confidence": 0.8726752996444702,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4065694808959961,
+        0.5000524520874023,
+        0.15676800906658173,
+        0.2834203839302063
+      ]
+    }
+  ],
+  "frame_0105.jpg": [
+    {
+      "image_data": "frame_0105.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7171326875686646,
+      "genus_confidence": 0.8420132994651794,
+      "species_confidence": 0.8271461725234985,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.43841055035591125,
+        0.5253441333770752,
+        0.24263566732406616,
+        0.3235018253326416
+      ]
+    }
+  ],
+  "frame_0017.jpg": [
+    {
+      "image_data": "frame_0017.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9967045187950134,
+      "genus_confidence": 0.9969558715820312,
+      "species_confidence": 0.9995278120040894,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.39210453629493713,
+        0.610381543636322,
+        0.2682797610759735,
+        0.44733211398124695
+      ]
+    }
+  ],
+  "frame_0223.jpg": [
+    {
+      "image_data": "frame_0223.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5312098860740662,
+      "genus_confidence": 0.5437465906143188,
+      "species_confidence": 0.3897182047367096,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4776131212711334,
+        0.5750921964645386,
+        0.2272592931985855,
+        0.3446227014064789
+      ]
+    }
+  ],
+  "frame_0131.jpg": [
+    {
+      "image_data": "frame_0131.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9578483700752258,
+      "genus_confidence": 0.9211589097976685,
+      "species_confidence": 0.9173486232757568,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.47331294417381287,
+        0.5528950095176697,
+        0.1497470587491989,
+        0.2906839847564697
+      ]
+    }
+  ],
+  "frame_0102.jpg": [
+    {
+      "image_data": "frame_0102.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7886126637458801,
+      "genus_confidence": 0.7865614891052246,
+      "species_confidence": 0.854710578918457,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.44118136167526245,
+        0.512238085269928,
+        0.20066922903060913,
+        0.30967965722084045
+      ]
+    }
+  ],
+  "frame_0124.jpg": [
+    {
+      "image_data": "frame_0124.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6172184944152832,
+      "genus_confidence": 0.597830057144165,
+      "species_confidence": 0.41510581970214844,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.42861297726631165,
+        0.5770703554153442,
+        0.19634751975536346,
+        0.2995266914367676
+      ]
+    }
+  ],
+  "frame_0196.jpg": [
+    {
+      "image_data": "frame_0196.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9873865246772766,
+      "genus_confidence": 0.9885520935058594,
+      "species_confidence": 0.866707444190979,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4185180962085724,
+        0.6256500482559204,
+        0.2045682966709137,
+        0.2947412431240082
+      ]
+    }
+  ],
+  "frame_0227.jpg": [
+    {
+      "image_data": "frame_0227.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6239680051803589,
+      "genus_confidence": 0.5686026811599731,
+      "species_confidence": 0.5558022856712341,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4831012785434723,
+        0.5411545634269714,
+        0.23815396428108215,
+        0.37093785405158997
+      ]
+    }
+  ],
+  "frame_0077.jpg": [
+    {
+      "image_data": "frame_0077.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9988932013511658,
+      "genus_confidence": 0.9963579773902893,
+      "species_confidence": 0.9974504113197327,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4339805245399475,
+        0.4707470238208771,
+        0.21726588904857635,
+        0.35377931594848633
+      ]
+    }
+  ],
+  "frame_0130.jpg": [
+    {
+      "image_data": "frame_0130.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8983402848243713,
+      "genus_confidence": 0.8585168123245239,
+      "species_confidence": 0.8188141584396362,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4714967608451843,
+        0.5536177754402161,
+        0.1364118903875351,
+        0.2904984951019287
+      ]
+    }
+  ],
+  "frame_0260.jpg": [
+    {
+      "image_data": "frame_0260.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5225165486335754,
+      "genus_confidence": 0.6994090676307678,
+      "species_confidence": 0.5182072520256042,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5047522783279419,
+        0.48024794459342957,
+        0.2153460830450058,
+        0.3559434711933136
+      ]
+    }
+  ],
+  "frame_0179.jpg": [
+    {
+      "image_data": "frame_0179.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9940105080604553,
+      "genus_confidence": 0.9914069175720215,
+      "species_confidence": 0.9736904501914978,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.41350847482681274,
+        0.7189258933067322,
+        0.20646771788597107,
+        0.33313241600990295
+      ]
+    }
+  ],
+  "frame_0063.jpg": [
+    {
+      "image_data": "frame_0063.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7647680640220642,
+      "genus_confidence": 0.8544594049453735,
+      "species_confidence": 0.6674226522445679,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.41042131185531616,
+        0.48742371797561646,
+        0.19648714363574982,
+        0.32646042108535767
+      ]
+    }
+  ],
+  "frame_0005.jpg": [
+    {
+      "image_data": "frame_0005.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.905439019203186,
+      "genus_confidence": 0.929140567779541,
+      "species_confidence": 0.9849932193756104,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.39983075857162476,
+        0.6043807864189148,
+        0.27089235186576843,
+        0.40597906708717346
+      ]
+    }
+  ],
+  "frame_0274.jpg": [
+    {
+      "image_data": "frame_0274.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7432624101638794,
+      "genus_confidence": 0.8178263902664185,
+      "species_confidence": 0.6232507824897766,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5039761662483215,
+        0.4202728867530823,
+        0.21117942035198212,
+        0.30922678112983704
+      ]
+    }
+  ],
+  "frame_0148.jpg": [
+    {
+      "image_data": "frame_0148.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9084280133247375,
+      "genus_confidence": 0.7825551629066467,
+      "species_confidence": 0.9346926808357239,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.47805410623550415,
+        0.5280544757843018,
+        0.20406299829483032,
+        0.3108217418193817
+      ]
+    }
+  ],
+  "frame_0242.jpg": [
+    {
+      "image_data": "frame_0242.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6567978858947754,
+      "genus_confidence": 0.7386634349822998,
+      "species_confidence": 0.5565377473831177,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5090801119804382,
+        0.4928673207759857,
+        0.23596827685832977,
+        0.3661998212337494
+      ]
+    }
+  ],
+  "frame_0127.jpg": [
+    {
+      "image_data": "frame_0127.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8235316872596741,
+      "genus_confidence": 0.7244573831558228,
+      "species_confidence": 0.5761576294898987,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4521072804927826,
+        0.5769445896148682,
+        0.1480577439069748,
+        0.28616777062416077
+      ]
+    }
+  ],
+  "frame_0110.jpg": [
+    {
+      "image_data": "frame_0110.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8989087343215942,
+      "genus_confidence": 0.8539034128189087,
+      "species_confidence": 0.832901120185852,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.434912770986557,
+        0.5045709609985352,
+        0.1821354478597641,
+        0.3015848696231842
+      ]
+    }
+  ],
+  "frame_0117.jpg": [
+    {
+      "image_data": "frame_0117.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6528928875923157,
+      "genus_confidence": 0.7907009720802307,
+      "species_confidence": 0.7248151302337646,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.43118494749069214,
+        0.5080089569091797,
+        0.25256311893463135,
+        0.30944275856018066
+      ]
+    }
+  ],
+  "frame_0026.jpg": [
+    {
+      "image_data": "frame_0026.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9992243051528931,
+      "genus_confidence": 0.9989217519760132,
+      "species_confidence": 0.999940037727356,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.3985500931739807,
+        0.6313624382019043,
+        0.22595065832138062,
+        0.3955608904361725
+      ]
+    }
+  ],
+  "frame_0047.jpg": [
+    {
+      "image_data": "frame_0047.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9548233151435852,
+      "genus_confidence": 0.9489694237709045,
+      "species_confidence": 0.9691408276557922,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4279927909374237,
+        0.3898148238658905,
+        0.21681423485279083,
+        0.4076400697231293
+      ]
+    }
+  ],
+  "frame_0247.jpg": [
+    {
+      "image_data": "frame_0247.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7004371881484985,
+      "genus_confidence": 0.7178150415420532,
+      "species_confidence": 0.549642026424408,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5365276336669922,
+        0.5380532145500183,
+        0.2194673866033554,
+        0.331512987613678
+      ]
+    }
+  ],
+  "frame_0233.jpg": [
+    {
+      "image_data": "frame_0233.jpg",
+      "family": "Apidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.7174978852272034,
+      "genus_confidence": 0.6738306879997253,
+      "species_confidence": 0.6840634942054749,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.4797903895378113,
+        0.4739536643028259,
+        0.23992519080638885,
+        0.3759164810180664
+      ]
+    }
+  ],
+  "frame_0010.jpg": [
+    {
+      "image_data": "frame_0010.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.954505980014801,
+      "genus_confidence": 0.9644322991371155,
+      "species_confidence": 0.9911864399909973,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.39162477850914,
+        0.5935841202735901,
+        0.2840760350227356,
+        0.4722748100757599
+      ]
+    },
+    {
+      "image_data": "frame_0010.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.6089253425598145,
+      "genus_confidence": 0.6303946375846863,
+      "species_confidence": 0.48248380422592163,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.3561791181564331,
+        0.6891649961471558,
+        0.21187596023082733,
+        0.2697833478450775
+      ]
+    }
+  ],
+  "frame_0306.jpg": [
+    {
+      "image_data": "frame_0306.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.5989161133766174,
+      "genus_confidence": 0.7436493039131165,
+      "species_confidence": 0.7245975732803345,
+      "timestamp": "20250425_145517",
+      "bbox": [
+        0.5330835580825806,
+        0.4768517315387726,
+        0.21035346388816833,
+        0.33405208587646484
+      ]
+    }
+  ],
+  "frame_0167.jpg": [
+    {
+      "image_data": "frame_0167.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.71927410364151,
+      "genus_confidence": 0.7583280205726624,
+      "species_confidence": 0.8585659861564636,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.41425469517707825,
+        0.6894431710243225,
+        0.2366916388273239,
+        0.38164666295051575
+      ]
+    }
+  ],
+  "frame_0265.jpg": [
+    {
+      "image_data": "frame_0265.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.6133226752281189,
+      "genus_confidence": 0.6776394248008728,
+      "species_confidence": 0.5655612945556641,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.5140230655670166,
+        0.420543372631073,
+        0.20650902390480042,
+        0.33608752489089966
+      ]
+    }
+  ],
+  "frame_0267.jpg": [
+    {
+      "image_data": "frame_0267.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8428274989128113,
+      "genus_confidence": 0.8818589448928833,
+      "species_confidence": 0.8290562033653259,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.5264006853103638,
+        0.40360820293426514,
+        0.20832805335521698,
+        0.3339352309703827
+      ]
+    }
+  ],
+  "frame_0103.jpg": [
+    {
+      "image_data": "frame_0103.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7847634553909302,
+      "genus_confidence": 0.8242039680480957,
+      "species_confidence": 0.8901655077934265,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4388193190097809,
+        0.51380455493927,
+        0.2121247947216034,
+        0.31685876846313477
+      ]
+    }
+  ],
+  "frame_0248.jpg": [
+    {
+      "image_data": "frame_0248.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9916915893554688,
+      "genus_confidence": 0.9851497411727905,
+      "species_confidence": 0.9807018637657166,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.5319666862487793,
+        0.5181978344917297,
+        0.22019316256046295,
+        0.37401053309440613
+      ]
+    }
+  ],
+  "frame_0146.jpg": [
+    {
+      "image_data": "frame_0146.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7457829117774963,
+      "genus_confidence": 0.7336642146110535,
+      "species_confidence": 0.8464635014533997,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4794238209724426,
+        0.5406370759010315,
+        0.21973387897014618,
+        0.3424912989139557
+      ]
+    }
+  ],
+  "frame_0056.jpg": [
+    {
+      "image_data": "frame_0056.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9998726844787598,
+      "genus_confidence": 0.9997027516365051,
+      "species_confidence": 0.9999707937240601,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4342730939388275,
+        0.4958873689174652,
+        0.23959185183048248,
+        0.4519985616207123
+      ]
+    }
+  ],
+  "frame_0071.jpg": [
+    {
+      "image_data": "frame_0071.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9912241697311401,
+      "genus_confidence": 0.9856240749359131,
+      "species_confidence": 0.9963048696517944,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4129362106323242,
+        0.48533302545547485,
+        0.24428622424602509,
+        0.4306933879852295
+      ]
+    }
+  ],
+  "frame_0139.jpg": [
+    {
+      "image_data": "frame_0139.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.8605331778526306,
+      "genus_confidence": 0.7772563695907593,
+      "species_confidence": 0.71946781873703,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4644143879413605,
+        0.5493416786193848,
+        0.143647700548172,
+        0.28467896580696106
+      ]
+    }
+  ],
+  "frame_0212.jpg": [
+    {
+      "image_data": "frame_0212.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7781302332878113,
+      "genus_confidence": 0.8751400709152222,
+      "species_confidence": 0.8054705858230591,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.44299498200416565,
+        0.5732353329658508,
+        0.23520424962043762,
+        0.358110636472702
+      ]
+    }
+  ],
+  "frame_0192.jpg": [
+    {
+      "image_data": "frame_0192.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9970365762710571,
+      "genus_confidence": 0.9963035583496094,
+      "species_confidence": 0.9211810231208801,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4270157814025879,
+        0.6516500115394592,
+        0.20556755363941193,
+        0.3053776025772095
+      ]
+    }
+  ],
+  "frame_0222.jpg": [
+    {
+      "image_data": "frame_0222.jpg",
+      "family": "Syrphidae",
+      "genus": "Hymenoptera",
+      "species": "Apis mellifera",
+      "family_confidence": 0.460846483707428,
+      "genus_confidence": 0.5857354998588562,
+      "species_confidence": 0.449334979057312,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.47650015354156494,
+        0.560797393321991,
+        0.21301555633544922,
+        0.319100022315979
+      ]
+    }
+  ],
+  "frame_0013.jpg": [
+    {
+      "image_data": "frame_0013.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.943641185760498,
+      "genus_confidence": 0.9613227248191833,
+      "species_confidence": 0.9917844533920288,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.3908378481864929,
+        0.6147618293762207,
+        0.2626504898071289,
+        0.43360182642936707
+      ]
+    }
+  ],
+  "frame_0111.jpg": [
+    {
+      "image_data": "frame_0111.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9217249751091003,
+      "genus_confidence": 0.8687868714332581,
+      "species_confidence": 0.8831946849822998,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4287480413913727,
+        0.49872180819511414,
+        0.16490484774112701,
+        0.3187514841556549
+      ]
+    }
+  ],
+  "frame_0119.jpg": [
+    {
+      "image_data": "frame_0119.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.5124377012252808,
+      "genus_confidence": 0.647180438041687,
+      "species_confidence": 0.5241791605949402,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.41652801632881165,
+        0.5371193885803223,
+        0.27337607741355896,
+        0.3375520706176758
+      ]
+    }
+  ],
+  "frame_0211.jpg": [
+    {
+      "image_data": "frame_0211.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.7398670315742493,
+      "genus_confidence": 0.8098876476287842,
+      "species_confidence": 0.6971300840377808,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.44767317175865173,
+        0.5679994821548462,
+        0.22943370044231415,
+        0.34542369842529297
+      ]
+    }
+  ],
+  "frame_0003.jpg": [
+    {
+      "image_data": "frame_0003.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9995799660682678,
+      "genus_confidence": 0.9982107877731323,
+      "species_confidence": 0.9995023012161255,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.3863928020000458,
+        0.5735424160957336,
+        0.22228412330150604,
+        0.4017294943332672
+      ]
+    }
+  ],
+  "frame_0279.jpg": [
+    {
+      "image_data": "frame_0279.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9978111386299133,
+      "genus_confidence": 0.99615877866745,
+      "species_confidence": 0.9988419413566589,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.5049323439598083,
+        0.45065978169441223,
+        0.23126383125782013,
+        0.4625147581100464
+      ]
+    }
+  ],
+  "frame_0048.jpg": [
+    {
+      "image_data": "frame_0048.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9839727878570557,
+      "genus_confidence": 0.9825483560562134,
+      "species_confidence": 0.9930931329727173,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.4266565144062042,
+        0.3828253149986267,
+        0.21867135167121887,
+        0.3744666278362274
+      ]
+    }
+  ],
+  "frame_0180.jpg": [
+    {
+      "image_data": "frame_0180.jpg",
+      "family": "Syrphidae",
+      "genus": "Diptera",
+      "species": "Eupeodes corollae",
+      "family_confidence": 0.9790695309638977,
+      "genus_confidence": 0.9762294888496399,
+      "species_confidence": 0.9262844324111938,
+      "timestamp": "20250425_145518",
+      "bbox": [
+        0.40970689058303833,
+        0.724456787109375,
+        0.2109021544456482,
+        0.331402987241745
+      ]
+    }
+  ]
+}

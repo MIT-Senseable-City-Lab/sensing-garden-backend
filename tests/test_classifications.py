@@ -20,14 +20,20 @@ from .test_utils import (
     TEST_FAMILIES,
     TEST_GENERA,
     TEST_SPECIES,
-    print_response
+    print_response,
+    generate_random_bounding_box
 )
 
 def test_add_classification(device_id, model_id, timestamp=None):
     success, request_timestamp = _add_classification(device_id, model_id, timestamp)
     assert success, f"Classification test failed at {request_timestamp}"
 
-def _add_classification(device_id, model_id, timestamp=None):
+def test_add_classification_with_bounding_box(device_id, model_id, timestamp=None):
+    bounding_box = generate_random_bounding_box()
+    success, request_timestamp = _add_classification(device_id, model_id, timestamp, bounding_box=bounding_box)
+    assert success, f"Classification with bounding_box test failed at {request_timestamp}"
+
+def _add_classification(device_id, model_id, timestamp=None, bounding_box=None):
     """
     Helper function to upload a classification to the Sensing Garden API.
     
@@ -35,6 +41,7 @@ def _add_classification(device_id, model_id, timestamp=None):
         device_id: Device ID to use for testing
         model_id: Model ID to use for testing
         timestamp: Optional timestamp to use (defaults to current time)
+        bounding_box: Optional bounding box to include
         
     Returns:
         Tuple of (success, timestamp)
@@ -60,7 +67,7 @@ def _add_classification(device_id, model_id, timestamp=None):
         species_confidence = generate_random_confidence()
         
         # Add the classification
-        response_data = client.classifications.add(
+        kwargs = dict(
             device_id=device_id,
             model_id=model_id,
             image_data=image_data,
@@ -70,12 +77,24 @@ def _add_classification(device_id, model_id, timestamp=None):
             family_confidence=family_confidence,
             genus_confidence=genus_confidence,
             species_confidence=species_confidence,
-            timestamp=request_timestamp
+            timestamp=request_timestamp,
         )
+        if bounding_box is not None:
+            kwargs["bounding_box"] = bounding_box
+        response_data = client.classifications.add(**kwargs)
         
         print_response(response_data)
         print(f"\n✅ Classification upload successful!")
         success = True
+            
+        # For bounding_box test, verify it is returned (check both response_data['bounding_box'] and response_data['data']['bounding_box'])
+        if bounding_box is not None:
+            returned_box = None
+            if "bounding_box" in response_data:
+                returned_box = response_data["bounding_box"]
+            elif isinstance(response_data, dict) and "data" in response_data and isinstance(response_data["data"], dict) and "bounding_box" in response_data["data"]:
+                returned_box = response_data["data"]["bounding_box"]
+            assert returned_box == bounding_box, f"bounding_box not returned or mismatched: {returned_box} != {bounding_box}"
             
     except requests.exceptions.RequestException as e:
         print(f"❌ Classification upload failed: {str(e)}")

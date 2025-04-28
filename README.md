@@ -76,6 +76,22 @@ result = client.videos.upload_video(
     content_type="video/mp4"
 )
 print(result)
+
+# Add a classification with bounding box
+classification = client.classifications.add(
+    device_id="device-123",
+    model_id="model-456",
+    image_data=image_data,
+    family="Rosaceae",
+    genus="Rosa",
+    species="Rosa gallica",
+    family_confidence=0.95,
+    genus_confidence=0.92,
+    species_confidence=0.89,
+    timestamp="2023-06-01T12:34:56Z",
+    bounding_box=[0.1, 0.2, 0.3, 0.4]  # New: optional bounding box
+)
+print(classification)
 ```
 
 **Note:** The video upload API no longer requires or accepts a `description` field. Only `device_id`, `timestamp`, `video_key`, and optional `metadata` are supported.
