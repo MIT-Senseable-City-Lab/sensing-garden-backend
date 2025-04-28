@@ -596,22 +596,31 @@ def _common_post_handler(event: Dict, data_type: str, store_function: Callable[[
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
 
+def _make_offset_naive(ts):
+    from dateutil.parser import isoparse
+    from datetime import timezone
+    try:
+        dt = isoparse(ts)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.isoformat()
+    except Exception:
+        return ts
+
+def _clean_timestamps(items):
+    for item in items:
+        if 'timestamp' in item:
+            item['timestamp'] = _make_offset_naive(item['timestamp'])
+    return items
+
 def _common_get_handler(event: Dict, data_type: str, process_results: Optional[Callable[[Dict], Dict]] = None) -> Dict:
     """Common handler for all GET endpoints"""
     try:
         # Get query parameters with defaults, handling HTTP API v2 format
         query_params = {}
-        
-        # Try to get query parameters from HTTP API v2 format
         if 'queryStringParameters' in event:
             query_params = event.get('queryStringParameters', {}) or {}
-        
         print(f"Query parameters: {query_params}")
-        
-        # Query data using the dynamodb module
-        # Convert sort_desc from string to boolean if provided
-        sort_desc = query_params.get('sort_desc', 'false').lower() == 'true'
-        
         result = dynamodb.query_data(
             data_type,
             device_id=query_params.get('device_id'),
@@ -621,27 +630,23 @@ def _common_get_handler(event: Dict, data_type: str, process_results: Optional[C
             limit=int(query_params.get('limit', 100)) if query_params.get('limit') else 100,
             next_token=query_params.get('next_token'),
             sort_by=query_params.get('sort_by'),
-            sort_desc=sort_desc
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
         )
-        
-        # Apply custom processing to results if provided
+        # Clean timestamps to be offset-naive
+        if 'items' in result:
+            result['items'] = _clean_timestamps(result['items'])
         if process_results:
             result = process_results(result)
-            
-        # Return success response
         return {
             'statusCode': 200,
             'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
         }
-        
     except ValueError as e:
-        # Handle validation errors
         return {
             'statusCode': 400,
             'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
     except Exception as e:
-        # Handle all other errors
         print(f"Error in {data_type} GET handler: {str(e)}")
         return {
             'statusCode': 500,

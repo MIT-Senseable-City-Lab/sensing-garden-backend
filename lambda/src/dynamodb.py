@@ -543,14 +543,10 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
             print(f"Executing SCAN on models table with params: {scan_params}")
             response = table.scan(**scan_params)
     else:
-        # For detections and classifications tables which use device_id as hash key
-        if device_id:
-            # QUERY operation - can use KeyConditionExpression
+        # For videos table: use DynamoDB Query with ScanIndexForward for correct sorting and pagination
+        if table_type == 'video' and device_id:
             query_params = base_params.copy()
-            
-            # Create key condition for device_id
             key_condition = Key('device_id').eq(device_id)
-            
             # Add time range conditions if provided
             if start_time and end_time:
                 key_condition = key_condition & Key('timestamp').between(start_time, end_time)
@@ -558,59 +554,87 @@ def query_data(table_type: str, device_id: str = None, model_id: str = None, sta
                 key_condition = key_condition & Key('timestamp').gte(start_time)
             elif end_time:
                 key_condition = key_condition & Key('timestamp').lte(end_time)
-                
             query_params['KeyConditionExpression'] = key_condition
-            
-            # Add model_id as a filter if provided
+            # Only sort by timestamp is supported, and only via DynamoDB
+            if sort_by == 'timestamp':
+                query_params['ScanIndexForward'] = not bool(sort_desc)  # False for DESC, True for ASC
+            # Add model_id as a filter if provided (not typical for videos, but for consistency)
             if model_id:
                 query_params['FilterExpression'] = Attr('model_id').eq(model_id)
-                
-            # Execute query
-            print(f"Executing QUERY with params: {query_params}")
+            print(f"Executing QUERY on videos table with params: {query_params}")
             response = table.query(**query_params)
+            items = response.get('Items', [])
         else:
-            # SCAN operation - must use FilterExpression, cannot use KeyConditionExpression
-            scan_params = base_params.copy()
-            filter_expressions = []
-            
-            # Add time range as filter expressions
-            if start_time:
-                filter_expressions.append(Attr('timestamp').gte(start_time))
-            if end_time:
-                filter_expressions.append(Attr('timestamp').lte(end_time))
-            if model_id:
-                filter_expressions.append(Attr('model_id').eq(model_id))
-                
-            # Combine filter expressions if any exist
-            if filter_expressions:
-                combined_filter = filter_expressions[0]
-                for expr in filter_expressions[1:]:
-                    combined_filter = combined_filter & expr
-                scan_params['FilterExpression'] = combined_filter
-                
-            # Execute scan
-            print(f"Executing SCAN with params: {scan_params}")
-            response = table.scan(**scan_params)
+            # For detections and classifications tables which use device_id as hash key
+            if device_id:
+                # QUERY operation - can use KeyConditionExpression
+                query_params = base_params.copy()
+                # Create key condition for device_id
+                key_condition = Key('device_id').eq(device_id)
+                # Add time range conditions if provided
+                if start_time and end_time:
+                    key_condition = key_condition & Key('timestamp').between(start_time, end_time)
+                elif start_time:
+                    key_condition = key_condition & Key('timestamp').gte(start_time)
+                elif end_time:
+                    key_condition = key_condition & Key('timestamp').lte(end_time)
+                query_params['KeyConditionExpression'] = key_condition
+                # Add model_id as a filter if provided
+                if model_id:
+                    query_params['FilterExpression'] = Attr('model_id').eq(model_id)
+                print(f"Executing QUERY with params: {query_params}")
+                response = table.query(**query_params)
+                items = response.get('Items', [])
+            else:
+                # SCAN operation - must use FilterExpression, cannot use KeyConditionExpression
+                scan_params = base_params.copy()
+                filter_expressions = []
+                # Add time range as filter expressions
+                if start_time:
+                    filter_expressions.append(Attr('timestamp').gte(start_time))
+                if end_time:
+                    filter_expressions.append(Attr('timestamp').lte(end_time))
+                if model_id:
+                    filter_expressions.append(Attr('model_id').eq(model_id))
+                # Combine filter expressions if any exist
+                if filter_expressions:
+                    combined_filter = filter_expressions[0]
+                    for expr in filter_expressions[1:]:
+                        combined_filter = combined_filter & expr
+                    scan_params['FilterExpression'] = combined_filter
+                print(f"Executing SCAN with params: {scan_params}")
+                response = table.scan(**scan_params)
+                items = response.get('Items', [])
     
-    # Format response
-    items = response.get('Items', [])
-    
-    # Sort items if sort_by is specified
-    if sort_by and items:
+    # For videos: never do in-memory sorting, only DynamoDB sort
+    # For others: keep current logic
+    if table_type != 'video' and sort_by and items:
+        from dateutil.parser import isoparse
+        def safe_parse(val):
+            try:
+                dt = isoparse(val)
+                # Convert to offset-naive (UTC)
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                return dt
+            except Exception:
+                return val
         # Check if the attribute exists in the items
         if any(sort_by in item for item in items):
-            # Use sort_desc directly for determining sort direction
-            # Set default to False (ascending) if not specified
             reverse_sort = bool(sort_desc)
-                
-            # Sort items, handling missing attributes gracefully
-            # Items missing the sort attribute will appear last in ascending order
-            # and first in descending order
-            items = sorted(
-                items,
-                key=lambda x: (sort_by in x, x.get(sort_by)),
-                reverse=reverse_sort
-            )
+            # Use safe_parse for timestamps, else normal sort
+            if sort_by == "timestamp":
+                items = sorted(
+                    items,
+                    key=lambda x: safe_parse(x.get(sort_by)) if sort_by in x else None,
+                    reverse=reverse_sort
+                )
+            else:
+                items = sorted(
+                    items,
+                    key=lambda x: (sort_by in x, x.get(sort_by)),
+                    reverse=reverse_sort
+                )
             print(f"Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
     
     result = {
