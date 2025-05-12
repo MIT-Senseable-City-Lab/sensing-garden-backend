@@ -2,6 +2,17 @@
 
 All notable changes to the Sensing Garden Client will be documented in this file.
 
+## [0.0.12] - 2025-05-12
+
+### Added
+- Support for optional `track_id` and `metadata` fields in classifications (client and backend)
+- Client: `ClassificationsClient.add` now accepts `track_id` and `metadata` arguments
+- Tests: Added/updated tests for submitting and verifying `track_id` and `metadata` in classifications
+
+### Changed
+- Backend: Lambda handler and DynamoDB schema updated to store and return `track_id` and `metadata`
+- All tests passing after these changes
+
 ## [0.0.11] - 2025-04-28
 
 ### Added

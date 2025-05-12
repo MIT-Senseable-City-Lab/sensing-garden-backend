@@ -106,12 +106,15 @@ classification = sgc.classifications.add(
     genus_confidence=0.92,
     species_confidence=0.89,
     timestamp="2023-06-01T12:34:56Z",
-    bounding_box=[0.1, 0.2, 0.3, 0.4]  # New: optional bounding box
+    bounding_box=[0.1, 0.2, 0.3, 0.4],  # Optional bounding box
+    track_id="track-abc123",            # Optional tracking ID
+    metadata={"source": "drone", "weather": "sunny"}  # Optional metadata dict
 )
 
-# bounding_box is now supported for both detections and classifications.
+# bounding_box, track_id, and metadata are now supported for both detections and classifications.
 # The backend stores bounding_box values as Decimal for DynamoDB compatibility.
-# All tests have been updated and pass for this feature (see CHANGELOG).
+# All tests have been updated and pass for these features (see CHANGELOG).
+
 
     family="Rosaceae",
     genus="Rosa",

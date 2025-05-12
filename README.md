@@ -41,6 +41,10 @@ export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
 
 The `sensing_garden_client` package is now available on PyPI and provides a modern, object-oriented client for all API operations. **As of v0.0.7, all tests and examples use the real client logic and the new constructor-based initialization.**
 
+**New in v0.0.12:**
+- Added support for optional `track_id` and `metadata` fields in classifications (and backend).
+- All tests updated and passing for these features.
+
 Install from PyPI:
 
 ```bash
@@ -77,7 +81,7 @@ result = client.videos.upload_video(
 )
 print(result)
 
-# Add a classification with bounding box
+# Add a classification with bounding box, track_id, and metadata
 classification = client.classifications.add(
     device_id="device-123",
     model_id="model-456",
@@ -89,7 +93,9 @@ classification = client.classifications.add(
     genus_confidence=0.92,
     species_confidence=0.89,
     timestamp="2023-06-01T12:34:56Z",
-    bounding_box=[0.1, 0.2, 0.3, 0.4]  # New: optional bounding box
+    bounding_box=[0.1, 0.2, 0.3, 0.4],
+    track_id="track-abc123",            # Optional tracking ID
+    metadata={"source": "drone", "weather": "sunny"}  # Optional metadata dict
 )
 print(classification)
 ```
