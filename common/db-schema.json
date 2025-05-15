@@ -73,6 +73,14 @@
           "type": "string",
           "description": "Identifier for the model used for classification"
         },
+        "track_id": {
+          "type": "string",
+          "description": "Optional identifier for tracking related classifications or external references"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional metadata for future extensibility; arbitrary JSON object"
+        },
         "image_key": {
           "type": "string",
           "description": "S3 key for the stored image"

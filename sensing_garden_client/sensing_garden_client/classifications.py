@@ -33,7 +33,9 @@ class ClassificationsClient:
         genus_confidence: Union[float, str],
         species_confidence: Union[float, str],
         timestamp: str,
-        bounding_box: Optional[Any] = None
+        bounding_box: Optional[Any] = None,
+        track_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Submit a classification to the Sensing Garden API.
@@ -50,10 +52,10 @@ class ClassificationsClient:
             species_confidence: Confidence score for species classification (0-1)
             timestamp: ISO-8601 formatted timestamp
             bounding_box: Optional bounding box coordinates [x1, y1, x2, y2] or similar structure
-            
+            track_id: Optional string for tracking related classifications or external references
+            metadata: Optional dict for arbitrary metadata to future-proof client extensions
         Returns:
             API response with the created classification
-            
         Raises:
             ValueError: If required parameters are invalid
             requests.HTTPError: For HTTP error responses
@@ -77,7 +79,10 @@ class ClassificationsClient:
         })
         if bounding_box is not None:
             payload["bounding_box"] = bounding_box
-        
+        if track_id is not None:
+            payload["track_id"] = track_id
+        if metadata is not None:
+            payload["metadata"] = metadata
         # Make API request
         return self._client.post("classifications", payload)
     

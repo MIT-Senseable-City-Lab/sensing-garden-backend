@@ -319,6 +319,16 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         'genus_confidence': Decimal(str(body['genus_confidence'])),
         'species_confidence': Decimal(str(body['species_confidence']))
     }
+    # Add track_id if present and valid
+    if 'track_id' in body:
+        if not isinstance(body['track_id'], str):
+            raise ValueError('track_id must be a string if provided')
+        data['track_id'] = body['track_id']
+    # Add metadata if present and valid
+    if 'metadata' in body:
+        if not isinstance(body['metadata'], dict):
+            raise ValueError('metadata must be an object (dict) if provided')
+        data['metadata'] = body['metadata']
     if 'bounding_box' in body:
         # Convert all bounding_box values to Decimal to avoid float issues with DynamoDB
         box = body['bounding_box']
@@ -327,7 +337,24 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         else:
             data['bounding_box'] = box
     
-    return dynamodb.store_classification_data(data)
+    # Store in DB and return all stored fields in response
+    dynamodb.store_classification_data(data)
+    def _decimals_to_floats(obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, list):
+            return [_decimals_to_floats(x) for x in obj]
+        elif isinstance(obj, dict):
+            return {k: _decimals_to_floats(v) for k, v in obj.items()}
+        else:
+            return obj
+    return {
+        'statusCode': 200,
+        'body': json.dumps({
+            'message': 'Classification data stored successfully',
+            'data': _decimals_to_floats(data)
+        })
+    }
 
 def handle_post_classification(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /classifications endpoint"""

@@ -33,7 +33,19 @@ def test_add_classification_with_bounding_box(device_id, model_id, timestamp=Non
     success, request_timestamp = _add_classification(device_id, model_id, timestamp, bounding_box=bounding_box)
     assert success, f"Classification with bounding_box test failed at {request_timestamp}"
 
-def _add_classification(device_id, model_id, timestamp=None, bounding_box=None):
+def test_add_classification_with_track_id_and_metadata(device_id, model_id, timestamp=None):
+    track_id = f"track-{uuid.uuid4()}"
+    metadata = {"foo": "bar", "num": 123}
+    print(f"\n[TEST] Sending classification with track_id: {track_id} and metadata: {metadata}")
+    success, request_timestamp, response_data, sent_kwargs = _add_classification(device_id, model_id, timestamp, track_id=track_id, metadata=metadata, return_response=True, return_sent_kwargs=True)
+    print(f"[TEST] Payload sent to server:\n{sent_kwargs}")
+    print(f"[TEST] Full response received from server:\n{response_data}")
+    assert success, f"Classification with track_id/metadata test failed at {request_timestamp}"
+    # Check response contains track_id and metadata
+    assert (response_data.get("track_id") == track_id or ("data" in response_data and response_data["data"].get("track_id") == track_id)), "track_id not returned in response"
+    assert (response_data.get("metadata") == metadata or ("data" in response_data and response_data["data"].get("metadata") == metadata)), f"metadata not returned or mismatched: {response_data.get('metadata')} != {metadata}"
+
+def _add_classification(device_id, model_id, timestamp=None, bounding_box=None, track_id=None, metadata=None, return_response=False, return_sent_kwargs=False):
     """
     Helper function to upload a classification to the Sensing Garden API.
     
@@ -81,21 +93,45 @@ def _add_classification(device_id, model_id, timestamp=None, bounding_box=None):
         )
         if bounding_box is not None:
             kwargs["bounding_box"] = bounding_box
-        response_data = client.classifications.add(**kwargs)
+        if track_id is not None:
+            kwargs["track_id"] = track_id
+        if metadata is not None:
+            kwargs["metadata"] = metadata
         
-        print_response(response_data)
+        # Send the request
+        try:
+            response = client.classifications.add(**kwargs)
+        except Exception as e:
+            print(f"[ERROR] Exception during classification upload: {e}")
+            if return_response and return_sent_kwargs:
+                return (False, request_timestamp, None, kwargs)
+            elif return_response:
+                return (False, request_timestamp, None)
+            elif return_sent_kwargs:
+                return (False, request_timestamp, kwargs)
+            return (False, request_timestamp)
+        
+        # Optionally return the response data and/or sent kwargs
+        if return_response and return_sent_kwargs:
+            return True, request_timestamp, response, kwargs
+        elif return_response:
+            return True, request_timestamp, response
+        elif return_sent_kwargs:
+            return True, request_timestamp, kwargs
+        return True, request_timestamp
+        
+        print_response(response)
         print(f"\n✅ Classification upload successful!")
         success = True
-            
         # For bounding_box test, verify it is returned (check both response_data['bounding_box'] and response_data['data']['bounding_box'])
         if bounding_box is not None:
             returned_box = None
-            if "bounding_box" in response_data:
-                returned_box = response_data["bounding_box"]
-            elif isinstance(response_data, dict) and "data" in response_data and isinstance(response_data["data"], dict) and "bounding_box" in response_data["data"]:
-                returned_box = response_data["data"]["bounding_box"]
+            if "bounding_box" in response:
+                returned_box = response["bounding_box"]
+            elif isinstance(response, dict) and "data" in response and isinstance(response["data"], dict) and "bounding_box" in response["data"]:
+                returned_box = response["data"]["bounding_box"]
             assert returned_box == bounding_box, f"bounding_box not returned or mismatched: {returned_box} != {bounding_box}"
-            
+        
     except requests.exceptions.RequestException as e:
         print(f"❌ Classification upload failed: {str(e)}")
         print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
@@ -105,6 +141,8 @@ def _add_classification(device_id, model_id, timestamp=None, bounding_box=None):
         print(f"❌ Error in test: {str(e)}")
         success = False
     
+    if return_response:
+        return success, request_timestamp, response_data
     return success, request_timestamp
 
 def test_add_classification_with_invalid_model(device_id, nonexistent_model_id, timestamp=None):

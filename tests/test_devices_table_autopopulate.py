@@ -1,8 +1,10 @@
-import pytest
-import uuid
-from sensing_garden_client import SensingGardenClient
 import os
+import uuid
+
+import pytest
 from dotenv import load_dotenv
+
+from sensing_garden_client import SensingGardenClient
 
 load_dotenv()
 

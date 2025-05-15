@@ -767,6 +767,14 @@
             "type": "string",
             "description": "Identifier for the model to use for classification"
           },
+          "track_id": {
+            "type": "string",
+            "description": "Optional identifier for tracking related classifications or external references"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Optional metadata for future extensibility; arbitrary JSON object"
+          },
           "timestamp": {
             "type": "string",
             "description": "ISO-8601 formatted timestamp (optional, server will generate if not provided)"

@@ -4,7 +4,9 @@ Test for video upload functionality in the Sensing Garden Client.
 """
 import os
 from datetime import datetime
+
 import pytest
+
 from .test_utils import get_client
 
 VIDEO_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -109,8 +111,9 @@ def test_videos_pagination_desc_order():
         print(f"  {i}: {v['timestamp']}")
 
     # Parse all timestamps and normalize to UTC, offset-naive
-    from dateutil.parser import isoparse
     from datetime import timezone
+
+    from dateutil.parser import isoparse
     def to_naive_utc(ts):
         dt = isoparse(ts)
         if dt.tzinfo is not None:
@@ -130,3 +133,76 @@ def test_videos_pagination_desc_order():
         for i, j, t1i, t2j in errors:
             print(f"  Page1[{i}] ({t1i}) is not newer than Page2[{j}] ({t2j})")
     assert not errors, "Expected all videos on first page to be newer than all on second page. See printout for violations."
+
+import tempfile
+from datetime import timedelta, timezone
+
+
+@pytest.mark.skipif(
+    not (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY),
+    reason="AWS credentials not set in environment"
+)
+def test_video_upload_respects_provided_timestamp():
+    """
+    Upload a video with a timestamp set to 1 day in the past, then fetch it and confirm the timestamp matches.
+    """
+    client = get_client()
+    device_id = "test-device-2025"
+    # Create a dummy video file
+    video_data = os.urandom(1024)  # 1KB random data
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
+        tmp.write(video_data)
+        video_path = tmp.name
+    try:
+        # Set timestamp to 1 day ago
+        past_dt = datetime.now(timezone.utc) - timedelta(days=1)
+        past_ts = past_dt.isoformat()
+        # Upload video
+        response = client.videos.upload_video(
+            device_id=device_id,
+            timestamp=past_ts,
+            video_path_or_data=video_path,
+            content_type="video/mp4"
+        )
+        print(f"Upload response: {response}")
+        assert response and isinstance(response, dict), f"No or invalid response: {response}"
+        video_key = response.get("video_key") or response.get("id")
+        assert video_key, f"No video_key/id in response: {response}"
+        # Fetch videos for the device and find the uploaded video
+        videos = client.videos.fetch(device_id=device_id, limit=50, sort_by="timestamp", sort_desc=True)
+        print(f"Fetched videos: {[{'video_key': v.get('video_key'), 'id': v.get('id'), 'timestamp': v.get('timestamp')} for v in videos.get('items', [])]}")
+        found = None
+        for v in videos.get("items", []):
+            if (v.get("video_key") == video_key or v.get("id") == video_key or
+                response.get("video_key") == v.get("id") or response.get("id") == v.get("video_key")):
+                found = v
+                break
+        assert found, f"Uploaded video not found in fetch: {videos}"
+        # Compare timestamps (normalize to UTC, offset-naive)
+        from dateutil.parser import isoparse
+        fetched_dt = isoparse(found["timestamp"])
+        if fetched_dt.tzinfo is not None:
+            fetched_dt = fetched_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        past_dt_naive = past_dt.replace(tzinfo=None)
+        assert abs((fetched_dt - past_dt_naive).total_seconds()) < 10, f"Fetched timestamp {fetched_dt} does not match uploaded {past_dt_naive}"
+        print(f"[PASS] Uploaded and fetched video timestamp: {fetched_dt}")
+    finally:
+        os.unlink(video_path)
+
+
+@pytest.mark.skipif(
+    not (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY),
+    reason="AWS credentials not set in environment"
+)
+def test_fetch_500_videos_for_specific_device():
+    """
+    Fetch 500 videos for device_id 'b8f2ed92a70e5df3' and assert exactly 500 are returned.
+    The device_id is hardcoded for this test only.
+    """
+    client = get_client()
+    device_id = "b8f2ed92a70e5df3"
+    resp = client.videos.fetch(device_id=device_id, limit=500)
+    items = resp.get("items", [])
+    assert isinstance(items, list), f"Expected list of videos, got {type(items)}: {items}"
+    assert len(items) == 500, f"Expected 500 videos, got {len(items)}"
+    print(f"[PASS] Fetched {len(items)} videos for device {device_id}")
