@@ -125,7 +125,7 @@ def get_devices(device_id: Optional[str] = None, created: Optional[str] = None, 
     table = dynamodb.Table(DEVICES_TABLE)
     base_params = {}
     try:
-        base_params['Limit'] = min(limit, 100) if limit else 100
+        base_params['Limit'] = min(limit, 5000) if limit else 100
         if next_token:
             try:
                 base_params['ExclusiveStartKey'] = json.loads(next_token)
@@ -454,7 +454,7 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
 
 
     from boto3.dynamodb.conditions import Key, Attr
-    base_params = {'Limit': min(limit, 100) if limit else 100}
+    base_params = {'Limit': min(limit, 5000) if limit else 100}
     if next_token:
         try:
             base_params['ExclusiveStartKey'] = json.loads(next_token)
