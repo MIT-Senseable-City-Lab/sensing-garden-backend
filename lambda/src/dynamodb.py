@@ -496,8 +496,9 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
         params['KeyConditionExpression'] = key_condition
         if filter_expr is not None:
             params['FilterExpression'] = filter_expr
-        # DynamoDB sort for videos/models on timestamp
-        if sort_by == 'timestamp' and table_type in ['video', 'model']:
+        # DynamoDB sort on timestamp when using Query
+        if sort_by == 'timestamp':
+            # For descending order DynamoDB requires ScanIndexForward=False
             params['ScanIndexForward'] = not bool(sort_desc)
         print(f"Unified QUERY params: {params}")
         response = table.query(**params)
