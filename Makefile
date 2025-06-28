@@ -1,4 +1,4 @@
-.PHONY: help setup-local start-local stop-local test clean
+.PHONY: help setup-local start-local stop-local test test-quick test-specific verify interactive clean
 
 help:
 	@echo "Sensing Garden Backend - Local Development"
@@ -7,7 +7,10 @@ help:
 	@echo "  make setup-local    - Set up local development environment"
 	@echo "  make start-local    - Start LocalStack and local API server"
 	@echo "  make stop-local     - Stop all local services"
-	@echo "  make test          - Run tests"
+	@echo "  make test          - Run full test suite with coverage"
+	@echo "  make test-quick    - Run tests without coverage"
+	@echo "  make verify        - Verify local setup is working"
+	@echo "  make interactive   - Run interactive test interface"
 	@echo "  make clean         - Clean up local data and containers"
 
 setup-local:
@@ -65,6 +68,14 @@ test-specific:
 	@export ENVIRONMENT=local && \
 	export AWS_ENDPOINT_URL=http://localhost:4566 && \
 	python -m pytest $(TEST) -v -s
+
+verify:
+	@echo "Verifying local setup..."
+	@./verify_local_setup.sh
+
+interactive:
+	@echo "Starting interactive test interface..."
+	@python interactive_test.py
 
 clean:
 	@echo "Cleaning up..."
