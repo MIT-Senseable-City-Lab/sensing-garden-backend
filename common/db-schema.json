@@ -112,6 +112,27 @@
         "species_confidence": {
           "type": "number",
           "description": "Confidence score for species classification (0-1)"
+        },
+        "family_confidence_array": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional array of confidence scores for all possible family classifications (probability distribution)"
+        },
+        "genus_confidence_array": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional array of confidence scores for all possible genus classifications (probability distribution)"
+        },
+        "species_confidence_array": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Optional array of confidence scores for all possible species classifications (probability distribution)"
         }
       }
     },

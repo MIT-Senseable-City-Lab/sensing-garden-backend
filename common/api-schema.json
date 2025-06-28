@@ -813,6 +813,33 @@
             "minItems": 4,
             "maxItems": 4,
             "description": "Optional bounding box coordinates [xmin, ymin, xmax, ymax] for the classification; must be 4 numbers with xmin < xmax and ymin < ymax."
+          },
+          "family_confidence_array": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Optional array of confidence scores for all possible family classifications (probability distribution)"
+          },
+          "genus_confidence_array": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Optional array of confidence scores for all possible genus classifications (probability distribution)"
+          },
+          "species_confidence_array": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Optional array of confidence scores for all possible species classifications (probability distribution)"
           }
         }
       },

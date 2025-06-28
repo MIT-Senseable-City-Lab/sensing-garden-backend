@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: sensing-garden-localstack
+    ports:
+      - "4566:4566"  # LocalStack gateway
+      - "4571:4571"  # Elasticsearch (if needed)
+    environment:
+      - SERVICES=dynamodb,s3,lambda,apigateway
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_EXECUTOR=docker
+      - LAMBDA_REMOTE_DOCKER=true
+      - DATA_DIR=/tmp/localstack/data
+      - HOST_TMP_FOLDER=/tmp/localstack
+      - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./local-data:/tmp/localstack"
+    networks:
+      - sensing-garden-network
+
+  setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.local-setup
+    depends_on:
+      - localstack
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    networks:
+      - sensing-garden-network
+    command: /bin/sh -c "python setup_local.py"
+
+networks:
+  sensing-garden-network:
+    name: sensing-garden-local

@@ -90,6 +90,12 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+local-data/
+
+# Test coverage
+coverage_html/
+.coverage
+htmlcov/
 
 # Configuration files with sensitive information
 config.py
