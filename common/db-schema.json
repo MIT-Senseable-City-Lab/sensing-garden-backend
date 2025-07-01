@@ -112,6 +112,15 @@
         "species_confidence": {
           "type": "number",
           "description": "Confidence score for species classification (0-1)"
+        },
+        "family_confidence_array": {
+          "description": "Optional confidence data for family classifications - can be any type (array, string, number, object, etc.)"
+        },
+        "genus_confidence_array": {
+          "description": "Optional confidence data for genus classifications - can be any type (array, string, number, object, etc.)"
+        },
+        "species_confidence_array": {
+          "description": "Optional confidence data for species classifications - can be any type (array, string, number, object, etc.)"
         }
       }
     },

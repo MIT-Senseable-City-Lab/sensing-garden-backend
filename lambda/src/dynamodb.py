@@ -14,8 +14,25 @@ class DynamoDBEncoder(json.JSONEncoder):
             return [float(x) if isinstance(x, Decimal) else x for x in obj]
         return super(DynamoDBEncoder, self).default(obj)
 
-# Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb')
+# Import configuration
+try:
+    from . import config
+except ImportError:
+    import config
+
+# Initialize DynamoDB client with environment-aware configuration
+cfg = config.get_config()
+if cfg['environment'] in ['local', 'test']:
+    resource_args = {
+        'region_name': 'us-east-1',
+        'aws_access_key_id': 'test',
+        'aws_secret_access_key': 'test'
+    }
+    if cfg['aws_endpoint_url']:
+        resource_args['endpoint_url'] = cfg['aws_endpoint_url']
+    dynamodb = boto3.resource('dynamodb', **resource_args)
+else:
+    dynamodb = boto3.resource('dynamodb')
 
 # Table names
 DETECTIONS_TABLE = 'sensing-garden-detections'

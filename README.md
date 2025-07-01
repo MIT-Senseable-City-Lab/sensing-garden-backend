@@ -18,8 +18,13 @@ Backend services for the Sensing Garden project, including Lambda functions for 
 
 - Python 3.9+
 - [Poetry](https://python-poetry.org/) for dependency management
-- AWS account with appropriate permissions
-- AWS CLI configured with your credentials
+- AWS account with appropriate permissions (for production deployment)
+- AWS CLI configured with your credentials (for production deployment)
+- Docker and Docker Compose (for local development)
+
+### Local Development
+
+For local development and testing, see [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md). The local setup provides a complete isolated environment using LocalStack that simulates AWS services without touching production resources.
 
 ### Environment Variables
 
@@ -33,6 +38,18 @@ export API_BASE_URL="https://your-api-endpoint.execute-api.region.amazonaws.com"
 
 
 
+
+## API Changes
+
+### Classification Confidence Arrays (v2)
+
+The classifications API now supports optional array fields for storing full probability distributions:
+
+- `family_confidence_array`: Array of confidence scores for all possible families
+- `genus_confidence_array`: Array of confidence scores for all possible genera  
+- `species_confidence_array`: Array of confidence scores for all possible species
+
+These fields are optional and backward compatible. Existing clients continue to work without modification.
 
 ## Deployment
 

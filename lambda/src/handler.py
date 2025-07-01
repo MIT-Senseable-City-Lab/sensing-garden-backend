@@ -23,12 +23,18 @@ except ImportError:
     # Fallback for Lambda environment
     import dynamodb
 
-# Initialize S3 client
-s3 = boto3.client('s3')
+# Import configuration
+try:
+    from . import config
+except ImportError:
+    import config
 
-# Resource names
-IMAGES_BUCKET = "scl-sensing-garden-images"
-VIDEOS_BUCKET = "scl-sensing-garden-videos"
+# Initialize S3 client with environment-aware configuration
+s3 = config.get_boto3_client('s3')
+
+# Resource names from configuration
+IMAGES_BUCKET = config.get_bucket_name('images')
+VIDEOS_BUCKET = config.get_bucket_name('videos')
 
 # Load the API schema once
 def _load_api_schema():
@@ -336,6 +342,12 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
             data['bounding_box'] = [Decimal(str(x)) for x in box]
         else:
             data['bounding_box'] = box
+    
+    # Add confidence arrays if present - accept any content type
+    for field in ['family_confidence_array', 'genus_confidence_array', 'species_confidence_array']:
+        if field in body:
+            # Store whatever was provided - string, number, array, object, etc.
+            data[field] = body[field]
     
     # Store in DB and return all stored fields in response
     dynamodb.store_classification_data(data)
