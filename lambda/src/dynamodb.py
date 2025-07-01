@@ -21,14 +21,16 @@ except ImportError:
     import config
 
 # Initialize DynamoDB client with environment-aware configuration
-if config.get_config()['environment'] == 'local':
-    dynamodb = boto3.resource(
-        'dynamodb',
-        endpoint_url=config.get_config()['aws_endpoint_url'],
-        region_name='us-east-1',
-        aws_access_key_id='test',
-        aws_secret_access_key='test'
-    )
+cfg = config.get_config()
+if cfg['environment'] in ['local', 'test']:
+    resource_args = {
+        'region_name': 'us-east-1',
+        'aws_access_key_id': 'test',
+        'aws_secret_access_key': 'test'
+    }
+    if cfg['aws_endpoint_url']:
+        resource_args['endpoint_url'] = cfg['aws_endpoint_url']
+    dynamodb = boto3.resource('dynamodb', **resource_args)
 else:
     dynamodb = boto3.resource('dynamodb')
 

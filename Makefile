@@ -16,7 +16,7 @@ help:
 setup-local:
 	@echo "Setting up local development environment..."
 	@echo "1. Installing Python dependencies..."
-	pip install -r requirements-dev.txt
+	poetry install
 	@echo "2. Copying environment file..."
 	@if [ ! -f .env.local ]; then \
 		cp .env.local.example .env.local; \

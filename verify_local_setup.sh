@@ -168,7 +168,7 @@ if [ -d tests ] && command -v pytest > /dev/null 2>&1; then
     fi
 else
     echo -e "${YELLOW}!${NC} Test suite not set up yet"
-    echo "  Run: pip install -r requirements-dev.txt"
+    echo "  Run: poetry install"
 fi
 
 echo ""
@@ -188,7 +188,7 @@ else
     echo ""
     echo "Common fixes:"
     echo "- Start LocalStack: make start-local"
-    echo "- Install dependencies: pip install -r requirements-dev.txt"
+    echo "- Install dependencies: poetry install"
     echo "- Check Docker is running"
 fi
 

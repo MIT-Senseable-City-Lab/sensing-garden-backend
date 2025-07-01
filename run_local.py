@@ -17,7 +17,7 @@ load_dotenv('.env.local')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lambda', 'src'))
 
 # Import the Lambda handler
-from handler import lambda_handler
+from handler import handler as lambda_handler
 
 app = Flask(__name__)
 

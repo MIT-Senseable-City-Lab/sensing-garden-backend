@@ -12,9 +12,9 @@ from dotenv import load_dotenv
 # Load test environment
 load_dotenv('.env.local')
 
-# Ensure we're in local/test mode
-os.environ['ENVIRONMENT'] = 'local'
-os.environ['AWS_ENDPOINT_URL'] = 'http://localhost:4566'
+# Ensure we're in test mode
+os.environ['ENVIRONMENT'] = 'test'
+# Don't set AWS_ENDPOINT_URL for test mode - let moto handle mocking
 
 @pytest.fixture(scope='session')
 def aws_credentials():

@@ -53,7 +53,7 @@ Manual installation:
 
 1. **Install Dependencies**
    ```bash
-   pip install -r requirements-dev.txt
+   poetry install
    ```
 
 2. **Copy Environment Configuration**

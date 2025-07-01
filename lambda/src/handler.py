@@ -343,13 +343,11 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         else:
             data['bounding_box'] = box
     
-    # Add confidence arrays if present
+    # Add confidence arrays if present - accept any content type
     for field in ['family_confidence_array', 'genus_confidence_array', 'species_confidence_array']:
         if field in body:
-            if not isinstance(body[field], list):
-                raise ValueError(f'{field} must be an array if provided')
-            # Convert all array values to Decimal for DynamoDB
-            data[field] = [Decimal(str(x)) for x in body[field]]
+            # Store whatever was provided - string, number, array, object, etc.
+            data[field] = body[field]
     
     # Store in DB and return all stored fields in response
     dynamodb.store_classification_data(data)

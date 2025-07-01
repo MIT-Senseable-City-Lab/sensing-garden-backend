@@ -29,7 +29,7 @@ tests/
 
 Install test dependencies:
 ```bash
-pip install -r requirements-dev.txt
+poetry install
 ```
 
 Or with Homebrew and pip:
@@ -169,7 +169,7 @@ The test suite is designed to run in CI/CD pipelines:
 
 2. **Import errors**
    ```bash
-   pip install -r requirements-dev.txt  # Install dependencies
+   poetry install  # Install dependencies
    ```
 
 3. **Permission denied**

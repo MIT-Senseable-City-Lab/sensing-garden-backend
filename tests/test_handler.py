@@ -14,7 +14,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lambda', 'src'))
 
-from handler import lambda_handler
+from handler import handler as lambda_handler
 
 class TestDeviceEndpoints:
     """Test device-related endpoints"""

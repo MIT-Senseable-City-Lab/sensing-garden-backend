@@ -91,7 +91,7 @@ assert 'family_confidence_array' in response['data']
 
 ## Test Dependencies
 
-Required packages (in requirements-dev.txt):
+Required packages (installed via poetry install):
 - pytest: Core testing framework
 - pytest-cov: Coverage reporting
 - pytest-env: Environment variable handling
