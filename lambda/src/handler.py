@@ -162,7 +162,8 @@ def _validate_api_request(body: Dict[str, Any], request_type: str) -> (bool, str
         'classification_request': 'ClassificationData',
         'model_request': 'ModelData',
         'video_request': 'VideoData',
-        'video_registration_request': 'VideoRegistrationRequest'
+        'video_registration_request': 'VideoRegistrationRequest',
+        'environmental_reading_request': 'EnvironmentalReading'
     }
     
     # Get schema from the OpenAPI spec
@@ -690,9 +691,15 @@ def _store_environmental_reading(body: Dict[str, Any]) -> Dict[str, Any]:
             if api_field in env_data:
                 data[db_field] = Decimal(str(env_data[api_field]))
         
-        # Add location if present
+        # Add location if present, converting numeric values to Decimal
         if 'location' in body:
-            data['location'] = body['location']
+            location = body['location']
+            data['location'] = {
+                'lat': Decimal(str(location['lat'])),
+                'long': Decimal(str(location['long']))
+            }
+            if 'alt' in location:
+                data['location']['alt'] = Decimal(str(location['alt']))
             
     else:
         # New direct format for environmental readings
@@ -733,10 +740,7 @@ def _common_post_handler(event: Dict[str, Any], data_type: str, store_function: 
                 print(f"Warning: Failed to store device_id {device_id} in devices table: {str(e)}")
         
         # Validate request based on data type
-        if data_type == 'environmental_reading':
-            request_type = 'EnvironmentalReading'
-        else:
-            request_type = f"{data_type}_request"
+        request_type = f"{data_type}_request"
         is_valid, error_message = _validate_api_request(body, request_type)
         if not is_valid:
             return {
