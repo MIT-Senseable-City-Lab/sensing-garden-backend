@@ -23,6 +23,7 @@ CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
 MODELS_TABLE = 'sensing-garden-models'
 VIDEOS_TABLE = 'sensing-garden-videos'
 DEVICES_TABLE = 'sensing-garden-devices'
+ENVIRONMENTAL_READINGS_TABLE = 'sensing-garden-environmental-readings'
 
 import traceback
 
@@ -205,7 +206,8 @@ def _validate_data(data: Dict[str, Any], table_type: str) -> (bool, str):
             'model': 'models',
             'detection': 'sensor_detections',
             'classification': 'sensor_classifications',
-            'video': 'videos'
+            'video': 'videos',
+            'environmental_reading': 'environmental_readings'
         }
         
         # Use mapped schema key if available
@@ -347,16 +349,31 @@ def store_video_data(data):
         
     return _store_data(data, VIDEOS_TABLE, 'video')
 
+def store_environmental_data(data):
+    """Store environmental reading data in DynamoDB"""
+    return _store_data(data, ENVIRONMENTAL_READINGS_TABLE, 'environmental_reading')
+
+def query_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None,
+                           end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
+                           sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
+    """Query environmental readings data with filtering and pagination."""
+    return query_data('environmental_reading', device_id, None, start_time, end_time, limit, next_token, sort_by, sort_desc)
+
+def count_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
+    """Count environmental readings with filtering."""
+    return count_data('environmental_reading', device_id, None, start_time, end_time)
+
 def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
     """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""
-    if table_type not in ['detection', 'classification', 'model', 'video']:
+    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
         raise ValueError(f"Invalid table_type: {table_type}")
     
     table_name = {
         'detection': DETECTIONS_TABLE,
         'classification': CLASSIFICATIONS_TABLE,
         'model': MODELS_TABLE,
-        'video': VIDEOS_TABLE
+        'video': VIDEOS_TABLE,
+        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE
     }[table_type]
     table = dynamodb.Table(table_name)
     from boto3.dynamodb.conditions import Key, Attr
@@ -366,7 +383,7 @@ def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
     # Filtering logic (same as query_data)
     key_condition = None
     filter_expression = None
-    if table_type in ['detection', 'classification', 'video']:
+    if table_type in ['detection', 'classification', 'video', 'environmental_reading']:
         if device_id:
             key_condition = Key('device_id').eq(device_id)
         if start_time and end_time:
@@ -431,14 +448,15 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
                end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
                sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
     """Unified query for all DynamoDB tables with filtering and pagination."""
-    if table_type not in ['detection', 'classification', 'model', 'video']:
+    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
         raise ValueError(f"Invalid table_type: {table_type}")
 
     table_name = {
         'detection': DETECTIONS_TABLE,
         'classification': CLASSIFICATIONS_TABLE,
         'model': MODELS_TABLE,
-        'video': VIDEOS_TABLE
+        'video': VIDEOS_TABLE,
+        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE
     }[table_type]
     table = dynamodb.Table(table_name)
 
@@ -447,6 +465,7 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
         'detection': 'device_id',
         'classification': 'device_id',
         'video': 'device_id',
+        'environmental_reading': 'device_id',
         'model': 'id'
     }[table_type]
     # model_id field for filtering (optional)
@@ -572,3 +591,17 @@ def store_video_data(data):
         data['type'] = 'video'  # Default type
         
     return _store_data(data, VIDEOS_TABLE, 'video')
+
+def store_environmental_data(data):
+    """Store environmental reading data in DynamoDB"""
+    return _store_data(data, ENVIRONMENTAL_READINGS_TABLE, 'environmental_reading')
+
+def query_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None,
+                           end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
+                           sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
+    """Query environmental readings data with filtering and pagination."""
+    return query_data('environmental_reading', device_id, None, start_time, end_time, limit, next_token, sort_by, sort_desc)
+
+def count_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
+    """Count environmental readings with filtering."""
+    return count_data('environmental_reading', device_id, None, start_time, end_time)

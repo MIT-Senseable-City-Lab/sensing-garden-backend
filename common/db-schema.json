@@ -112,6 +112,10 @@
         "species_confidence": {
           "type": "number",
           "description": "Confidence score for species classification (0-1)"
+        },
+        "classification_data": {
+          "type": "object",
+          "description": "Optional detailed classification data with multiple candidates and confidence scores"
         }
       }
     },
@@ -177,12 +181,94 @@
           "description": "Additional metadata about the video"
         }
       }
+    },
+    "environmental_readings": {
+      "type": "object",
+      "required": [
+        "device_id",
+        "timestamp"
+      ],
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "description": "Unique identifier for the device"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO-8601 formatted timestamp when the reading was taken"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Temperature reading in Celsius (optional)"
+        },
+        "humidity": {
+          "type": "number",
+          "description": "Relative humidity percentage (0-100, optional)"
+        },
+        "light_level": {
+          "type": "number",
+          "description": "Light level reading in lux (optional)"
+        },
+        "pressure": {
+          "type": "number",
+          "description": "Atmospheric pressure in hPa (optional)"
+        },
+        "soil_moisture": {
+          "type": "number",
+          "description": "Soil moisture percentage (0-100, optional)"
+        },
+        "wind_speed": {
+          "type": "number",
+          "description": "Wind speed in m/s (optional)"
+        },
+        "wind_direction": {
+          "type": "number",
+          "description": "Wind direction in degrees (0-360, optional)"
+        },
+        "uv_index": {
+          "type": "number",
+          "description": "UV index reading (optional)"
+        },
+        "pm1p0": {
+          "type": "number",
+          "description": "PM1.0 particulate matter concentration (μg/m³, optional)"
+        },
+        "pm2p5": {
+          "type": "number",
+          "description": "PM2.5 particulate matter concentration (μg/m³, optional)"
+        },
+        "pm4p0": {
+          "type": "number",
+          "description": "PM4.0 particulate matter concentration (μg/m³, optional)"
+        },
+        "pm10p0": {
+          "type": "number",
+          "description": "PM10.0 particulate matter concentration (μg/m³, optional)"
+        },
+        "voc_index": {
+          "type": "number",
+          "description": "Volatile Organic Compounds index (optional)"
+        },
+        "nox_index": {
+          "type": "number",
+          "description": "Nitrogen Oxides index (optional)"
+        },
+        "location": {
+          "type": "object",
+          "description": "Location information for the reading (optional)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata about the environmental reading"
+        }
+      }
     }
   },
   "required": [
     "sensor_detections",
     "sensor_classifications",
     "models",
-    "videos"
+    "videos",
+    "environmental_readings"
   ]
 }

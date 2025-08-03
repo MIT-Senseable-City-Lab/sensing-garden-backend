@@ -20,11 +20,6 @@ resource "aws_dynamodb_table" "sensor_detections" {
     type = "S"
   }
 
-  attribute {
-    name = "bounding_box"
-    type = "S"
-  }
-
   global_secondary_index {
     name               = "model_id_index"
     hash_key           = "model_id"
@@ -82,11 +77,6 @@ resource "aws_dynamodb_table" "sensor_classifications" {
     type = "S"
   }
 
-  attribute {
-    name = "bounding_box"
-    type = "S"
-  }
-
   global_secondary_index {
     name               = "model_id_index"
     hash_key           = "model_id"
@@ -124,11 +114,6 @@ resource "aws_dynamodb_table" "models" {
 
   attribute {
     name = "type"
-    type = "S"
-  }
-
-  attribute {
-    name = "bounding_box"
     type = "S"
   }
 
@@ -177,5 +162,28 @@ resource "aws_dynamodb_table" "videos" {
     ignore_changes = all
     # This will prevent Terraform from trying to recreate the table if it already exists
     create_before_destroy = true
+  }
+}
+
+# Create environmental readings table
+resource "aws_dynamodb_table" "environmental_readings" {
+  name         = "sensing-garden-environmental-readings"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "device_id"
+  range_key    = "timestamp"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = all
   }
 }

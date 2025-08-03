@@ -111,6 +111,13 @@ resource "aws_apigatewayv2_route" "get_models" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "get_environment" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /environment"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 # POST routes for write operations
 resource "aws_apigatewayv2_route" "post_models" {
   api_id    = aws_apigatewayv2_api.http_api.id
@@ -131,6 +138,14 @@ resource "aws_apigatewayv2_route" "post_detections" {
 resource "aws_apigatewayv2_route" "post_classifications" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /classifications"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# POST for environment
+resource "aws_apigatewayv2_route" "post_environment" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /environment"
   target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
@@ -189,6 +204,13 @@ resource "aws_apigatewayv2_route" "get_classifications_count" {
 resource "aws_apigatewayv2_route" "get_videos_count" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /videos/count"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_environment_count" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /environment/count"
   target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }

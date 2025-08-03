@@ -674,6 +674,138 @@
           }
         }
       }
+    },
+    "/environment": {
+      "get": {
+        "summary": "Get a list of environmental readings",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter environmental readings by device_id"
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Start time for filtering environmental readings (ISO-8601)"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "End time for filtering environmental readings (ISO-8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            },
+            "description": "Maximum number of environmental readings to return"
+          },
+          {
+            "name": "next_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Token for pagination"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Attribute to sort by (e.g., 'timestamp', 'device_id')"
+          },
+          {
+            "name": "sort_desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "If true, sort in descending order"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of environmental readings"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit an environmental reading",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentalReading"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Environmental reading processed successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/environment/count": {
+      "get": {
+        "summary": "Get a count of environmental readings",
+        "parameters": [
+          {"$ref": "#/paths/~1environment/get/parameters/0"},
+          {"$ref": "#/paths/~1environment/get/parameters/1"},
+          {"$ref": "#/paths/~1environment/get/parameters/2"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Count of environmental readings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -813,6 +945,48 @@
             "minItems": 4,
             "maxItems": 4,
             "description": "Optional bounding box coordinates [xmin, ymin, xmax, ymax] for the classification; must be 4 numbers with xmin < xmax and ymin < ymax."
+          },
+          "classification_data": {
+            "type": "object",
+            "description": "Optional detailed classification data with multiple candidates and confidence scores",
+            "properties": {
+              "family": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+                  },
+                  "required": ["name", "confidence"]
+                },
+                "description": "Array of family candidates with confidence scores"
+              },
+              "genus": {
+                "type": "array", 
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+                  },
+                  "required": ["name", "confidence"]
+                },
+                "description": "Array of genus candidates with confidence scores"
+              },
+              "species": {
+                "type": "array",
+                "items": {
+                  "type": "object", 
+                  "properties": {
+                    "name": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+                  },
+                  "required": ["name", "confidence"]
+                },
+                "description": "Array of species candidates with confidence scores"
+              }
+            }
           }
         }
       },
@@ -933,6 +1107,99 @@
           "metadata": {
             "type": "object",
             "description": "Additional metadata about the video"
+          }
+        }
+      },
+      "Location": {
+        "type": "object",
+        "required": [
+          "lat",
+          "long"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "description": "Latitude coordinate"
+          },
+          "long": {
+            "type": "number",
+            "description": "Longitude coordinate"
+          },
+          "alt": {
+            "type": "number",
+            "description": "Altitude in meters (optional)"
+          }
+        }
+      },
+      "EnvironmentalData": {
+        "type": "object",
+        "required": [
+          "pm1p0",
+          "pm2p5",
+          "pm4p0",
+          "pm10p0",
+          "ambient_humidity",
+          "ambient_temperature",
+          "voc_index",
+          "nox_index"
+        ],
+        "properties": {
+          "pm1p0": {
+            "type": "number",
+            "description": "PM1.0 particulate matter concentration (μg/m³)"
+          },
+          "pm2p5": {
+            "type": "number",
+            "description": "PM2.5 particulate matter concentration (μg/m³)"
+          },
+          "pm4p0": {
+            "type": "number",
+            "description": "PM4.0 particulate matter concentration (μg/m³)"
+          },
+          "pm10p0": {
+            "type": "number",
+            "description": "PM10.0 particulate matter concentration (μg/m³)"
+          },
+          "ambient_humidity": {
+            "type": "number",
+            "description": "Ambient relative humidity (%)"
+          },
+          "ambient_temperature": {
+            "type": "number",
+            "description": "Ambient temperature (°C)"
+          },
+          "voc_index": {
+            "type": "number",
+            "description": "Volatile Organic Compounds index"
+          },
+          "nox_index": {
+            "type": "number",
+            "description": "Nitrogen Oxides index"
+          }
+        }
+      },
+      "EnvironmentalReading": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "timestamp",
+          "location",
+          "data"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Unique identifier for the device"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 formatted timestamp"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentalData"
           }
         }
       }

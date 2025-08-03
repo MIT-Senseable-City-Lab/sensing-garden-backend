@@ -21,6 +21,11 @@ output "models_api_endpoint" {
   description = "Full URL for the models endpoint"
 }
 
+output "environment_api_endpoint" {
+  value       = "${aws_apigatewayv2_api.http_api.api_endpoint}/environment"
+  description = "Full URL for the environment endpoint"
+}
+
 output "test_api_key" {
   value       = aws_api_gateway_api_key.test_key.value
   description = "Test environment API key for authentication"
@@ -70,4 +75,9 @@ output "detection_api_invoke_command" {
 output "classification_api_invoke_command" {
   value       = "aws lambda invoke --function-name ${aws_lambda_function.api_handler_function.function_name} --payload '{\"path\":\"/classifications\",\"httpMethod\":\"POST\",\"body\":\"{\\\"device_id\\\":\\\"device123\\\",\\\"model_id\\\":\\\"model456\\\",\\\"image\\\":\\\"base64_data\\\",\\\"genus\\\":\\\"Test Genus\\\",\\\"family\\\":\\\"Test Family\\\",\\\"species\\\":\\\"Test Species\\\",\\\"confidence\\\":0.95}\"}' response.json"
   description = "Example command to invoke classification API directly"
+}
+
+output "environment_api_invoke_command" {
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.api_handler_function.function_name} --payload '{\"path\":\"/environment\",\"httpMethod\":\"POST\",\"body\":\"{\\\"device_id\\\":\\\"device123\\\",\\\"timestamp\\\":\\\"2024-01-01T12:00:00Z\\\",\\\"location\\\":{\\\"lat\\\":40.7128,\\\"long\\\":-74.0060},\\\"data\\\":{\\\"pm1p0\\\":10.5,\\\"pm2p5\\\":15.2,\\\"pm4p0\\\":18.7,\\\"pm10p0\\\":22.1,\\\"ambient_humidity\\\":65.0,\\\"ambient_temperature\\\":22.5,\\\"voc_index\\\":120,\\\"nox_index\\\":95}}\"}' response.json"
+  description = "Example command to invoke environment API directly"
 }

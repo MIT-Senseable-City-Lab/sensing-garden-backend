@@ -337,6 +337,50 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         else:
             data['bounding_box'] = box
     
+    # Add classification_data if present and valid
+    if 'classification_data' in body:
+        if not isinstance(body['classification_data'], dict):
+            raise ValueError('classification_data must be an object (dict) if provided')
+        # Convert confidence scores to Decimal for DynamoDB compatibility
+        classification_data = {}
+        valid_levels = ['family', 'genus', 'species']
+        
+        for level, candidates in body['classification_data'].items():
+            if level not in valid_levels:
+                raise ValueError(f'Invalid taxonomic level in classification_data: {level}. Must be one of: {", ".join(valid_levels)}')
+            
+            if not isinstance(candidates, list):
+                raise ValueError(f'classification_data.{level} must be an array')
+            
+            classification_data[level] = []
+            for i, candidate in enumerate(candidates):
+                if not isinstance(candidate, dict):
+                    raise ValueError(f'classification_data.{level}[{i}] must be an object')
+                
+                if 'name' not in candidate:
+                    raise ValueError(f'classification_data.{level}[{i}] missing required field: name')
+                if 'confidence' not in candidate:
+                    raise ValueError(f'classification_data.{level}[{i}] missing required field: confidence')
+                
+                # Validate name is string
+                if not isinstance(candidate['name'], str):
+                    raise ValueError(f'classification_data.{level}[{i}].name must be a string')
+                
+                # Validate confidence is numeric and in range
+                try:
+                    confidence_val = float(candidate['confidence'])
+                    if confidence_val < 0 or confidence_val > 1:
+                        raise ValueError(f'classification_data.{level}[{i}].confidence must be between 0 and 1')
+                except (ValueError, TypeError):
+                    raise ValueError(f'classification_data.{level}[{i}].confidence must be a number')
+                
+                classification_data[level].append({
+                    'name': candidate['name'],
+                    'confidence': Decimal(str(candidate['confidence']))
+                })
+        
+        data['classification_data'] = classification_data
+    
     # Store in DB and return all stored fields in response
     dynamodb.store_classification_data(data)
     def _decimals_to_floats(obj):
@@ -597,6 +641,83 @@ def handle_post_video_register(event: Dict) -> Dict:
             }, cls=dynamodb.DynamoDBEncoder)
         }
 
+def handle_count_environment(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /environment/count endpoint"""
+    try:
+        params = event.get('queryStringParameters', {}) or {}
+        device_id = params.get('device_id')
+        start_time = params.get('start_time')
+        end_time = params.get('end_time')
+        result = dynamodb.count_environmental_data(device_id, start_time, end_time)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_get_environment(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /environment endpoint"""
+    return _common_get_handler(event, 'environmental_reading')
+
+def _store_environmental_reading(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Process and store environmental reading data"""
+    # Handle both schema formats - the existing EnvironmentalReading schema and the new one
+    if 'data' in body:
+        # Existing schema format with nested data object
+        env_data = body['data']
+        data = {
+            'device_id': body['device_id'],
+            'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat())
+        }
+        
+        # Map the existing environmental data fields to our internal format
+        field_mapping = {
+            'ambient_temperature': 'temperature',
+            'ambient_humidity': 'humidity',
+            'pm1p0': 'pm1p0',
+            'pm2p5': 'pm2p5', 
+            'pm4p0': 'pm4p0',
+            'pm10p0': 'pm10p0',
+            'voc_index': 'voc_index',
+            'nox_index': 'nox_index'
+        }
+        
+        for api_field, db_field in field_mapping.items():
+            if api_field in env_data:
+                data[db_field] = Decimal(str(env_data[api_field]))
+        
+        # Add location if present
+        if 'location' in body:
+            data['location'] = body['location']
+            
+    else:
+        # New direct format for environmental readings
+        data = {
+            'device_id': body['device_id'],
+            'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat())
+        }
+        
+        # Add environmental fields, converting to Decimal
+        env_fields = ['temperature', 'humidity', 'light_level', 'pressure', 'soil_moisture', 
+                     'wind_speed', 'wind_direction', 'uv_index']
+        for field in env_fields:
+            if field in body:
+                data[field] = Decimal(str(body[field]))
+    
+    # Include metadata if present
+    if 'metadata' in body:
+        data['metadata'] = body['metadata']
+    
+    return dynamodb.store_environmental_data(data)
+
+def handle_post_environment(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle POST /environment endpoint"""
+    return _common_post_handler(event, 'environmental_reading', _store_environmental_reading)
+
 def _common_post_handler(event: Dict[str, Any], data_type: str, store_function: Callable[[Dict[str, Any]], Dict[str, Any]]) -> Dict[str, Any]:
     """Common handler for all POST endpoints"""
     try:
@@ -612,7 +733,10 @@ def _common_post_handler(event: Dict[str, Any], data_type: str, store_function: 
                 print(f"Warning: Failed to store device_id {device_id} in devices table: {str(e)}")
         
         # Validate request based on data type
-        request_type = f"{data_type}_request"
+        if data_type == 'environmental_reading':
+            request_type = 'EnvironmentalReading'
+        else:
+            request_type = f"{data_type}_request"
         is_valid, error_message = _validate_api_request(body, request_type)
         if not is_valid:
             return {
@@ -742,6 +866,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_count_models(event)
         elif http_method == 'GET' and path == '/videos/count':
             return handle_count_videos(event)
+        elif http_method == 'GET' and path == '/environment':
+            return handle_get_environment(event)
+        elif http_method == 'POST' and path == '/environment':
+            return handle_post_environment(event)
+        elif http_method == 'GET' and path == '/environment/count':
+            return handle_count_environment(event)
         else:
             return {
                 'statusCode': 404,
