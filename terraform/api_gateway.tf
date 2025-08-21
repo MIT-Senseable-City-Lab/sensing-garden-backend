@@ -118,6 +118,13 @@ resource "aws_apigatewayv2_route" "get_environment" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "get_export" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /export"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 # POST routes for write operations
 resource "aws_apigatewayv2_route" "post_models" {
   api_id    = aws_apigatewayv2_api.http_api.id

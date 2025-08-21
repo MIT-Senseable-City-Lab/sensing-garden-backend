@@ -76,15 +76,17 @@ class TestClassificationEnvironmentData:
         assert float(location['long']) == classification_with_environment['location']['long']
         assert float(location['alt']) == classification_with_environment['location']['alt']
         
-        # Verify environmental data is present with correct field mapping
-        assert stored_data['temperature'] == classification_with_environment['data']['ambient_temperature']
-        assert stored_data['humidity'] == classification_with_environment['data']['ambient_humidity']
-        assert stored_data['pm1p0'] == classification_with_environment['data']['pm1p0']
-        assert stored_data['pm2p5'] == classification_with_environment['data']['pm2p5']
-        assert stored_data['pm4p0'] == classification_with_environment['data']['pm4p0']
-        assert stored_data['pm10p0'] == classification_with_environment['data']['pm10p0']
-        assert stored_data['voc_index'] == classification_with_environment['data']['voc_index']
-        assert stored_data['nox_index'] == classification_with_environment['data']['nox_index']
+        # Verify environmental data is present with preserved field names in nested structure
+        assert 'environment' in stored_data
+        environment = stored_data['environment']
+        assert environment['ambient_temperature'] == classification_with_environment['environment']['ambient_temperature']
+        assert environment['ambient_humidity'] == classification_with_environment['environment']['ambient_humidity']
+        assert environment['pm1p0'] == classification_with_environment['environment']['pm1p0']
+        assert environment['pm2p5'] == classification_with_environment['environment']['pm2p5']
+        assert environment['pm4p0'] == classification_with_environment['environment']['pm4p0']
+        assert environment['pm10p0'] == classification_with_environment['environment']['pm10p0']
+        assert environment['voc_index'] == classification_with_environment['environment']['voc_index']
+        assert environment['nox_index'] == classification_with_environment['environment']['nox_index']
         
         # Verify additional fields
         assert stored_data['track_id'] == classification_with_environment['track_id']
@@ -94,8 +96,8 @@ class TestClassificationEnvironmentData:
         call_args = mock_store.call_args[0][0]  # First argument to store_classification_data
         
         # Check that environmental data was converted to Decimal
-        assert isinstance(call_args['temperature'], Decimal)
-        assert isinstance(call_args['humidity'], Decimal)
+        assert isinstance(call_args['ambient_temperature'], Decimal)
+        assert isinstance(call_args['ambient_humidity'], Decimal)
         assert isinstance(call_args['pm1p0'], Decimal)
         assert isinstance(call_args['location']['lat'], Decimal)
         assert isinstance(call_args['location']['long'], Decimal)
@@ -136,7 +138,7 @@ class TestClassificationEnvironmentData:
         """Test classification with partial environmental data."""
         # Add partial environmental data
         classification_data = basic_classification_data.copy()
-        classification_data['data'] = {
+        classification_data['environment'] = {
             'pm1p0': 15.2,
             'pm2p5': 22.8,
             'ambient_temperature': 25.5
@@ -157,15 +159,17 @@ class TestClassificationEnvironmentData:
         response_data = json.loads(result['body'])
         stored_data = response_data['data']
         
-        # Verify only provided environmental data is present
-        assert stored_data['pm1p0'] == 15.2
-        assert stored_data['pm2p5'] == 22.8
-        assert stored_data['temperature'] == 25.5  # ambient_temperature mapped to temperature
+        # Verify only provided environmental data is present in nested structure
+        assert 'environment' in stored_data
+        environment = stored_data['environment']
+        assert environment['pm1p0'] == 15.2
+        assert environment['pm2p5'] == 22.8
+        assert environment['ambient_temperature'] == 25.5  # field name preserved
         
         # Verify missing fields are not present
-        assert 'humidity' not in stored_data
-        assert 'pm4p0' not in stored_data
-        assert 'voc_index' not in stored_data
+        assert 'ambient_humidity' not in environment
+        assert 'pm4p0' not in environment
+        assert 'voc_index' not in environment
 
     def test_invalid_location_data_missing_required_fields(self, basic_classification_data, mock_s3):
         """Test validation error when location data is missing required fields."""
@@ -201,7 +205,7 @@ class TestClassificationEnvironmentData:
         """Test validation error when environment data is not a dictionary."""
         # Add invalid environmental data (not a dict)
         classification_data = basic_classification_data.copy()
-        classification_data['data'] = "invalid_env_string"
+        classification_data['environment'] = "invalid_env_string"
         
         with patch('handler._upload_image_to_s3') as mock_upload:
             mock_upload.return_value = "test-image-key.jpg"
@@ -209,13 +213,13 @@ class TestClassificationEnvironmentData:
             with pytest.raises(ValueError) as exc_info:
                 handler._store_classification(classification_data)
             
-            assert "data must be an object (dict) if provided" in str(exc_info.value)
+            assert "environment must be an object (dict) if provided" in str(exc_info.value)
 
     def test_invalid_environment_data_non_numeric_values(self, basic_classification_data, mock_s3):
         """Test validation error when environment data contains non-numeric values."""
         # Add environmental data with invalid (non-numeric) values
         classification_data = basic_classification_data.copy()
-        classification_data['data'] = {
+        classification_data['environment'] = {
             'pm1p0': "not_a_number",
             'ambient_temperature': 23.4
         }
@@ -233,7 +237,7 @@ class TestClassificationEnvironmentData:
         """Test that environment data fields are correctly mapped from API to database format."""
         # Add environmental data
         classification_data = basic_classification_data.copy()
-        classification_data['data'] = {
+        classification_data['environment'] = {
             'ambient_temperature': 24.7,
             'ambient_humidity': 68.3,
             'pm1p0': 11.2,
@@ -253,15 +257,15 @@ class TestClassificationEnvironmentData:
         mock_store.assert_called_once()
         call_args = mock_store.call_args[0][0]  # First argument to store_classification_data
         
-        # Verify field mapping: ambient_temperature -> temperature, ambient_humidity -> humidity
-        assert call_args['temperature'] == Decimal('24.7')
-        assert call_args['humidity'] == Decimal('68.3')
+        # Verify field names are preserved (no mapping)
+        assert call_args['ambient_temperature'] == Decimal('24.7')
+        assert call_args['ambient_humidity'] == Decimal('68.3')
         assert call_args['pm1p0'] == Decimal('11.2')
         assert call_args['voc_index'] == Decimal('145')
         
-        # Verify original field names are NOT stored
-        assert 'ambient_temperature' not in call_args
-        assert 'ambient_humidity' not in call_args
+        # Verify mapped field names are NOT stored
+        assert 'temperature' not in call_args
+        assert 'humidity' not in call_args
 
     def test_decimal_conversion_for_dynamodb(self, classification_with_environment, mock_s3, mock_dynamodb):
         """Test that all numeric values are properly converted to Decimal for DynamoDB storage."""
@@ -284,8 +288,8 @@ class TestClassificationEnvironmentData:
         assert isinstance(call_args['species_confidence'], Decimal)
         
         # Check environmental data (new functionality)
-        assert isinstance(call_args['temperature'], Decimal)
-        assert isinstance(call_args['humidity'], Decimal)
+        assert isinstance(call_args['ambient_temperature'], Decimal)
+        assert isinstance(call_args['ambient_humidity'], Decimal)
         assert isinstance(call_args['pm1p0'], Decimal)
         assert isinstance(call_args['pm2p5'], Decimal)
         assert isinstance(call_args['voc_index'], Decimal)

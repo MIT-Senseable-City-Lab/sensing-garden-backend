@@ -68,7 +68,7 @@ def classification_with_environment(basic_classification_data, environmental_dat
     """Classification data with environment and location data."""
     data = basic_classification_data.copy()
     data["location"] = location_data
-    data["data"] = environmental_data
+    data["environment"] = environmental_data
     data["track_id"] = "test_track_001"
     data["bounding_box"] = [150, 200, 50, 40]
     return data
