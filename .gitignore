@@ -14,8 +14,11 @@ override.tf.json
 terraform.rc
 .terraform.lock.hcl
 tfplan
+tfplan-*
 payload.txt
 response.json
+csv_export_plan
+plan_output_*.txt
 
 # Python
 __pycache__/
@@ -47,6 +50,7 @@ ENV/
 .coverage
 .coverage.*
 htmlcov/
+coverage_html/
 .tox/
 coverage.xml
 *.cover
