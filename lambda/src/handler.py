@@ -19,9 +19,11 @@ import boto3
 try:
     # Try importing as a module first (for local development)
     from . import dynamodb
+    from . import csv_utils
 except ImportError:
     # Fallback for Lambda environment
     import dynamodb
+    import csv_utils
 
 # Initialize S3 client
 s3 = boto3.client('s3')
@@ -301,7 +303,36 @@ def handle_get_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
     return _common_get_handler(event, 'classification', _add_presigned_urls)
 
 def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Process and store classification data"""
+    """Process and store classification data
+    
+    Args:
+        body: Request body containing classification data with the following structure:
+            - device_id (str): Device identifier
+            - model_id (str): Model identifier  
+            - image (str): Base64-encoded image data
+            - family (str): Top taxonomic family classification
+            - genus (str): Genus classification
+            - species (str): Species classification
+            - family_confidence (float): Confidence for family classification (0.0-1.0)
+            - genus_confidence (float): Confidence for genus classification (0.0-1.0) 
+            - species_confidence (float): Confidence for species classification (0.0-1.0)
+            - classification_data (dict, optional): Detailed classification with multiple candidates:
+                {
+                  "family": [{"name": "Rosaceae", "confidence": 0.95}, {"name": "Asteraceae", "confidence": 0.78}],
+                  "genus": [{"name": "Rosa", "confidence": 0.92}, {"name": "Rubus", "confidence": 0.65}],
+                  "species": [{"name": "Rosa gallica", "confidence": 0.89}, {"name": "Rosa canina", "confidence": 0.76}]
+                }
+                Each taxonomic level contains an array of candidate classifications with 'name' (string) 
+                and 'confidence' (0.0-1.0) fields. All taxonomic levels are optional.
+            - location (dict, optional): GPS coordinates {lat, long, alt}
+            - environment (dict, optional): Environmental sensor data
+            - bounding_box (list, optional): Bounding box coordinates
+            - track_id (str, optional): Tracking identifier
+            - metadata (dict, optional): Additional metadata
+    
+    Returns:
+        Dict containing success message and stored data
+    """
     # Upload image to S3
     timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
     s3_key = _upload_image_to_s3(body['image'], body['device_id'], 'classification', timestamp_str)
@@ -339,6 +370,15 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
             data['bounding_box'] = box
     
     # Add classification_data if present and valid
+    # classification_data provides detailed taxonomic classification results with multiple
+    # candidate classifications for each taxonomic level. Structure:
+    # {
+    #   "family": [{"name": "Rosaceae", "confidence": 0.95}, {"name": "Asteraceae", "confidence": 0.78}],
+    #   "genus": [{"name": "Rosa", "confidence": 0.92}, {"name": "Rubus", "confidence": 0.65}],
+    #   "species": [{"name": "Rosa gallica", "confidence": 0.89}, {"name": "Rosa canina", "confidence": 0.76}]
+    # }
+    # Each taxonomic level contains an array of candidate objects with 'name' and 'confidence' fields.
+    # Confidence values must be between 0.0 and 1.0 (decimal range).
     if 'classification_data' in body:
         if not isinstance(body['classification_data'], dict):
             raise ValueError('classification_data must be an object (dict) if provided')
@@ -405,19 +445,19 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         data['location'] = location_data
     
     # Add environmental data if present and valid
-    if 'data' in body:
-        if not isinstance(body['data'], dict):
-            raise ValueError('data must be an object (dict) if provided')
-        env_data = body['data']
+    if 'environment' in body:
+        if not isinstance(body['environment'], dict):
+            raise ValueError('environment must be an object (dict) if provided')
+        env_data = body['environment']
         
-        # Map environmental data fields (API format -> DB format) and convert to Decimal
+        # Store environmental data preserving original field names
         env_field_mapping = {
             'pm1p0': 'pm1p0',
             'pm2p5': 'pm2p5', 
             'pm4p0': 'pm4p0',
             'pm10p0': 'pm10p0',
-            'ambient_temperature': 'temperature',
-            'ambient_humidity': 'humidity',
+            'ambient_temperature': 'ambient_temperature',
+            'ambient_humidity': 'ambient_humidity',
             'voc_index': 'voc_index',
             'nox_index': 'nox_index'
         }
@@ -427,10 +467,11 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
                 try:
                     data[db_field] = Decimal(str(env_data[api_field]))
                 except (ValueError, TypeError):
-                    raise ValueError(f'Environmental data field {api_field} must be a number')
+                    raise ValueError(f'Environment field {api_field} must be a number')
     
     # Store in DB and return all stored fields in response
     dynamodb.store_classification_data(data)
+    
     def _decimals_to_floats(obj):
         if isinstance(obj, Decimal):
             return float(obj)
@@ -440,11 +481,25 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
             return {k: _decimals_to_floats(v) for k, v in obj.items()}
         else:
             return obj
+    
+    # Restructure response to maintain input/output symmetry
+    response_data = data.copy()
+    
+    # Extract environmental fields and nest them under 'environment'
+    env_fields = ['pm1p0', 'pm2p5', 'pm4p0', 'pm10p0', 'ambient_temperature', 'ambient_humidity', 'voc_index', 'nox_index']
+    environment_data = {}
+    for field in env_fields:
+        if field in response_data:
+            environment_data[field] = response_data.pop(field)
+    
+    if environment_data:
+        response_data['environment'] = environment_data
+    
     return {
         'statusCode': 200,
         'body': json.dumps({
             'message': 'Classification data stored successfully',
-            'data': _decimals_to_floats(data)
+            'data': _decimals_to_floats(response_data)
         })
     }
 
@@ -714,18 +769,18 @@ def handle_get_environment(event: Dict[str, Any]) -> Dict[str, Any]:
 def _store_environmental_reading(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store environmental reading data"""
     # Handle both schema formats - the existing EnvironmentalReading schema and the new one
-    if 'data' in body:
-        # Existing schema format with nested data object
-        env_data = body['data']
+    if 'environment' in body:
+        # Updated schema format with nested environment object
+        env_data = body['environment']
         data = {
             'device_id': body['device_id'],
             'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat())
         }
         
-        # Map the existing environmental data fields to our internal format
+        # Preserve original field names in database
         field_mapping = {
-            'ambient_temperature': 'temperature',
-            'ambient_humidity': 'humidity',
+            'ambient_temperature': 'ambient_temperature',
+            'ambient_humidity': 'ambient_humidity',
             'pm1p0': 'pm1p0',
             'pm2p5': 'pm2p5', 
             'pm4p0': 'pm4p0',
@@ -864,6 +919,323 @@ def _common_get_handler(event: Dict[str, Any], data_type: str, process_results: 
 
 from typing import Dict, Any, Optional, Callable
 
+def handle_csv_detections(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /detections/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Query data using existing function
+        result = dynamodb.query_data(
+            'detection',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 5000)) if query_params.get('limit') else 5000,  # Higher limit for CSV export
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+        )
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'detection', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV detections handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /classifications/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Query data using existing function
+        result = dynamodb.query_data(
+            'classification',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 5000)) if query_params.get('limit') else 5000,  # Higher limit for CSV export
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+        )
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'classification', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV classifications handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_models(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /models/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Query data using existing function
+        result = dynamodb.query_data(
+            'model',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 5000)) if query_params.get('limit') else 5000,
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+        )
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'model', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV models handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_videos(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /videos/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Query data using existing function
+        result = dynamodb.query_data(
+            'video',
+            device_id=query_params.get('device_id'),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 5000)) if query_params.get('limit') else 5000,
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+        )
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'video', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV videos handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_environment(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /environment/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Query data using existing function
+        result = dynamodb.query_data(
+            'environmental_reading',
+            device_id=query_params.get('device_id'),
+            model_id=None,  # Environmental readings don't have model_id
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            limit=int(query_params.get('limit', 5000)) if query_params.get('limit') else 5000,
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+        )
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'environmental_reading', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV environment handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_devices(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /devices/csv endpoint for CSV export"""
+    try:
+        # Get query parameters with defaults
+        query_params = event.get('queryStringParameters', {}) or {}
+        device_id = query_params.get('device_id')
+        created = query_params.get('created')
+        limit = int(query_params.get('limit', 5000))
+        next_token = query_params.get('next_token')
+        sort_by = query_params.get('sort_by')
+        sort_desc = query_params.get('sort_desc', 'false').lower() == 'true'
+        
+        # Get devices data using existing function
+        result = dynamodb.get_devices(device_id, created, limit, next_token, sort_by, sort_desc)
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename')
+        return csv_utils.create_csv_response(result.get('items', []), 'device', filename)
+        
+    except Exception as e:
+        print(f"Error in CSV devices handler: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
+def handle_csv_export(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /export?table=<table_name>&start_time=<date>&end_time=<date> endpoint for unified CSV export"""
+    try:
+        # Get query parameters
+        query_params = event.get('queryStringParameters', {}) or {}
+        
+        # Get table parameter (required)
+        table_param = query_params.get('table')
+        if not table_param:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'table parameter is required'}, cls=dynamodb.DynamoDBEncoder)
+            }
+        
+        # Map table parameter to actual data types
+        table_mapping = {
+            'detections': 'detection',
+            'classifications': 'classification', 
+            'models': 'model',
+            'videos': 'video',
+            'environment': 'environmental_reading',
+            'devices': 'device'
+        }
+        
+        # Validate table parameter
+        if table_param not in table_mapping:
+            valid_tables = ', '.join(table_mapping.keys())
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': f'Invalid table parameter. Valid options are: {valid_tables}'
+                }, cls=dynamodb.DynamoDBEncoder)
+            }
+        
+        data_type = table_mapping[table_param]
+        
+        # Get required time parameters
+        start_time = query_params.get('start_time')
+        end_time = query_params.get('end_time')
+        
+        # Validate required time parameters
+        if not start_time or not end_time:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Both start_time and end_time parameters are required'
+                }, cls=dynamodb.DynamoDBEncoder)
+            }
+        
+        # Validate date format
+        from datetime import datetime
+        try:
+            datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+        except ValueError as e:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': f'Invalid date format. Use ISO 8601 format (e.g., 2023-01-01T00:00:00Z): {str(e)}'
+                }, cls=dynamodb.DynamoDBEncoder)
+            }
+        
+        # Get all data in the time range
+        all_items = []
+        next_token = None
+        max_iterations = 50  # Safety limit to prevent infinite loops
+        iteration_count = 0
+        
+        while iteration_count < max_iterations:
+            if data_type == 'device':
+                # Special handling for devices table which doesn't use query_data
+                result = dynamodb.get_devices(
+                    device_id=query_params.get('device_id'),
+                    created=query_params.get('created'),
+                    limit=5000,
+                    next_token=next_token,
+                    sort_by=query_params.get('sort_by'),
+                    sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+                )
+            else:
+                # Query data using existing function with high limit to get all data
+                result = dynamodb.query_data(
+                    data_type,
+                    device_id=query_params.get('device_id'),
+                    model_id=query_params.get('model_id'),
+                    start_time=start_time,
+                    end_time=end_time,
+                    limit=5000,  # High limit to get all data in range
+                    next_token=next_token,
+                    sort_by=query_params.get('sort_by'),
+                    sort_desc=query_params.get('sort_desc', 'false').lower() == 'true'
+                )
+            
+            # Add items to our collection
+            items = result.get('items', [])
+            all_items.extend(items)
+            
+            # Check for more data
+            next_token = result.get('next_token')
+            if not next_token:
+                break
+                
+            iteration_count += 1
+        
+        # Warn if we hit the iteration limit
+        if iteration_count >= max_iterations:
+            print(f"Warning: Hit maximum iteration limit ({max_iterations}) for CSV export. Data may be incomplete.")
+        
+        # Handle empty results
+        if not all_items:
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'text/csv',
+                    'Content-Disposition': f'attachment; filename="{table_param}_export_empty.csv"'
+                },
+                'body': f'# No data found for {table_param} between {start_time} and {end_time}\n'
+            }
+        
+        # Convert to CSV and return as download
+        filename = query_params.get('filename') or f'{table_param}_export_{start_time}_{end_time}.csv'
+        
+        # Clean filename to be filesystem-safe
+        import re
+        filename = re.sub(r'[^\w\-_.]', '_', filename)
+        if not filename.endswith('.csv'):
+            filename += '.csv'
+        
+        print(f"Exporting {len(all_items)} items for table {table_param} to CSV")
+        
+        return csv_utils.create_csv_response(all_items, data_type, filename)
+        
+    except Exception as e:
+        print(f"Error in unified CSV export handler: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Main Lambda handler for API Gateway requests
     
@@ -923,6 +1295,21 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_post_environment(event)
         elif http_method == 'GET' and path == '/environment/count':
             return handle_count_environment(event)
+        # CSV export endpoints
+        elif http_method == 'GET' and path == '/detections/csv':
+            return handle_csv_detections(event)
+        elif http_method == 'GET' and path == '/classifications/csv':
+            return handle_csv_classifications(event)
+        elif http_method == 'GET' and path == '/models/csv':
+            return handle_csv_models(event)
+        elif http_method == 'GET' and path == '/videos/csv':
+            return handle_csv_videos(event)
+        elif http_method == 'GET' and path == '/environment/csv':
+            return handle_csv_environment(event)
+        elif http_method == 'GET' and path == '/devices/csv':
+            return handle_csv_devices(event)
+        elif http_method == 'GET' and path == '/export':
+            return handle_csv_export(event)
         else:
             return {
                 'statusCode': 404,

@@ -111,8 +111,9 @@ curl -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" "https://api.sensinggarden.com/v1
 | `genus` | String | Optional | Taxonomic genus classification |
 | `species` | String | Optional | Taxonomic species classification |
 | `confidences` | Object | Optional | Confidence scores for each taxonomic level |
+| `classification_data` | Object | Optional | Detailed classification data with multiple candidates per taxonomic level (see Classification Data Object below) |
 | `location` | Object | Optional | GPS coordinates (see Location Object below) |
-| `data` | Object | Optional | Environmental sensor data (see Environmental Data Object below) |
+| `environment` | Object | Optional | Environmental sensor data (see Environmental Data Object below) |
 | `track_id` | String | Optional | Tracking identifier for the detected insect |
 | `bounding_box` | Array[4] | Optional | Bounding box coordinates [x, y, width, height] |
 
@@ -123,6 +124,43 @@ curl -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" "https://api.sensinggarden.com/v1
 | `lat` | Number | **Required** | Latitude coordinate |
 | `long` | Number | **Required** | Longitude coordinate |
 | `alt` | Number | Optional | Altitude in meters |
+
+#### Classification Data Object (when provided)
+
+The `classification_data` object provides detailed taxonomic classification results with multiple candidate classifications for each taxonomic level. Each level contains an array of candidate classifications, each with a name and confidence score.
+
+**Structure:**
+```json
+{
+  "family": [
+    {"name": "Rosaceae", "confidence": 0.95},
+    {"name": "Asteraceae", "confidence": 0.78}
+  ],
+  "genus": [
+    {"name": "Rosa", "confidence": 0.92},
+    {"name": "Rubus", "confidence": 0.65}
+  ],
+  "species": [
+    {"name": "Rosa gallica", "confidence": 0.89},
+    {"name": "Rosa canina", "confidence": 0.76}
+  ]
+}
+```
+
+**Field Details:**
+
+| Level | Type | Required | Description |
+|-------|------|----------|-------------|
+| `family` | Array | Optional | Array of family-level candidate classifications |
+| `genus` | Array | Optional | Array of genus-level candidate classifications |
+| `species` | Array | Optional | Array of species-level candidate classifications |
+
+**Candidate Object Structure:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | String | **Required** | Taxonomic name for this candidate |
+| `confidence` | Number | **Required** | Confidence score (0.0 to 1.0) |
 
 #### Environmental Data Object (when provided)
 
@@ -199,7 +237,7 @@ curl -X POST "${API_BASE_URL}/classifications" \
       "long": -74.0060,
       "alt": 10.5
     },
-    "data": {
+    "environment": {
       "pm1p0": 12.5,
       "pm2p5": 18.3,
       "pm4p0": 22.1,
@@ -211,6 +249,44 @@ curl -X POST "${API_BASE_URL}/classifications" \
     },
     "track_id": "butterfly_001",
     "bounding_box": [150, 200, 50, 40]
+  }'
+```
+
+#### Classification with Detailed Classification Data
+Submit classification with multiple candidate classifications per taxonomic level:
+
+```bash
+curl -X POST "${API_BASE_URL}/classifications" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" \
+  -d '{
+    "device_id": "garden-pi-001",
+    "model_id": "yolov8n-insects-v1.2",
+    "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+    "family": "Rosaceae",
+    "genus": "Rosa",
+    "species": "Rosa gallica",
+    "family_confidence": 0.95,
+    "genus_confidence": 0.92,
+    "species_confidence": 0.89,
+    "classification_data": {
+      "family": [
+        {"name": "Rosaceae", "confidence": 0.95},
+        {"name": "Asteraceae", "confidence": 0.78},
+        {"name": "Fabaceae", "confidence": 0.65}
+      ],
+      "genus": [
+        {"name": "Rosa", "confidence": 0.92},
+        {"name": "Rubus", "confidence": 0.65},
+        {"name": "Prunus", "confidence": 0.58}
+      ],
+      "species": [
+        {"name": "Rosa gallica", "confidence": 0.89},
+        {"name": "Rosa canina", "confidence": 0.76},
+        {"name": "Rosa damascena", "confidence": 0.71}
+      ]
+    },
+    "bounding_box": [120, 150, 80, 90]
   }'
 ```
 
@@ -262,7 +338,7 @@ curl -X POST "${API_BASE_URL}/detections" \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `device_id` | String | **Required** | Unique identifier for the device |
-| `data` | Object | **Required** | Environmental sensor data (see Environmental Data Object below) |
+| `environment` | Object | **Required** | Environmental sensor data (see Environmental Data Object below) |
 | `timestamp` | ISO 8601 | Optional | Reading timestamp (defaults to current time) |
 | `location` | Object | Optional | GPS coordinates (see Location Object below) |
 
@@ -296,7 +372,7 @@ curl -X POST "${API_BASE_URL}/environment" \
   -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" \
   -d '{
     "device_id": "garden-pi-001",
-    "data": {}
+    "environment": {}
   }'
 ```
 
@@ -315,7 +391,7 @@ curl -X POST "${API_BASE_URL}/environment" \
       "long": -74.0060,
       "alt": 15.0
     },
-    "data": {
+    "environment": {
       "pm1p0": 8.2,
       "pm2p5": 15.7,
       "pm4p0": 19.3,
@@ -432,25 +508,44 @@ curl -G "${API_BASE_URL}/detections/count" \
     "timestamp": "2024-08-21T14:30:00.000Z",
     "image_key": "classifications/garden-pi-001/2024-08-21-14-30-00.jpg",
     "image_bucket": "scl-sensing-garden-images",
-    "family": "Apidae",
-    "genus": "Apis",
-    "species": "mellifera",
-    "family_confidence": 0.92,
-    "genus_confidence": 0.85,
-    "species_confidence": 0.78,
+    "family": "Rosaceae",
+    "genus": "Rosa",
+    "species": "Rosa gallica",
+    "family_confidence": 0.95,
+    "genus_confidence": 0.92,
+    "species_confidence": 0.89,
+    "classification_data": {
+      "family": [
+        {"name": "Rosaceae", "confidence": 0.95},
+        {"name": "Asteraceae", "confidence": 0.78},
+        {"name": "Fabaceae", "confidence": 0.65}
+      ],
+      "genus": [
+        {"name": "Rosa", "confidence": 0.92},
+        {"name": "Rubus", "confidence": 0.65},
+        {"name": "Prunus", "confidence": 0.58}
+      ],
+      "species": [
+        {"name": "Rosa gallica", "confidence": 0.89},
+        {"name": "Rosa canina", "confidence": 0.76},
+        {"name": "Rosa damascena", "confidence": 0.71}
+      ]
+    },
     "location": {
       "lat": 40.7128,
       "long": -74.0060,
       "alt": 10.5
     },
-    "temperature": 23.4,
-    "humidity": 65.2,
-    "pm1p0": 12.5,
-    "pm2p5": 18.3,
-    "pm4p0": 22.1,
-    "pm10p0": 28.7,
-    "voc_index": 150,
-    "nox_index": 75
+    "environment": {
+      "ambient_temperature": 23.4,
+      "ambient_humidity": 65.2,
+      "pm1p0": 12.5,
+      "pm2p5": 18.3,
+      "pm4p0": 22.1,
+      "pm10p0": 28.7,
+      "voc_index": 150,
+      "nox_index": 75
+    }
   }
 }
 ```
@@ -462,8 +557,8 @@ curl -G "${API_BASE_URL}/detections/count" \
     {
       "device_id": "garden-pi-001",
       "timestamp": "2024-08-21T14:30:00Z",
-      "temperature": 24.7,
-      "humidity": 62.8,
+      "ambient_temperature": 24.7,
+      "ambient_humidity": 62.8,
       "pm1p0": 8.2,
       "pm2p5": 15.7,
       "pm4p0": 19.3,

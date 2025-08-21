@@ -948,7 +948,7 @@
           },
           "classification_data": {
             "type": "object",
-            "description": "Optional detailed classification data with multiple candidates and confidence scores",
+            "description": "Optional detailed classification data with multiple candidates and confidence scores. Each taxonomic level contains an array of candidate classifications with name and confidence. Example: {\"family\": [{\"name\": \"Rosaceae\", \"confidence\": 0.95}, {\"name\": \"Asteraceae\", \"confidence\": 0.78}], \"genus\": [{\"name\": \"Rosa\", \"confidence\": 0.92}], \"species\": [{\"name\": \"Rosa gallica\", \"confidence\": 0.89}]}",
             "properties": {
               "family": {
                 "type": "array",
@@ -992,7 +992,7 @@
             "$ref": "#/components/schemas/Location",
             "description": "Optional location data where the classification was recorded"
           },
-          "data": {
+          "environment": {
             "$ref": "#/components/schemas/EnvironmentalData", 
             "description": "Optional environmental sensor data collected at time of classification"
           }
@@ -1181,7 +1181,7 @@
         "required": [
           "device_id",
           "timestamp",
-          "data"
+          "environment"
         ],
         "properties": {
           "device_id": {
@@ -1195,7 +1195,7 @@
           "location": {
             "$ref": "#/components/schemas/Location"
           },
-          "data": {
+          "environment": {
             "$ref": "#/components/schemas/EnvironmentalData"
           }
         }
