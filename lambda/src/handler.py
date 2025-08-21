@@ -382,6 +382,53 @@ def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
         
         data['classification_data'] = classification_data
     
+    # Add location if present and valid
+    if 'location' in body:
+        if not isinstance(body['location'], dict):
+            raise ValueError('location must be an object (dict) if provided')
+        location = body['location']
+        
+        # Validate required location fields
+        if 'lat' not in location or 'long' not in location:
+            raise ValueError('location must contain required fields: lat, long')
+        
+        # Convert location values to Decimal for DynamoDB compatibility
+        location_data = {
+            'lat': Decimal(str(location['lat'])),
+            'long': Decimal(str(location['long']))
+        }
+        
+        # Add optional altitude
+        if 'alt' in location:
+            location_data['alt'] = Decimal(str(location['alt']))
+        
+        data['location'] = location_data
+    
+    # Add environmental data if present and valid
+    if 'data' in body:
+        if not isinstance(body['data'], dict):
+            raise ValueError('data must be an object (dict) if provided')
+        env_data = body['data']
+        
+        # Map environmental data fields (API format -> DB format) and convert to Decimal
+        env_field_mapping = {
+            'pm1p0': 'pm1p0',
+            'pm2p5': 'pm2p5', 
+            'pm4p0': 'pm4p0',
+            'pm10p0': 'pm10p0',
+            'ambient_temperature': 'temperature',
+            'ambient_humidity': 'humidity',
+            'voc_index': 'voc_index',
+            'nox_index': 'nox_index'
+        }
+        
+        for api_field, db_field in env_field_mapping.items():
+            if api_field in env_data:
+                try:
+                    data[db_field] = Decimal(str(env_data[api_field]))
+                except (ValueError, TypeError):
+                    raise ValueError(f'Environmental data field {api_field} must be a number')
+    
     # Store in DB and return all stored fields in response
     dynamodb.store_classification_data(data)
     def _decimals_to_floats(obj):

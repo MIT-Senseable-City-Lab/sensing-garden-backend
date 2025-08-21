@@ -987,6 +987,14 @@
                 "description": "Array of species candidates with confidence scores"
               }
             }
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location",
+            "description": "Optional location data where the classification was recorded"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentalData", 
+            "description": "Optional environmental sensor data collected at time of classification"
           }
         }
       },

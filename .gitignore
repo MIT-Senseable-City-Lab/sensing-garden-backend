@@ -43,6 +43,14 @@ var/
 venv/
 ENV/
 .pytest_cache/
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+.hypothesis/
 
 # Poetry
 poetry.lock

@@ -116,6 +116,56 @@
         "classification_data": {
           "type": "object",
           "description": "Optional detailed classification data with multiple candidates and confidence scores"
+        },
+        "location": {
+          "type": "object",
+          "description": "Optional location data where the classification was recorded",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "Latitude coordinate"
+            },
+            "long": {
+              "type": "number", 
+              "description": "Longitude coordinate"
+            },
+            "alt": {
+              "type": "number",
+              "description": "Altitude in meters (optional)"
+            }
+          }
+        },
+        "pm1p0": {
+          "type": "number",
+          "description": "PM1.0 particulate matter concentration (μg/m³)"
+        },
+        "pm2p5": {
+          "type": "number", 
+          "description": "PM2.5 particulate matter concentration (μg/m³)"
+        },
+        "pm4p0": {
+          "type": "number",
+          "description": "PM4.0 particulate matter concentration (μg/m³)"
+        },
+        "pm10p0": {
+          "type": "number",
+          "description": "PM10.0 particulate matter concentration (μg/m³)"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Ambient temperature (°C)"
+        },
+        "humidity": {
+          "type": "number", 
+          "description": "Ambient relative humidity (%)"
+        },
+        "voc_index": {
+          "type": "number",
+          "description": "Volatile Organic Compounds index"
+        },
+        "nox_index": {
+          "type": "number",
+          "description": "Nitrogen Oxides index"
         }
       }
     },
