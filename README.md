@@ -93,6 +93,11 @@ All API requests require the `X-API-Key` header with your API key:
 curl -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" "${API_BASE_URL}/models"
 ```
 
+**Note:** If using the custom domain `api.sensinggarden.com`, all endpoints require the `/v1/` prefix:
+```bash
+curl -H "X-API-Key: ${SENSING_GARDEN_API_KEY}" "https://api.sensinggarden.com/v1/models"
+```
+
 ### Classifications
 
 #### POST Parameters
@@ -143,7 +148,12 @@ curl -X POST "${API_BASE_URL}/classifications" \
     "device_id": "garden-pi-001",
     "model_id": "yolov8n-insects-v1.2",
     "image": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
-    "family": "Nymphalidae"
+    "family": "Nymphalidae",
+    "genus": "Vanessa",
+    "species": "cardui",
+    "family_confidence": 0.95,
+    "genus_confidence": 0.87,
+    "species_confidence": 0.82
   }'
 ```
 
@@ -437,6 +447,8 @@ curl -G "${API_BASE_URL}/detections/count" \
     "humidity": 65.2,
     "pm1p0": 12.5,
     "pm2p5": 18.3,
+    "pm4p0": 22.1,
+    "pm10p0": 28.7,
     "voc_index": 150,
     "nox_index": 75
   }

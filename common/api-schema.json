@@ -1141,16 +1141,6 @@
       },
       "EnvironmentalData": {
         "type": "object",
-        "required": [
-          "pm1p0",
-          "pm2p5",
-          "pm4p0",
-          "pm10p0",
-          "ambient_humidity",
-          "ambient_temperature",
-          "voc_index",
-          "nox_index"
-        ],
         "properties": {
           "pm1p0": {
             "type": "number",
