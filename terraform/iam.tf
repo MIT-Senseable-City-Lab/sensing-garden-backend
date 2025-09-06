@@ -33,12 +33,18 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "dynamodb:Scan",
           "dynamodb:Query",
           "dynamodb:BatchGetItem",
-          "dynamodb:DescribeTable"
+          "dynamodb:DescribeTable",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:BatchWriteItem"
         ]
         Resource = [
           aws_dynamodb_table.sensor_detections.arn,
           aws_dynamodb_table.sensor_classifications.arn,
-          aws_dynamodb_table.models.arn
+          aws_dynamodb_table.models.arn,
+          aws_dynamodb_table.devices.arn,
+          aws_dynamodb_table.videos.arn,
+          aws_dynamodb_table.environmental_readings.arn
         ]
       }
     ]

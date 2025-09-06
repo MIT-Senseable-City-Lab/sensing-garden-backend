@@ -4,7 +4,7 @@ resource "aws_apigatewayv2_api" "http_api" {
   
   cors_configuration {
     allow_headers = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"]
-    allow_methods = ["POST", "GET", "OPTIONS"]
+    allow_methods = ["POST", "GET", "OPTIONS", "DELETE"]
     allow_origins = ["*"]  # In production, restrict this to specific domains
     max_age       = 300
   }
@@ -16,18 +16,26 @@ resource "aws_apigatewayv2_api" "http_api" {
 # API Keys for different environments
 # Using REST API Gateway resources for API key management
 
-# Test environment API key
+# Import existing API keys by their IDs
+# Test environment API key (existing: y89f9jxnf9)
 resource "aws_api_gateway_api_key" "test_key" {
   name = "sensing-garden-api-key-test"
   enabled = true
   description = "API key for test environment"
 }
 
-# Edge/production environment API key
+# Edge/production environment API key (existing: y90f3ne7m7)
 resource "aws_api_gateway_api_key" "edge_key" {
   name = "sensing-garden-api-key-edge"
   enabled = true
   description = "API key for edge/production environment"
+}
+
+# Frontend API key (existing: 2xapcek3tc)
+resource "aws_api_gateway_api_key" "frontend_key" {
+  name = "sensing-garden-api-key-frontend"
+  enabled = true
+  description = "API key for frontend environment"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -83,6 +91,13 @@ resource "aws_api_gateway_usage_plan_key" "test_usage_plan_key" {
 # Associate the edge/production environment API key with the usage plan
 resource "aws_api_gateway_usage_plan_key" "edge_usage_plan_key" {
   key_id        = aws_api_gateway_api_key.edge_key.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
+}
+
+# Associate the frontend API key with the usage plan
+resource "aws_api_gateway_usage_plan_key" "frontend_usage_plan_key" {
+  key_id        = aws_api_gateway_api_key.frontend_key.id
   key_type      = "API_KEY"
   usage_plan_id = aws_api_gateway_usage_plan.usage_plan.id
 }

@@ -57,8 +57,11 @@ resource "aws_lambda_function" "api_handler_function" {
   
   environment {
     variables = {
-      IMAGES_BUCKET = "scl-sensing-garden-images"
-      VIDEOS_BUCKET = "scl-sensing-garden-videos"
+      IMAGES_BUCKET    = "scl-sensing-garden-images"
+      VIDEOS_BUCKET    = "scl-sensing-garden-videos"
+      TEST_API_KEY     = aws_api_gateway_api_key.test_key.value
+      EDGE_API_KEY     = aws_api_gateway_api_key.edge_key.value
+      FRONTEND_API_KEY = aws_api_gateway_api_key.frontend_key.value
     }
   }
 }

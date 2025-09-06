@@ -32,6 +32,47 @@ s3 = boto3.client('s3')
 IMAGES_BUCKET = "scl-sensing-garden-images"
 VIDEOS_BUCKET = "scl-sensing-garden-videos"
 
+# API Key Validation Functions
+def validate_api_key(event: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Validate API key for write operations (POST, PUT, DELETE).
+    Returns: (is_valid: bool, error_message: str)
+    """
+    try:
+        # Extract API key from headers (case-insensitive)
+        headers = event.get('headers', {})
+        api_key = None
+        
+        # Check common header variations
+        for header_name, header_value in headers.items():
+            if header_name and header_name.lower() == 'x-api-key':
+                api_key = header_value
+                break
+        
+        if not api_key:
+            return False, "Missing API key. Include X-Api-Key header."
+        
+        # Get valid API keys from environment variables
+        valid_keys = []
+        for key_name in ['TEST_API_KEY', 'EDGE_API_KEY', 'FRONTEND_API_KEY']:
+            key_value = os.environ.get(key_name, '').strip()
+            if key_value:
+                valid_keys.append(key_value)
+        
+        if not valid_keys:
+            print("WARNING: No valid API keys configured in environment variables")
+            # For safety during deployment, fail open if no keys configured
+            return True, ""
+        
+        if api_key in valid_keys:
+            return True, ""
+        
+        return False, "Invalid API key"
+        
+    except Exception as e:
+        print(f"API key validation error: {str(e)}")
+        return False, "Authentication error"
+
 # Load the API schema once
 def _load_api_schema():
     """Load the API schema for request validation"""
@@ -567,7 +608,7 @@ def handle_post_device(event: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def handle_delete_device(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Handle DELETE /devices endpoint."""
+    """Handle DELETE /devices endpoint with optional cascade delete."""
     import traceback
     try:
         body = event.get('body')
@@ -582,10 +623,16 @@ def handle_delete_device(event: Dict[str, Any]) -> Dict[str, Any]:
                 raise ValueError(f"Could not decode body: {decode_err}")
         else:
             body_json = body
+        
         device_id = body_json.get('device_id')
         if not device_id:
             raise ValueError("device_id is required in body")
-        resp = dynamodb.delete_device(device_id)
+        
+        # Check for cascade parameter (defaults to True for backwards compatibility)
+        cascade = body_json.get('cascade', True)
+        print(f"[handle_delete_device] Deleting device {device_id} with cascade={cascade}")
+        
+        resp = dynamodb.delete_device(device_id, cascade=cascade)
         print(f"[handle_delete_device] DynamoDB response: {resp}")
         return resp
     except Exception as e:
@@ -1255,6 +1302,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         path = event.get('requestContext', {}).get('http', {}).get('path', '')
         
         print(f"Dispatching to handler for {http_method} {path}")
+        
+        # API Key validation for write operations
+        if http_method in ['POST', 'PUT', 'DELETE']:
+            is_valid, error_message = validate_api_key(event)
+            if not is_valid:
+                print(f"Authentication failed for {http_method} {path}: {error_message}")
+                return {
+                    'statusCode': 401,
+                    'body': json.dumps({'error': error_message}, cls=dynamodb.DynamoDBEncoder)
+                }
         
         # Routing logic
         if http_method == 'GET' and path == '/devices':

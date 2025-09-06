@@ -1,11 +1,12 @@
 """
 Test configuration and fixtures for sensing garden backend tests.
+
+Only includes fixtures that support real infrastructure testing.
+Mock fixtures have been removed to prevent false testing confidence.
 """
 import pytest
 import os
 import sys
-from unittest.mock import Mock, patch
-from decimal import Decimal
 
 # Add lambda src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lambda', 'src'))
@@ -72,37 +73,3 @@ def classification_with_environment(basic_classification_data, environmental_dat
     data["track_id"] = "test_track_001"
     data["bounding_box"] = [150, 200, 50, 40]
     return data
-
-@pytest.fixture
-def mock_dynamodb():
-    """Mock DynamoDB client."""
-    with patch('boto3.resource') as mock_resource:
-        mock_table = Mock()
-        mock_resource.return_value.Table.return_value = mock_table
-        yield mock_table
-
-@pytest.fixture
-def mock_s3():
-    """Mock S3 client for image uploads."""
-    with patch('boto3.client') as mock_client:
-        mock_s3_client = Mock()
-        mock_client.return_value = mock_s3_client
-        # Mock successful upload
-        mock_s3_client.put_object.return_value = {'ETag': '"test-etag"'}
-        yield mock_s3_client
-
-@pytest.fixture
-def mock_env_vars():
-    """Mock environment variables."""
-    env_vars = {
-        'ENVIRONMENT': 'test',
-        'IMAGES_BUCKET': 'test-images-bucket',
-        'VIDEOS_BUCKET': 'test-videos-bucket'
-    }
-    with patch.dict(os.environ, env_vars):
-        yield env_vars
-
-@pytest.fixture(autouse=True)
-def setup_test_environment(mock_env_vars):
-    """Automatically set up test environment for all tests."""
-    pass

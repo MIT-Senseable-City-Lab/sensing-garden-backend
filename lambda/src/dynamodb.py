@@ -105,19 +105,176 @@ def store_device_if_not_exists(device_id: str) -> Dict[str, Any]:
         result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
     return result
 
-def delete_device(device_id: str) -> Dict[str, Any]:
-    """Delete a device from the devices table by device_id."""
-    table = dynamodb.Table(DEVICES_TABLE)
-    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
-    if not device_id:
-        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
-        return result
+def _delete_device_data_from_table(device_id: str, table_name: str) -> int:
+    """Delete all items for a device from a specific table using batch operations."""
+    from boto3.dynamodb.conditions import Key
+    import boto3
+    
+    table = dynamodb.Table(table_name)
+    deleted_count = 0
+    
     try:
-        table.delete_item(Key={'device_id': device_id})
-        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device deleted', 'device_id': device_id}, cls=DynamoDBEncoder)}
+        # Query all items for this device
+        response = table.query(
+            KeyConditionExpression=Key('device_id').eq(device_id),
+            ProjectionExpression='device_id, #ts',
+            ExpressionAttributeNames={'#ts': 'timestamp'}
+        )
+        
+        items_to_delete = response.get('Items', [])
+        
+        # Handle pagination if there are more items
+        while 'LastEvaluatedKey' in response:
+            response = table.query(
+                KeyConditionExpression=Key('device_id').eq(device_id),
+                ProjectionExpression='device_id, #ts',
+                ExpressionAttributeNames={'#ts': 'timestamp'},
+                ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+            items_to_delete.extend(response.get('Items', []))
+        
+        # Delete items in batches of 25 (DynamoDB limit)
+        for i in range(0, len(items_to_delete), 25):
+            batch = items_to_delete[i:i + 25]
+            
+            with table.batch_writer() as batch_writer:
+                for item in batch:
+                    batch_writer.delete_item(
+                        Key={'device_id': item['device_id'], 'timestamp': item['timestamp']}
+                    )
+                    deleted_count += 1
+        
+        print(f"[_delete_device_data_from_table] Deleted {deleted_count} items from {table_name}")
+        return deleted_count
+        
+    except Exception as e:
+        print(f"[_delete_device_data_from_table] ERROR deleting from {table_name}: {str(e)}")
+        raise
+
+def _delete_s3_objects_for_device(device_id: str, bucket_name: str, prefix: str) -> int:
+    """Delete all S3 objects for a device from a specific bucket."""
+    import boto3
+    
+    s3_client = boto3.client('s3')
+    deleted_count = 0
+    
+    try:
+        # List all objects with the device prefix
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=f"{prefix}/")
+        
+        objects_to_delete = []
+        for page in pages:
+            if 'Contents' in page:
+                objects_to_delete.extend([{'Key': obj['Key']} for obj in page['Contents']])
+        
+        # Delete objects in batches of 1000 (S3 limit)
+        for i in range(0, len(objects_to_delete), 1000):
+            batch = objects_to_delete[i:i + 1000]
+            
+            if batch:
+                response = s3_client.delete_objects(
+                    Bucket=bucket_name,
+                    Delete={'Objects': batch, 'Quiet': True}
+                )
+                deleted_count += len(batch)
+                
+                # Log any errors
+                if 'Errors' in response:
+                    for error in response['Errors']:
+                        print(f"[_delete_s3_objects_for_device] Error deleting {error['Key']}: {error['Message']}")
+        
+        print(f"[_delete_s3_objects_for_device] Deleted {deleted_count} objects from s3://{bucket_name}/{prefix}/")
+        return deleted_count
+        
+    except Exception as e:
+        print(f"[_delete_s3_objects_for_device] ERROR deleting from s3://{bucket_name}: {str(e)}")
+        raise
+
+def delete_device(device_id: str, cascade: bool = True) -> Dict[str, Any]:
+    """Delete a device and optionally all associated data (cascade delete).
+    
+    Args:
+        device_id: The device ID to delete
+        cascade: If True, delete all associated data from DynamoDB and S3
+    
+    Returns:
+        Dict with deletion results and counts
+    """
+    if not device_id:
+        return {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
+    
+    deletion_summary = {
+        'device_id': device_id,
+        'device_deleted': False,
+        'cascade': cascade,
+        'deleted_counts': {}
+    }
+    
+    try:
+        if cascade:
+            # Delete from all device-related tables
+            tables_to_clean = [
+                (DETECTIONS_TABLE, 'detections'),
+                (CLASSIFICATIONS_TABLE, 'classifications'), 
+                (VIDEOS_TABLE, 'videos'),
+                (ENVIRONMENTAL_READINGS_TABLE, 'environmental_readings')
+            ]
+            
+            for table_name, data_type in tables_to_clean:
+                try:
+                    count = _delete_device_data_from_table(device_id, table_name)
+                    deletion_summary['deleted_counts'][data_type] = count
+                except Exception as e:
+                    print(f"[delete_device] Failed to delete {data_type}: {str(e)}")
+                    deletion_summary['deleted_counts'][data_type] = f"ERROR: {str(e)}"
+            
+            # Delete S3 objects
+            s3_operations = [
+                ('scl-sensing-garden-images', 'detection', 'images'),
+                ('scl-sensing-garden-images', 'classification', 'images'),
+                ('scl-sensing-garden-videos', 'videos', 'videos')
+            ]
+            
+            total_images = 0
+            total_videos = 0
+            
+            for bucket_name, prefix, data_type in s3_operations:
+                try:
+                    count = _delete_s3_objects_for_device(device_id, bucket_name, f"{prefix}/{device_id}")
+                    if data_type == 'images':
+                        total_images += count
+                    else:
+                        total_videos += count
+                except Exception as e:
+                    print(f"[delete_device] Failed to delete S3 {data_type} from {prefix}: {str(e)}")
+            
+            deletion_summary['deleted_counts']['s3_images'] = total_images
+            deletion_summary['deleted_counts']['s3_videos'] = total_videos
+        
+        # Finally, delete the device record itself
+        device_table = dynamodb.Table(DEVICES_TABLE)
+        device_table.delete_item(Key={'device_id': device_id})
+        deletion_summary['device_deleted'] = True
+        
+        result = {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': f'Device {device_id} deleted successfully' + (' with all associated data' if cascade else ''),
+                'summary': deletion_summary
+            }, cls=DynamoDBEncoder)
+        }
+        
     except Exception as e:
         print(f"[delete_device] ERROR: {str(e)}")
-        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        result = {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': str(e),
+                'summary': deletion_summary
+            }, cls=DynamoDBEncoder)
+        }
+    
     return result
 
 def get_devices(device_id: Optional[str] = None, created: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:

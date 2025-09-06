@@ -38,6 +38,12 @@ output "edge_api_key" {
   sensitive   = true
 }
 
+output "frontend_api_key" {
+  value       = aws_api_gateway_api_key.frontend_key.value
+  description = "Frontend environment API key for authentication"
+  sensitive   = true
+}
+
 # S3 outputs
 output "s3_bucket_name" {
   value       = aws_s3_bucket.sensor_images.id
