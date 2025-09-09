@@ -1181,7 +1181,7 @@
         "required": [
           "device_id",
           "timestamp",
-          "environment"
+          "data"
         ],
         "properties": {
           "device_id": {
@@ -1195,7 +1195,7 @@
           "location": {
             "$ref": "#/components/schemas/Location"
           },
-          "environment": {
+          "data": {
             "$ref": "#/components/schemas/EnvironmentalData"
           }
         }

@@ -816,9 +816,9 @@ def handle_get_environment(event: Dict[str, Any]) -> Dict[str, Any]:
 def _store_environmental_reading(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store environmental reading data"""
     # Handle both schema formats - the existing EnvironmentalReading schema and the new one
-    if 'environment' in body:
-        # Updated schema format with nested environment object
-        env_data = body['environment']
+    if 'data' in body:
+        # Updated schema format with nested data object
+        env_data = body['data']
         data = {
             'device_id': body['device_id'],
             'timestamp': body.get('timestamp', datetime.now(timezone.utc).isoformat())
