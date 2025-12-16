@@ -59,3 +59,66 @@ resource "aws_s3_bucket_cors_configuration" "sensor_videos" {
     max_age_seconds = 3000
   }
 }
+
+# =============================================================================
+# Models Bucket - Public read access for ML model downloads
+# =============================================================================
+
+# Create S3 bucket for ML models (public read)
+resource "aws_s3_bucket" "models" {
+  bucket = "scl-sensing-garden-models"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Allow public access for models bucket (needed for public downloads)
+resource "aws_s3_bucket_public_access_block" "models" {
+  bucket = aws_s3_bucket.models.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+# Bucket policy to allow public read access
+resource "aws_s3_bucket_policy" "models_public_read" {
+  bucket = aws_s3_bucket.models.id
+
+  # Ensure public access block is configured first
+  depends_on = [aws_s3_bucket_public_access_block.models]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicListBucket"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:ListBucket"
+        Resource  = aws_s3_bucket.models.arn
+      },
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.models.arn}/*"
+      }
+    ]
+  })
+}
+
+# Configure CORS for models bucket
+resource "aws_s3_bucket_cors_configuration" "models" {
+  bucket = aws_s3_bucket.models.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
+  }
+}
