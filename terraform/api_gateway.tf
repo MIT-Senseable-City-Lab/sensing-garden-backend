@@ -148,6 +148,13 @@ resource "aws_apigatewayv2_route" "post_models" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "delete_models" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "DELETE /models"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 # POST for detections
 resource "aws_apigatewayv2_route" "post_detections" {
   api_id    = aws_apigatewayv2_api.http_api.id

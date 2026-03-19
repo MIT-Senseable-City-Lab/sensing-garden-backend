@@ -277,6 +277,39 @@ def delete_device(device_id: str, cascade: bool = True) -> Dict[str, Any]:
     
     return result
 
+
+def delete_model(model_id: str) -> Dict[str, Any]:
+    """Delete a model record from the models table."""
+    if not model_id:
+        return {'statusCode': 400, 'body': json.dumps({'error': 'model_id is required'})}
+
+    try:
+        table = dynamodb.Table(MODELS_TABLE)
+        response = table.delete_item(
+            Key={'id': model_id},
+            ReturnValues='ALL_OLD',
+        )
+        deleted = response.get('Attributes')
+        if not deleted:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': f'Model {model_id} not found'}, cls=DynamoDBEncoder),
+            }
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': f'Model {model_id} deleted successfully',
+                'data': deleted,
+            }, cls=DynamoDBEncoder),
+        }
+    except Exception as e:
+        print(f"[delete_model] ERROR: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=DynamoDBEncoder),
+        }
+
 def get_devices(device_id: Optional[str] = None, created: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
     """Query devices table with optional filters and pagination."""
     from boto3.dynamodb.conditions import Key, Attr

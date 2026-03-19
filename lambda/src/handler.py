@@ -664,6 +664,33 @@ def handle_post_model(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle POST /models endpoint"""
     return _common_post_handler(event, 'model', _store_model)
 
+
+def handle_delete_model(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle DELETE /models endpoint."""
+    try:
+        body = event.get('body')
+        if body is None:
+            raise ValueError("Request body is required")
+        if isinstance(body, str):
+            body = json.loads(body)
+
+        model_id = body.get('model_id')
+        if not model_id:
+            raise ValueError("model_id is required in body")
+
+        return dynamodb.delete_model(model_id)
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder),
+        }
+    except Exception as e:
+        print(f"[handle_delete_model] ERROR: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder),
+        }
+
 def handle_count_videos(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /videos/count endpoint"""
     try:
@@ -1334,6 +1361,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_post_classification(event)
         elif http_method == 'POST' and path == '/models':
             return handle_post_model(event)
+        elif http_method == 'DELETE' and path == '/models':
+            return handle_delete_model(event)
         elif http_method == 'POST' and path == '/videos':
             return handle_post_video(event)
         elif http_method == 'POST' and path == '/videos/register':

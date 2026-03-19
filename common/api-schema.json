@@ -120,6 +120,39 @@
             "description": "Server error"
           }
         }
+      },
+      "delete": {
+        "summary": "Delete a model",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["model_id"],
+                "properties": {
+                  "model_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Model deleted successfully"
+          },
+          "400": {
+            "description": "Invalid request parameters"
+          },
+          "404": {
+            "description": "Model not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
       }
     },
     "/models/count": {
