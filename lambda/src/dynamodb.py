@@ -285,8 +285,21 @@ def delete_model(model_id: str) -> Dict[str, Any]:
 
     try:
         table = dynamodb.Table(MODELS_TABLE)
+        lookup = table.query(
+            KeyConditionExpression=Key('id').eq(model_id),
+            Limit=1,
+            ScanIndexForward=False,
+        )
+        items = lookup.get('Items', [])
+        if not items:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': f'Model {model_id} not found'}, cls=DynamoDBEncoder),
+            }
+
+        existing = items[0]
         response = table.delete_item(
-            Key={'id': model_id},
+            Key={'id': model_id, 'timestamp': existing['timestamp']},
             ReturnValues='ALL_OLD',
         )
         deleted = response.get('Attributes')
