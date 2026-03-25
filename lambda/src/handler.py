@@ -197,6 +197,11 @@ def _upload_image_to_s3(image_data, device_id, data_type, timestamp=None):
     # We'll generate presigned URLs when needed
     return s3_key
 
+
+def _delete_s3_object(s3_key: str, bucket: str = IMAGES_BUCKET) -> None:
+    """Best-effort cleanup for objects uploaded during failed requests."""
+    s3.delete_object(Bucket=bucket, Key=s3_key)
+
 def _upload_video_to_s3(video_data, device_id, timestamp=None, content_type='video/mp4'):
     """Upload base64 encoded video to S3"""
     # Decode base64 video and upload to S3
@@ -1204,11 +1209,27 @@ def _store_deployment(body: Dict[str, Any]) -> Dict[str, Any]:
             data[optional_field] = body[optional_field]
     if 'location' in body:
         data['location'] = _normalize_location(body['location'])
+    uploaded_image_key: Optional[str] = None
     if 'image' in body:
         timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
-        data['image_key'] = _upload_image_to_s3(body['image'], data['deployment_id'], 'deployment', timestamp_str)
+        uploaded_image_key = _upload_image_to_s3(body['image'], data['deployment_id'], 'deployment', timestamp_str)
+        data['image_key'] = uploaded_image_key
         data['image_bucket'] = IMAGES_BUCKET
-    return dynamodb.store_deployment_data(data)
+    try:
+        response = dynamodb.store_deployment_data(data)
+    except Exception:
+        if uploaded_image_key:
+            try:
+                _delete_s3_object(uploaded_image_key)
+            except Exception:
+                pass
+        raise
+    if uploaded_image_key and response.get('statusCode') != 200:
+        try:
+            _delete_s3_object(uploaded_image_key)
+        except Exception:
+            pass
+    return response
 
 
 def handle_post_deployment(event: Dict[str, Any]) -> Dict[str, Any]:
