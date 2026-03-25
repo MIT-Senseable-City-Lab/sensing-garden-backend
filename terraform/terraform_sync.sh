@@ -18,6 +18,8 @@ terraform import aws_dynamodb_table.devices sensing-garden-devices || true
 terraform import aws_dynamodb_table.sensor_classifications sensing-garden-classifications || true
 terraform import aws_dynamodb_table.models sensing-garden-models || true
 terraform import aws_dynamodb_table.videos sensing-garden-videos || true
+terraform import aws_dynamodb_table.deployments sensing-garden-deployments || true
+terraform import aws_dynamodb_table.deployment_device_connections sensing-garden-deployment-device-connections || true
 
 # --- API Gateway ---
 echo "Importing API Gateway resources..."
@@ -26,6 +28,7 @@ echo "  (You must fill in the correct IDs below for first-time setup!)"
 terraform import aws_apigatewayv2_api.http_api <http_api_id> || true
 terraform import aws_apigatewayv2_stage.default <http_api_id>/<stage_name> || true
 # Add additional terraform import commands for integrations, routes, keys, usage plans, etc. as needed
+# terraform import aws_api_gateway_api_key.deployments_key <deployments_api_key_id> || true
 
 # --- Lambda Function ---
 echo "Importing Lambda function..."

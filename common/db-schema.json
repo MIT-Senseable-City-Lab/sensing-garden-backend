@@ -312,6 +312,92 @@
           "description": "Additional metadata about the environmental reading"
         }
       }
+    },
+    "deployments": {
+      "type": "object",
+      "required": [
+        "deployment_id",
+        "name",
+        "description",
+        "start_time"
+      ],
+      "properties": {
+        "deployment_id": {
+          "type": "string",
+          "description": "Unique identifier for the deployment"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the deployment"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the deployment"
+        },
+        "start_time": {
+          "type": "string",
+          "description": "ISO-8601 deployment start time"
+        },
+        "end_time": {
+          "type": "string",
+          "description": "ISO-8601 deployment end time"
+        },
+        "model_id": {
+          "type": "string",
+          "description": "Optional model identifier associated with the deployment"
+        },
+        "location_name": {
+          "type": "string",
+          "description": "Optional human-readable location name"
+        },
+        "location": {
+          "type": "object",
+          "description": "Optional deployment location",
+          "properties": {
+            "lat": { "type": "number" },
+            "long": { "type": "number" },
+            "alt": { "type": "number" }
+          }
+        },
+        "image_bucket": {
+          "type": "string",
+          "description": "S3 bucket containing the deployment image"
+        },
+        "image_key": {
+          "type": "string",
+          "description": "S3 key containing the deployment image"
+        }
+      }
+    },
+    "deployment_device_connections": {
+      "type": "object",
+      "required": [
+        "deployment_id",
+        "device_id"
+      ],
+      "properties": {
+        "deployment_id": {
+          "type": "string",
+          "description": "Unique identifier for the deployment"
+        },
+        "device_id": {
+          "type": "string",
+          "description": "Unique identifier for the linked device"
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional display name for the device within this deployment"
+        },
+        "location": {
+          "type": "object",
+          "description": "Optional device location within the deployment",
+          "properties": {
+            "lat": { "type": "number" },
+            "long": { "type": "number" },
+            "alt": { "type": "number" }
+          }
+        }
+      }
     }
   },
   "required": [
@@ -319,6 +405,8 @@
     "sensor_classifications",
     "models",
     "videos",
-    "environmental_readings"
+    "environmental_readings",
+    "deployments",
+    "deployment_device_connections"
   ]
 }

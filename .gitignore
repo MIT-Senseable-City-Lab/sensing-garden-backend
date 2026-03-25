@@ -105,6 +105,7 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+*.local.md
 
 # Configuration files with sensitive information
 config.py

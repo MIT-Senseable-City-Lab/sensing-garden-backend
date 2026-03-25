@@ -1,9 +1,11 @@
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
+from botocore.exceptions import ClientError
 
 
 # Custom JSON encoder to handle DynamoDB data types
@@ -25,10 +27,12 @@ MODELS_TABLE = 'sensing-garden-models'
 VIDEOS_TABLE = 'sensing-garden-videos'
 DEVICES_TABLE = 'sensing-garden-devices'
 ENVIRONMENTAL_READINGS_TABLE = 'sensing-garden-environmental-readings'
+DEPLOYMENTS_TABLE = 'sensing-garden-deployments'
+DEPLOYMENT_DEVICE_CONNECTIONS_TABLE = 'sensing-garden-deployment-device-connections'
 
 import traceback
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 def add_device(device_id: str, created: Optional[str] = None) -> Dict[str, Any]:
     """Add a device to the devices table."""
@@ -411,7 +415,9 @@ def _validate_data(data: Dict[str, Any], table_type: str) -> (bool, str):
             'detection': 'sensor_detections',
             'classification': 'sensor_classifications',
             'video': 'videos',
-            'environmental_reading': 'environmental_readings'
+            'environmental_reading': 'environmental_readings',
+            'deployment': 'deployments',
+            'deployment_device_connection': 'deployment_device_connections',
         }
         
         # Use mapped schema key if available
@@ -566,6 +572,452 @@ def query_environmental_data(device_id: Optional[str] = None, start_time: Option
 def count_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
     """Count environmental readings with filtering."""
     return count_data('environmental_reading', device_id, None, start_time, end_time)
+
+
+def _response(status_code: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        'statusCode': status_code,
+        'body': json.dumps(payload, cls=DynamoDBEncoder),
+    }
+
+
+def _parse_time(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except Exception:
+        return None
+
+
+def _timestamp_in_range(timestamp: Optional[str], start_time: Optional[str], end_time: Optional[str]) -> bool:
+    if not start_time and not end_time:
+        return True
+    parsed = _parse_time(timestamp)
+    if parsed is None:
+        return False
+    start_dt = _parse_time(start_time)
+    end_dt = _parse_time(end_time)
+    if start_dt and parsed < start_dt:
+        return False
+    if end_dt and parsed > end_dt:
+        return False
+    return True
+
+
+def _coerce_number(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value))
+    except Exception:
+        return None
+
+
+def _scan_all(table, **kwargs) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    response = table.scan(**kwargs)
+    items.extend(response.get('Items', []))
+    while 'LastEvaluatedKey' in response:
+        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        response = table.scan(**kwargs)
+        items.extend(response.get('Items', []))
+    return items
+
+
+def _query_all(table, **kwargs) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    response = table.query(**kwargs)
+    items.extend(response.get('Items', []))
+    while 'LastEvaluatedKey' in response:
+        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
+        response = table.query(**kwargs)
+        items.extend(response.get('Items', []))
+    return items
+
+
+def _sort_items(items: List[Dict[str, Any]], sort_by: Optional[str], sort_desc: bool) -> List[Dict[str, Any]]:
+    if not sort_by:
+        return items
+
+    def sort_key(item: Dict[str, Any]) -> Any:
+        if sort_by == 'timestamp':
+            parsed = _parse_time(item.get('timestamp'))
+            return parsed or datetime.min
+        return item.get(sort_by)
+
+    return sorted(items, key=sort_key, reverse=sort_desc)
+
+
+def _parse_offset_token(next_token: Optional[str]) -> int:
+    if not next_token:
+        return 0
+    try:
+        data = json.loads(next_token)
+        return max(int(data.get('offset', 0)), 0)
+    except Exception as exc:
+        raise ValueError('Invalid next_token format') from exc
+
+
+def _build_offset_token(offset: int) -> str:
+    return json.dumps({'offset': offset})
+
+
+def _paginate_items(items: List[Dict[str, Any]], limit: int, next_token: Optional[str]) -> Dict[str, Any]:
+    offset = _parse_offset_token(next_token)
+    page = items[offset:offset + limit]
+    result = {
+        'items': page,
+        'count': len(page),
+    }
+    if offset + limit < len(items):
+        result['next_token'] = _build_offset_token(offset + limit)
+    return result
+
+
+def device_exists(device_id: str) -> bool:
+    table = dynamodb.Table(DEVICES_TABLE)
+    response = table.get_item(Key={'device_id': device_id})
+    return 'Item' in response
+
+
+def get_deployment(deployment_id: str) -> Optional[Dict[str, Any]]:
+    table = dynamodb.Table(DEPLOYMENTS_TABLE)
+    response = table.get_item(Key={'deployment_id': deployment_id})
+    return response.get('Item')
+
+
+def list_deployments(limit: int = 100, next_token: Optional[str] = None,
+                     sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENTS_TABLE)
+    params: Dict[str, Any] = {'Limit': min(limit, 5000) if limit else 100}
+    if next_token:
+        try:
+            params['ExclusiveStartKey'] = json.loads(next_token)
+        except json.JSONDecodeError as exc:
+            raise ValueError('Invalid next_token format') from exc
+    response = table.scan(**params)
+    items = _sort_items(response.get('Items', []), sort_by, sort_desc)
+    result = {'items': items, 'count': len(items)}
+    if 'LastEvaluatedKey' in response:
+        result['next_token'] = json.dumps(response['LastEvaluatedKey'])
+    return result
+
+
+def store_deployment_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENTS_TABLE)
+    try:
+        table.put_item(
+            Item=data,
+            ConditionExpression='attribute_not_exists(deployment_id)',
+        )
+    except ClientError as exc:
+        if exc.response.get('Error', {}).get('Code') == 'ConditionalCheckFailedException':
+            return _response(409, {'error': f"Deployment {data['deployment_id']} already exists"})
+        raise
+    return _response(200, {'message': 'Deployment stored successfully', 'deployment': data})
+
+
+def update_deployment_data(deployment_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENTS_TABLE)
+    if not get_deployment(deployment_id):
+        return _response(404, {'error': f'Deployment {deployment_id} not found'})
+
+    update_parts = []
+    expr_attr_values = {}
+    expr_attr_names = {}
+    for key, value in updates.items():
+        expr_attr_names[f'#field_{key}'] = key
+        expr_attr_values[f':val_{key}'] = value
+        update_parts.append(f'#field_{key} = :val_{key}')
+
+    response = table.update_item(
+        Key={'deployment_id': deployment_id},
+        UpdateExpression='SET ' + ', '.join(update_parts),
+        ExpressionAttributeNames=expr_attr_names,
+        ExpressionAttributeValues=expr_attr_values,
+        ReturnValues='ALL_NEW',
+    )
+    return _response(200, {'message': 'Deployment updated successfully', 'deployment': response.get('Attributes', {})})
+
+
+def list_deployment_devices(deployment_id: str) -> List[Dict[str, Any]]:
+    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    items = _query_all(
+        table,
+        KeyConditionExpression=Key('deployment_id').eq(deployment_id),
+    )
+    return items
+
+
+def list_device_ids_for_deployment(deployment_id: str) -> List[str]:
+    return [item['device_id'] for item in list_deployment_devices(deployment_id) if 'device_id' in item]
+
+
+def store_deployment_device_connection_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    try:
+        table.put_item(
+            Item=data,
+            ConditionExpression='attribute_not_exists(deployment_id) AND attribute_not_exists(device_id)',
+        )
+    except ClientError as exc:
+        if exc.response.get('Error', {}).get('Code') == 'ConditionalCheckFailedException':
+            return _response(409, {
+                'error': f"Deployment device {data['deployment_id']}/{data['device_id']} already exists"
+            })
+        raise
+    return _response(200, data)
+
+
+def update_deployment_device_connection(deployment_id: str, device_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    existing = table.get_item(Key={'deployment_id': deployment_id, 'device_id': device_id}).get('Item')
+    if not existing:
+        return _response(404, {'error': f'Deployment device {deployment_id}/{device_id} not found'})
+
+    expr_attr_names = {}
+    expr_attr_values = {}
+    update_parts = []
+    for key, value in updates.items():
+        expr_attr_names[f'#field_{key}'] = key
+        expr_attr_values[f':val_{key}'] = value
+        update_parts.append(f'#field_{key} = :val_{key}')
+    response = table.update_item(
+        Key={'deployment_id': deployment_id, 'device_id': device_id},
+        UpdateExpression='SET ' + ', '.join(update_parts),
+        ExpressionAttributeNames=expr_attr_names,
+        ExpressionAttributeValues=expr_attr_values,
+        ReturnValues='ALL_NEW',
+    )
+    return _response(200, response.get('Attributes', {}))
+
+
+def delete_deployment_device_connection(deployment_id: str, device_id: str) -> Dict[str, Any]:
+    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    response = table.delete_item(
+        Key={'deployment_id': deployment_id, 'device_id': device_id},
+        ReturnValues='ALL_OLD',
+    )
+    deleted = response.get('Attributes')
+    if not deleted:
+        return _response(404, {'error': f'Deployment device {deployment_id}/{device_id} not found'})
+    return _response(200, deleted)
+
+
+def delete_deployment(deployment_id: str) -> Dict[str, Any]:
+    deployment = get_deployment(deployment_id)
+    if not deployment:
+        return _response(404, {'error': f'Deployment {deployment_id} not found'})
+
+    connections_table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    connections = list_deployment_devices(deployment_id)
+    with connections_table.batch_writer() as batch_writer:
+        for connection in connections:
+            batch_writer.delete_item(
+                Key={'deployment_id': connection['deployment_id'], 'device_id': connection['device_id']}
+            )
+
+    deployments_table = dynamodb.Table(DEPLOYMENTS_TABLE)
+    deployments_table.delete_item(Key={'deployment_id': deployment_id})
+    return _response(200, {'deployment': deployment, 'deleted_connections': len(connections)})
+
+
+def _load_table_items_for_devices(table_name: str, device_ids: Optional[List[str]], start_time: Optional[str],
+                                  end_time: Optional[str]) -> List[Dict[str, Any]]:
+    table = dynamodb.Table(table_name)
+    if device_ids is not None:
+        if not device_ids:
+            return []
+        all_items: List[Dict[str, Any]] = []
+        for device_id in device_ids:
+            key_condition = Key('device_id').eq(device_id)
+            if start_time and end_time:
+                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
+            elif start_time:
+                key_condition = key_condition & Key('timestamp').gte(start_time)
+            elif end_time:
+                key_condition = key_condition & Key('timestamp').lte(end_time)
+            all_items.extend(_query_all(table, KeyConditionExpression=key_condition))
+        return all_items
+
+    scan_kwargs: Dict[str, Any] = {}
+    filters: List[Any] = []
+    if start_time:
+        filters.append(Attr('timestamp').gte(start_time))
+    if end_time:
+        filters.append(Attr('timestamp').lte(end_time))
+    if filters:
+        filter_expr = filters[0]
+        for expr in filters[1:]:
+            filter_expr = filter_expr & expr
+        scan_kwargs['FilterExpression'] = filter_expr
+    return _scan_all(table, **scan_kwargs)
+
+
+def _classification_confidence(item: Dict[str, Any], taxonomy_level: Optional[str]) -> Optional[float]:
+    confidence_field = f'{taxonomy_level}_confidence' if taxonomy_level else 'species_confidence'
+    confidence = _coerce_number(item.get(confidence_field))
+    if confidence is not None:
+        return confidence
+    for fallback in ('species_confidence', 'genus_confidence', 'family_confidence'):
+        confidence = _coerce_number(item.get(fallback))
+        if confidence is not None:
+            return confidence
+    return None
+
+
+def _filter_classification_items(items: List[Dict[str, Any]], model_id: Optional[str],
+                                 min_confidence: Optional[float], taxonomy_level: Optional[str],
+                                 selected_taxa: List[str]) -> List[Dict[str, Any]]:
+    filtered: List[Dict[str, Any]] = []
+    for item in items:
+        if model_id and item.get('model_id') != model_id:
+            continue
+        if min_confidence is not None:
+            confidence = _classification_confidence(item, taxonomy_level)
+            if confidence is None or confidence < min_confidence:
+                continue
+        if taxonomy_level and selected_taxa:
+            if item.get(taxonomy_level) not in selected_taxa:
+                continue
+        filtered.append(item)
+    return filtered
+
+
+def list_classifications(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
+                         end_time: Optional[str], min_confidence: Optional[float],
+                         taxonomy_level: Optional[str], selected_taxa: List[str], limit: int,
+                         next_token: Optional[str], sort_by: Optional[str], sort_desc: bool) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
+    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    items = _sort_items(items, sort_by or 'timestamp', sort_desc)
+    return _paginate_items(items, min(limit, 5000) if limit else 100, next_token)
+
+
+def count_classifications(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
+                          end_time: Optional[str], min_confidence: Optional[float],
+                          taxonomy_level: Optional[str], selected_taxa: List[str]) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
+    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    return {'count': len(items)}
+
+
+def get_classification_taxa_count(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
+                                  end_time: Optional[str], min_confidence: Optional[float],
+                                  taxonomy_level: str, selected_taxa: List[str], sort_desc: bool) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
+    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    counts: Dict[str, int] = {}
+    for item in items:
+        taxa_value = item.get(taxonomy_level)
+        if not taxa_value:
+            continue
+        counts[taxa_value] = counts.get(taxa_value, 0) + 1
+    counted = [{'taxa': taxa, 'count': count} for taxa, count in counts.items()]
+    counted = sorted(counted, key=lambda item: item['count'], reverse=sort_desc)
+    return {'counts': counted}
+
+
+def _bucket_timestamps(items: List[Dict[str, Any]], start_time: str, end_time: Optional[str],
+                       interval_length: int, interval_unit: str) -> Dict[str, Any]:
+    start_dt = _parse_time(start_time)
+    if start_dt is None:
+        raise ValueError('Invalid start_time')
+    interval_delta = timedelta(hours=interval_length) if interval_unit == 'h' else timedelta(days=interval_length)
+    end_dt = _parse_time(end_time)
+    if end_dt is None:
+        parsed_items = [_parse_time(item.get('timestamp')) for item in items if _parse_time(item.get('timestamp'))]
+        end_dt = (max(parsed_items) + interval_delta) if parsed_items else (start_dt + interval_delta)
+    if end_dt <= start_dt:
+        end_dt = start_dt + interval_delta
+    bucket_count = max(int((end_dt - start_dt) / interval_delta), 1)
+    return {
+        'start_dt': start_dt,
+        'end_dt': end_dt,
+        'interval_delta': interval_delta,
+        'bucket_count': bucket_count,
+    }
+
+
+def get_classification_time_series(device_ids: Optional[List[str]], model_id: Optional[str], start_time: str,
+                                   end_time: Optional[str], min_confidence: Optional[float],
+                                   taxonomy_level: Optional[str], selected_taxa: List[str],
+                                   interval_length: int, interval_unit: str) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
+    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
+    counts = [0] * bucket_config['bucket_count']
+    for item in items:
+        item_time = _parse_time(item.get('timestamp'))
+        if not item_time:
+            continue
+        if item_time < bucket_config['start_dt'] or item_time >= bucket_config['end_dt']:
+            continue
+        bucket_index = int((item_time - bucket_config['start_dt']) / bucket_config['interval_delta'])
+        if 0 <= bucket_index < len(counts):
+            counts[bucket_index] += 1
+    return {
+        'counts': counts,
+        'start_time': bucket_config['start_dt'].isoformat(),
+        'interval_length': interval_length,
+        'interval_unit': interval_unit,
+    }
+
+
+def get_environment_time_series(device_ids: Optional[List[str]], start_time: str, end_time: Optional[str],
+                                interval_length: int, interval_unit: str) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(ENVIRONMENTAL_READINGS_TABLE, device_ids, start_time, end_time)
+    bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
+    metric_map = {
+        'ambient_temperature': 'temperature',
+        'ambient_humidity': 'humidity',
+        'pm1p0': 'pm1p0',
+        'pm2p5': 'pm2p5',
+        'pm4p0': 'pm4p0',
+        'pm10p0': 'pm10',
+        'voc_index': 'voc',
+        'nox_index': 'nox',
+    }
+    bucket_totals = {output_key: [0.0] * bucket_config['bucket_count'] for output_key in metric_map.values()}
+    bucket_counts = {output_key: [0] * bucket_config['bucket_count'] for output_key in metric_map.values()}
+
+    for item in items:
+        item_time = _parse_time(item.get('timestamp'))
+        if not item_time:
+            continue
+        if item_time < bucket_config['start_dt'] or item_time >= bucket_config['end_dt']:
+            continue
+        bucket_index = int((item_time - bucket_config['start_dt']) / bucket_config['interval_delta'])
+        if not (0 <= bucket_index < bucket_config['bucket_count']):
+            continue
+        for source_key, output_key in metric_map.items():
+            value = _coerce_number(item.get(source_key))
+            if value is None:
+                continue
+            bucket_totals[output_key][bucket_index] += value
+            bucket_counts[output_key][bucket_index] += 1
+
+    result = {}
+    for output_key in metric_map.values():
+        result[output_key] = [
+            (bucket_totals[output_key][index] / bucket_counts[output_key][index]) if bucket_counts[output_key][index] else 0
+            for index in range(bucket_config['bucket_count'])
+        ]
+
+    result.update({
+        'start_time': bucket_config['start_dt'].isoformat(),
+        'interval_length': interval_length,
+        'interval_unit': interval_unit,
+    })
+    return result
 
 def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
     """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""

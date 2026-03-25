@@ -21,14 +21,15 @@ resource "aws_dynamodb_table" "sensor_detections" {
   }
 
   global_secondary_index {
-    name               = "model_id_index"
-    hash_key           = "model_id"
-    projection_type    = "ALL"
+    name            = "model_id_index"
+    hash_key        = "model_id"
+    range_key       = null
+    projection_type = "ALL"
   }
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
   }
 }
 
@@ -46,7 +47,7 @@ resource "aws_dynamodb_table" "devices" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
   }
 }
 
@@ -78,20 +79,22 @@ resource "aws_dynamodb_table" "sensor_classifications" {
   }
 
   global_secondary_index {
-    name               = "model_id_index"
-    hash_key           = "model_id"
-    projection_type    = "ALL"
+    name            = "model_id_index"
+    hash_key        = "model_id"
+    range_key       = null
+    projection_type = "ALL"
   }
 
   global_secondary_index {
-    name               = "species_index"
-    hash_key           = "species"
-    projection_type    = "ALL"
+    name            = "species_index"
+    hash_key        = "species"
+    range_key       = null
+    projection_type = "ALL"
   }
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
   }
 }
 
@@ -118,14 +121,15 @@ resource "aws_dynamodb_table" "models" {
   }
 
   global_secondary_index {
-    name               = "type_index"
-    hash_key           = "type"
-    projection_type    = "ALL"
+    name            = "type_index"
+    hash_key        = "type"
+    range_key       = null
+    projection_type = "ALL"
   }
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
   }
 }
 
@@ -152,14 +156,15 @@ resource "aws_dynamodb_table" "videos" {
   }
 
   global_secondary_index {
-    name               = "type_index"
-    hash_key           = "type"
-    projection_type    = "ALL"
+    name            = "type_index"
+    hash_key        = "type"
+    range_key       = null
+    projection_type = "ALL"
   }
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
     # This will prevent Terraform from trying to recreate the table if it already exists
     create_before_destroy = true
   }
@@ -184,6 +189,46 @@ resource "aws_dynamodb_table" "environmental_readings" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all
+    ignore_changes  = all
+  }
+}
+
+# Create deployments table
+resource "aws_dynamodb_table" "deployments" {
+  name         = "sensing-garden-deployments"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "deployment_id"
+
+  attribute {
+    name = "deployment_id"
+    type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+}
+
+# Create deployment-device-connections table
+resource "aws_dynamodb_table" "deployment_device_connections" {
+  name         = "sensing-garden-deployment-device-connections"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "deployment_id"
+  range_key    = "device_id"
+
+  attribute {
+    name = "deployment_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
   }
 }

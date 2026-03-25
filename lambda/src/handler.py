@@ -1,10 +1,12 @@
 import base64
 import json
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Union, Any, Tuple, Callable
+from urllib.parse import parse_qs
 
 # Custom JSON encoder to handle Decimal serialization
 class DecimalEncoder(json.JSONEncoder):
@@ -31,47 +33,122 @@ s3 = boto3.client('s3')
 # Resource names
 IMAGES_BUCKET = "scl-sensing-garden-images"
 VIDEOS_BUCKET = "scl-sensing-garden-videos"
+FULL_ACCESS_KEY_ENVS = ("TEST_API_KEY", "EDGE_API_KEY")
+READ_ONLY_KEY_ENVS = ("FRONTEND_API_KEY",)
+DEPLOYMENTS_API_KEY_ENV = "DEPLOYMENTS_API_KEY"
 
 # API Key Validation Functions
-def validate_api_key(event: Dict[str, Any]) -> Tuple[bool, str]:
-    """
-    Validate API key for write operations (POST, PUT, DELETE).
-    Returns: (is_valid: bool, error_message: str)
-    """
+def _extract_api_key(event: Dict[str, Any]) -> Optional[str]:
+    """Extract the caller's API key from request headers."""
+    headers = event.get('headers', {}) or {}
+    for header_name, header_value in headers.items():
+        if header_name and header_name.lower() == 'x-api-key':
+            return header_value
+    return None
+
+
+def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
+    """Authenticate the request and return the principal name on success."""
     try:
-        # Extract API key from headers (case-insensitive)
-        headers = event.get('headers', {})
-        api_key = None
-        
-        # Check common header variations
-        for header_name, header_value in headers.items():
-            if header_name and header_name.lower() == 'x-api-key':
-                api_key = header_value
-                break
-        
+        api_key = _extract_api_key(event)
         if not api_key:
-            return False, "Missing API key. Include X-Api-Key header."
-        
-        # Get valid API keys from environment variables
-        valid_keys = []
-        for key_name in ['TEST_API_KEY', 'EDGE_API_KEY', 'FRONTEND_API_KEY']:
+            return False, "Missing API key. Include X-Api-Key header.", None
+
+        configured_keys = {}
+        for key_name in FULL_ACCESS_KEY_ENVS + READ_ONLY_KEY_ENVS + (DEPLOYMENTS_API_KEY_ENV,):
             key_value = os.environ.get(key_name, '').strip()
             if key_value:
-                valid_keys.append(key_value)
-        
-        if not valid_keys:
-            print("WARNING: No valid API keys configured in environment variables")
-            # For safety during deployment, fail open if no keys configured
-            return True, ""
-        
-        if api_key in valid_keys:
-            return True, ""
-        
-        return False, "Invalid API key"
-        
+                configured_keys[key_name] = key_value
+
+        if not configured_keys:
+            return False, "API keys are not configured on the server.", None
+
+        for key_name, key_value in configured_keys.items():
+            if api_key == key_value:
+                if key_name == DEPLOYMENTS_API_KEY_ENV:
+                    principal = 'deployments'
+                elif key_name in READ_ONLY_KEY_ENVS:
+                    principal = 'readonly'
+                else:
+                    principal = 'admin'
+                return True, "", principal
+
+        return False, "Invalid API key", None
     except Exception as e:
         print(f"API key validation error: {str(e)}")
-        return False, "Authentication error"
+        return False, "Authentication error", None
+
+
+def validate_api_key(event: Dict[str, Any]) -> Tuple[bool, str]:
+    """Compatibility wrapper for existing call sites/tests."""
+    is_valid, error_message, _ = authenticate_api_key(event)
+    return is_valid, error_message
+
+
+READ_ONLY_ALLOWED_GET_PATHS = (
+    '/devices',
+    '/devices/csv',
+    '/detections',
+    '/detections/count',
+    '/detections/csv',
+    '/classifications',
+    '/classifications/count',
+    '/classifications/csv',
+    '/classifications/taxa_count',
+    '/classifications/time_series',
+    '/models',
+    '/models/count',
+    '/models/csv',
+    '/videos',
+    '/videos/count',
+    '/videos/csv',
+    '/environment',
+    '/environment/count',
+    '/environment/csv',
+    '/environment/time_series',
+    '/export',
+    '/deployments',
+)
+
+DEPLOYMENTS_ALLOWED_WRITE_PATTERNS = (
+    ('POST', re.compile(r'^/deployments$')),
+    ('PATCH', re.compile(r'^/deployments/[^/]+$')),
+    ('DELETE', re.compile(r'^/deployments/[^/]+$')),
+    ('GET', re.compile(r'^/deployments/[^/]+$')),
+    ('POST', re.compile(r'^/deployments/[^/]+/devices$')),
+    ('PATCH', re.compile(r'^/deployments/[^/]+/devices/[^/]+$')),
+    ('DELETE', re.compile(r'^/deployments/[^/]+/devices/[^/]+$')),
+)
+
+
+def authorize_request(event: Dict[str, Any], http_method: str, path: str) -> Tuple[bool, int, str]:
+    """Authorize the request for the resolved API principal."""
+    if http_method == 'OPTIONS':
+        return True, 200, ""
+
+    is_valid, error_message, principal = authenticate_api_key(event)
+    if not is_valid:
+        return False, 401, error_message
+
+    if principal == 'admin':
+        return True, 200, ""
+
+    if http_method == 'GET':
+        if path in READ_ONLY_ALLOWED_GET_PATHS:
+            return True, 200, ""
+        if principal == 'deployments' and any(
+            method == 'GET' and pattern.match(path)
+            for method, pattern in DEPLOYMENTS_ALLOWED_WRITE_PATTERNS
+        ):
+            return True, 200, ""
+    else:
+        if principal == 'deployments' and any(
+            method == http_method and pattern.match(path)
+            for method, pattern in DEPLOYMENTS_ALLOWED_WRITE_PATTERNS
+        ):
+            return True, 200, ""
+
+    return False, 403, f"API key is not allowed to call {http_method} {path}"
 
 # Load the API schema once
 def _load_api_schema():
@@ -196,6 +273,80 @@ def _parse_request(event: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Error logging request body: {str(e)}")
     
     return body
+
+
+def _get_query_params(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Return query parameters with support for repeated keys."""
+    params: Dict[str, Any] = dict(event.get('queryStringParameters') or {})
+    raw_query = event.get('rawQueryString') or ''
+    if raw_query:
+        parsed = parse_qs(raw_query, keep_blank_values=False)
+        for key, values in parsed.items():
+            if not values:
+                continue
+            if len(values) == 1:
+                params[key] = values[0]
+            else:
+                params[key] = values
+    return params
+
+
+def _get_query_list(params: Dict[str, Any], key: str) -> List[str]:
+    """Normalize a query parameter into a list of strings."""
+    value = params.get(key)
+    if value is None:
+        return []
+    if isinstance(value, list):
+        values = value
+    else:
+        values = [value]
+
+    result: List[str] = []
+    for item in values:
+        if item is None:
+            continue
+        if isinstance(item, str):
+            result.extend([part.strip() for part in item.split(',') if part.strip()])
+        else:
+            result.append(str(item))
+    return result
+
+
+def _get_bool_param(params: Dict[str, Any], key: str, default: bool = False) -> bool:
+    value = params.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _get_int_param(params: Dict[str, Any], key: str, default: Optional[int] = None) -> Optional[int]:
+    value = params.get(key)
+    if value in (None, ''):
+        return default
+    return int(value)
+
+
+def _get_float_param(params: Dict[str, Any], key: str, default: Optional[float] = None) -> Optional[float]:
+    value = params.get(key)
+    if value in (None, ''):
+        return default
+    return float(value)
+
+
+def _extract_path_params(path: str) -> Dict[str, str]:
+    """Parse dynamic deployment route parameters from the raw request path."""
+    matchers = (
+        (r'^/deployments/(?P<deployment_id>[^/]+)/devices/(?P<device_id>[^/]+)$', ('deployment_id', 'device_id')),
+        (r'^/deployments/(?P<deployment_id>[^/]+)/devices$', ('deployment_id',)),
+        (r'^/deployments/(?P<deployment_id>[^/]+)$', ('deployment_id',)),
+    )
+    for pattern, _ in matchers:
+        match = re.match(pattern, path)
+        if match:
+            return match.groupdict()
+    return {}
 
 def _validate_api_request(body: Dict[str, Any], request_type: str) -> (bool, str):
     """Validate API request against schema"""
@@ -323,15 +474,26 @@ def handle_post_detection(event: Dict[str, Any]) -> Dict[str, Any]:
 def handle_count_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /classifications/count endpoint"""
     try:
-        params = event.get('queryStringParameters', {}) or {}
-        device_id = params.get('device_id')
-        model_id = params.get('model_id')
-        start_time = params.get('start_time')
-        end_time = params.get('end_time')
-        result = dynamodb.count_data('classification', device_id, model_id, start_time, end_time)
+        params = _get_query_params(event)
+        taxonomy_level = params.get('taxonomy_level')
+        _validate_taxonomy_level(taxonomy_level)
+        result = dynamodb.count_classifications(
+            device_ids=_resolve_device_filters(params),
+            model_id=params.get('model_id'),
+            start_time=params.get('start_time'),
+            end_time=params.get('end_time'),
+            min_confidence=_get_float_param(params, 'min_confidence'),
+            taxonomy_level=taxonomy_level,
+            selected_taxa=_get_query_list(params, 'selected_taxa'),
+        )
         return {
             'statusCode': 200,
             'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
         }
     except Exception as e:
         return {
@@ -341,7 +503,39 @@ def handle_count_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
 
 def handle_get_classifications(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /classifications endpoint"""
-    return _common_get_handler(event, 'classification', _add_presigned_urls)
+    try:
+        params = _get_query_params(event)
+        taxonomy_level = params.get('taxonomy_level')
+        _validate_taxonomy_level(taxonomy_level)
+        result = dynamodb.list_classifications(
+            device_ids=_resolve_device_filters(params),
+            model_id=params.get('model_id'),
+            start_time=params.get('start_time'),
+            end_time=params.get('end_time'),
+            min_confidence=_get_float_param(params, 'min_confidence'),
+            taxonomy_level=taxonomy_level,
+            selected_taxa=_get_query_list(params, 'selected_taxa'),
+            limit=_get_int_param(params, 'limit', 100) or 100,
+            next_token=params.get('next_token'),
+            sort_by=params.get('sort_by'),
+            sort_desc=_get_bool_param(params, 'sort_desc'),
+        )
+        result['items'] = _clean_timestamps(result.get('items', []))
+        result = _add_presigned_urls(result)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)
+        }
+    except ValueError as e:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)
+        }
 
 def _store_classification(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store classification data
@@ -840,6 +1034,281 @@ def handle_get_environment(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle GET /environment endpoint"""
     return _common_get_handler(event, 'environmental_reading')
 
+
+def _resolve_device_filters(query_params: Dict[str, Any]) -> Optional[List[str]]:
+    """Resolve direct device filters and deployment-derived device filters."""
+    requested_device_ids = _get_query_list(query_params, 'device_id')
+    deployment_id = query_params.get('deployment_id')
+    if deployment_id:
+        deployment_device_ids = dynamodb.list_device_ids_for_deployment(deployment_id)
+        if requested_device_ids:
+            allowed = set(deployment_device_ids)
+            requested_device_ids = [device_id for device_id in requested_device_ids if device_id in allowed]
+        else:
+            requested_device_ids = deployment_device_ids
+        return requested_device_ids
+    if requested_device_ids:
+        return requested_device_ids
+    return None
+
+
+def _validate_taxonomy_level(taxonomy_level: Optional[str]) -> None:
+    if taxonomy_level and taxonomy_level not in {'family', 'genus', 'species'}:
+        raise ValueError("taxonomy_level must be one of: family, genus, species")
+
+
+def _validate_interval_params(query_params: Dict[str, Any]) -> Tuple[int, str]:
+    interval_length = _get_int_param(query_params, 'interval_length')
+    interval_unit = query_params.get('interval_unit')
+    if not interval_length or interval_length <= 0:
+        raise ValueError("interval_length must be a positive integer")
+    if interval_unit not in {'h', 'd'}:
+        raise ValueError("interval_unit must be one of: h, d")
+    return interval_length, interval_unit
+
+
+def _normalize_deployment_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = item.copy()
+    if 'image_key' in normalized and 'image_bucket' in normalized:
+        normalized['image_url'] = generate_presigned_url(normalized['image_key'], normalized['image_bucket'])
+    return normalized
+
+
+def handle_get_classifications_taxa_count(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /classifications/taxa_count endpoint."""
+    try:
+        query_params = _get_query_params(event)
+        taxonomy_level = query_params.get('taxonomy_level')
+        _validate_taxonomy_level(taxonomy_level)
+        if not taxonomy_level:
+            raise ValueError("taxonomy_level is required")
+        result = dynamodb.get_classification_taxa_count(
+            device_ids=_resolve_device_filters(query_params),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            min_confidence=_get_float_param(query_params, 'min_confidence'),
+            taxonomy_level=taxonomy_level,
+            selected_taxa=_get_query_list(query_params, 'selected_taxa'),
+            sort_desc=_get_bool_param(query_params, 'sort_desc'),
+        )
+        return {'statusCode': 200, 'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)}
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_get_classifications_time_series(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /classifications/time_series endpoint."""
+    try:
+        query_params = _get_query_params(event)
+        if not query_params.get('start_time'):
+            raise ValueError("start_time is required")
+        taxonomy_level = query_params.get('taxonomy_level')
+        _validate_taxonomy_level(taxonomy_level)
+        interval_length, interval_unit = _validate_interval_params(query_params)
+        result = dynamodb.get_classification_time_series(
+            device_ids=_resolve_device_filters(query_params),
+            model_id=query_params.get('model_id'),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            min_confidence=_get_float_param(query_params, 'min_confidence'),
+            taxonomy_level=taxonomy_level,
+            selected_taxa=_get_query_list(query_params, 'selected_taxa'),
+            interval_length=interval_length,
+            interval_unit=interval_unit,
+        )
+        return {'statusCode': 200, 'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)}
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_get_environment_time_series(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /environment/time_series endpoint."""
+    try:
+        query_params = _get_query_params(event)
+        if not query_params.get('start_time'):
+            raise ValueError("start_time is required")
+        interval_length, interval_unit = _validate_interval_params(query_params)
+        result = dynamodb.get_environment_time_series(
+            device_ids=_resolve_device_filters(query_params),
+            start_time=query_params.get('start_time'),
+            end_time=query_params.get('end_time'),
+            interval_length=interval_length,
+            interval_unit=interval_unit,
+        )
+        return {'statusCode': 200, 'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)}
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_get_deployments(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle GET /deployments endpoint."""
+    try:
+        query_params = _get_query_params(event)
+        result = dynamodb.list_deployments(
+            limit=_get_int_param(query_params, 'limit', 100) or 100,
+            next_token=query_params.get('next_token'),
+            sort_by=query_params.get('sort_by'),
+            sort_desc=_get_bool_param(query_params, 'sort_desc'),
+        )
+        result['deployments'] = [_normalize_deployment_item(item) for item in result.pop('items', [])]
+        return {'statusCode': 200, 'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)}
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_get_deployment(event: Dict[str, Any], deployment_id: str) -> Dict[str, Any]:
+    """Handle GET /deployments/{deployment_id} endpoint."""
+    try:
+        deployment = dynamodb.get_deployment(deployment_id)
+        if not deployment:
+            return {'statusCode': 404, 'body': json.dumps({'error': f'Deployment {deployment_id} not found'}, cls=dynamodb.DynamoDBEncoder)}
+        devices = dynamodb.list_deployment_devices(deployment_id)
+        result = {
+            'deployment': _normalize_deployment_item(deployment),
+            'devices': devices,
+        }
+        return {'statusCode': 200, 'body': json.dumps(result, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def _normalize_location(location: Dict[str, Any]) -> Dict[str, Decimal]:
+    normalized = {
+        'lat': Decimal(str(location['lat'])),
+        'long': Decimal(str(location['long'])),
+    }
+    if 'alt' in location:
+        normalized['alt'] = Decimal(str(location['alt']))
+    return normalized
+
+
+def _store_deployment(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Process and store deployment data."""
+    data = {
+        'deployment_id': body.get('deployment_id') or str(uuid.uuid4()),
+        'name': body['name'],
+        'description': body['description'],
+        'start_time': body.get('start_time', datetime.now(timezone.utc).isoformat()),
+    }
+    for optional_field in ('end_time', 'model_id', 'location_name'):
+        if optional_field in body and body[optional_field] is not None:
+            data[optional_field] = body[optional_field]
+    if 'location' in body:
+        data['location'] = _normalize_location(body['location'])
+    if 'image' in body:
+        timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
+        data['image_key'] = _upload_image_to_s3(body['image'], data['deployment_id'], 'deployment', timestamp_str)
+        data['image_bucket'] = IMAGES_BUCKET
+    return dynamodb.store_deployment_data(data)
+
+
+def handle_post_deployment(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle POST /deployments endpoint."""
+    try:
+        body = _parse_request(event)
+        for field in ('name', 'description'):
+            if not body.get(field):
+                raise ValueError(f"{field} is required")
+        return _store_deployment(body)
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_patch_deployment(event: Dict[str, Any], deployment_id: str) -> Dict[str, Any]:
+    """Handle PATCH /deployments/{deployment_id} endpoint."""
+    try:
+        body = _parse_request(event)
+        if not body:
+            raise ValueError("Request body is required")
+        updates: Dict[str, Any] = {}
+        for optional_field in ('name', 'description', 'start_time', 'end_time', 'model_id', 'location_name'):
+            if optional_field in body:
+                updates[optional_field] = body[optional_field]
+        if 'location' in body:
+            updates['location'] = _normalize_location(body['location'])
+        if 'image' in body:
+            timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
+            updates['image_key'] = _upload_image_to_s3(body['image'], deployment_id, 'deployment', timestamp_str)
+            updates['image_bucket'] = IMAGES_BUCKET
+        if not updates:
+            raise ValueError("No updatable fields provided")
+        return dynamodb.update_deployment_data(deployment_id, updates)
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_delete_deployment(event: Dict[str, Any], deployment_id: str) -> Dict[str, Any]:
+    """Handle DELETE /deployments/{deployment_id} endpoint."""
+    try:
+        return dynamodb.delete_deployment(deployment_id)
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def _build_deployment_device_payload(body: Dict[str, Any], deployment_id: str, device_id: Optional[str] = None) -> Dict[str, Any]:
+    payload = {
+        'deployment_id': deployment_id,
+        'device_id': device_id or body.get('device_id'),
+    }
+    if not payload['device_id']:
+        raise ValueError("device_id is required")
+    if not dynamodb.device_exists(payload['device_id']):
+        raise ValueError(f"device_id {payload['device_id']} was not found")
+    if 'name' in body:
+        payload['name'] = body['name']
+    if 'location' in body:
+        payload['location'] = _normalize_location(body['location'])
+    return payload
+
+
+def handle_post_deployment_device(event: Dict[str, Any], deployment_id: str) -> Dict[str, Any]:
+    """Handle POST /deployments/{deployment_id}/devices endpoint."""
+    try:
+        body = _parse_request(event)
+        payload = _build_deployment_device_payload(body, deployment_id)
+        return dynamodb.store_deployment_device_connection_data(payload)
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_patch_deployment_device(event: Dict[str, Any], deployment_id: str, device_id: str) -> Dict[str, Any]:
+    """Handle PATCH /deployments/{deployment_id}/devices/{device_id} endpoint."""
+    try:
+        body = _parse_request(event)
+        updates = _build_deployment_device_payload(body, deployment_id, device_id)
+        updates.pop('deployment_id', None)
+        updates.pop('device_id', None)
+        if not updates:
+            raise ValueError("No updatable fields provided")
+        return dynamodb.update_deployment_device_connection(deployment_id, device_id, updates)
+    except ValueError as e:
+        return {'statusCode': 400, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
+
+def handle_delete_deployment_device(event: Dict[str, Any], deployment_id: str, device_id: str) -> Dict[str, Any]:
+    """Handle DELETE /deployments/{deployment_id}/devices/{device_id} endpoint."""
+    try:
+        return dynamodb.delete_deployment_device_connection(deployment_id, device_id)
+    except Exception as e:
+        return {'statusCode': 500, 'body': json.dumps({'error': str(e)}, cls=dynamodb.DynamoDBEncoder)}
+
 def _store_environmental_reading(body: Dict[str, Any]) -> Dict[str, Any]:
     """Process and store environmental reading data"""
     # Handle both schema formats - the existing EnvironmentalReading schema and the new one
@@ -1330,15 +1799,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         print(f"Dispatching to handler for {http_method} {path}")
         
-        # API Key validation for write operations
-        if http_method in ['POST', 'PUT', 'DELETE']:
-            is_valid, error_message = validate_api_key(event)
-            if not is_valid:
-                print(f"Authentication failed for {http_method} {path}: {error_message}")
-                return {
-                    'statusCode': 401,
-                    'body': json.dumps({'error': error_message}, cls=dynamodb.DynamoDBEncoder)
-                }
+        is_authorized, status_code, auth_message = authorize_request(event, http_method, path)
+        if not is_authorized:
+            print(f"Authorization failed for {http_method} {path}: {auth_message}")
+            return {
+                'statusCode': status_code,
+                'body': json.dumps({'error': auth_message}, cls=dynamodb.DynamoDBEncoder)
+            }
+
+        path_params = event.get('pathParameters') or {}
+        if not path_params:
+            path_params = _extract_path_params(path)
+        deployment_id = path_params.get('deployment_id')
+        device_id = path_params.get('device_id')
         
         # Routing logic
         if http_method == 'GET' and path == '/devices':
@@ -1351,18 +1824,38 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_get_detections(event)
         elif http_method == 'GET' and path == '/classifications':
             return handle_get_classifications(event)
+        elif http_method == 'GET' and path == '/classifications/taxa_count':
+            return handle_get_classifications_taxa_count(event)
+        elif http_method == 'GET' and path == '/classifications/time_series':
+            return handle_get_classifications_time_series(event)
         elif http_method == 'GET' and path == '/models':
             return handle_get_models(event)
         elif http_method == 'GET' and path == '/videos':
             return handle_get_videos(event)
+        elif http_method == 'GET' and path == '/deployments':
+            return handle_get_deployments(event)
+        elif http_method == 'GET' and deployment_id and path == f'/deployments/{deployment_id}':
+            return handle_get_deployment(event, deployment_id)
         elif http_method == 'POST' and path == '/detections':
             return handle_post_detection(event)
         elif http_method == 'POST' and path == '/classifications':
             return handle_post_classification(event)
         elif http_method == 'POST' and path == '/models':
             return handle_post_model(event)
+        elif http_method == 'POST' and path == '/deployments':
+            return handle_post_deployment(event)
+        elif http_method == 'POST' and deployment_id and path == f'/deployments/{deployment_id}/devices':
+            return handle_post_deployment_device(event, deployment_id)
+        elif http_method == 'PATCH' and deployment_id and path == f'/deployments/{deployment_id}':
+            return handle_patch_deployment(event, deployment_id)
+        elif http_method == 'PATCH' and deployment_id and device_id and path == f'/deployments/{deployment_id}/devices/{device_id}':
+            return handle_patch_deployment_device(event, deployment_id, device_id)
         elif http_method == 'DELETE' and path == '/models':
             return handle_delete_model(event)
+        elif http_method == 'DELETE' and deployment_id and path == f'/deployments/{deployment_id}':
+            return handle_delete_deployment(event, deployment_id)
+        elif http_method == 'DELETE' and deployment_id and device_id and path == f'/deployments/{deployment_id}/devices/{device_id}':
+            return handle_delete_deployment_device(event, deployment_id, device_id)
         elif http_method == 'POST' and path == '/videos':
             return handle_post_video(event)
         elif http_method == 'POST' and path == '/videos/register':
@@ -1377,6 +1870,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_count_videos(event)
         elif http_method == 'GET' and path == '/environment':
             return handle_get_environment(event)
+        elif http_method == 'GET' and path == '/environment/time_series':
+            return handle_get_environment_time_series(event)
         elif http_method == 'POST' and path == '/environment':
             return handle_post_environment(event)
         elif http_method == 'GET' and path == '/environment/count':

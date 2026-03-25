@@ -1,0 +1,5 @@
+variable "deployments_api_key_value" {
+  description = "Pre-generated API key value for the deployments dashboard integration"
+  type        = string
+  sensitive   = true
+}

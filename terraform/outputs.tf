@@ -44,6 +44,12 @@ output "frontend_api_key" {
   sensitive   = true
 }
 
+output "deployments_api_key" {
+  value       = aws_api_gateway_api_key.deployments_key.value
+  description = "Deployments dashboard API key for authentication"
+  sensitive   = true
+}
+
 # S3 outputs
 output "s3_bucket_name" {
   value       = aws_s3_bucket.sensor_images.id
@@ -64,6 +70,16 @@ output "classifications_table_name" {
 output "models_table_name" {
   value       = aws_dynamodb_table.models.name
   description = "Name of the DynamoDB table for models"
+}
+
+output "deployments_table_name" {
+  value       = aws_dynamodb_table.deployments.name
+  description = "Name of the DynamoDB table for deployments"
+}
+
+output "deployment_device_connections_table_name" {
+  value       = aws_dynamodb_table.deployment_device_connections.name
+  description = "Name of the DynamoDB table for deployment-device connections"
 }
 
 # Lambda outputs

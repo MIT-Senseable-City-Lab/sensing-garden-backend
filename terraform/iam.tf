@@ -44,7 +44,9 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           aws_dynamodb_table.models.arn,
           aws_dynamodb_table.devices.arn,
           aws_dynamodb_table.videos.arn,
-          aws_dynamodb_table.environmental_readings.arn
+          aws_dynamodb_table.environmental_readings.arn,
+          aws_dynamodb_table.deployments.arn,
+          aws_dynamodb_table.deployment_device_connections.arn
         ]
       }
     ]
