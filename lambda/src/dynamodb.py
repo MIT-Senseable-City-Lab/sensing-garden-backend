@@ -590,7 +590,13 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
             parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
         return parsed
     except Exception:
-        return None
+        pass
+    for fmt in ('%Y%m%d_%H%M%S', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(str(value), fmt)
+        except Exception:
+            continue
+    return None
 
 
 def _timestamp_in_range(timestamp: Optional[str], start_time: Optional[str], end_time: Optional[str]) -> bool:
@@ -838,28 +844,16 @@ def _load_table_items_for_devices(table_name: str, device_ids: Optional[List[str
             return []
         all_items: List[Dict[str, Any]] = []
         for device_id in device_ids:
-            key_condition = Key('device_id').eq(device_id)
-            if start_time and end_time:
-                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
-            elif start_time:
-                key_condition = key_condition & Key('timestamp').gte(start_time)
-            elif end_time:
-                key_condition = key_condition & Key('timestamp').lte(end_time)
-            all_items.extend(_query_all(table, KeyConditionExpression=key_condition))
-        return all_items
+            all_items.extend(_query_all(table, KeyConditionExpression=Key('device_id').eq(device_id)))
+    else:
+        all_items = _scan_all(table)
 
-    scan_kwargs: Dict[str, Any] = {}
-    filters: List[Any] = []
-    if start_time:
-        filters.append(Attr('timestamp').gte(start_time))
-    if end_time:
-        filters.append(Attr('timestamp').lte(end_time))
-    if filters:
-        filter_expr = filters[0]
-        for expr in filters[1:]:
-            filter_expr = filter_expr & expr
-        scan_kwargs['FilterExpression'] = filter_expr
-    return _scan_all(table, **scan_kwargs)
+    if start_time or end_time:
+        all_items = [
+            item for item in all_items
+            if _timestamp_in_range(item.get('timestamp'), start_time, end_time)
+        ]
+    return all_items
 
 
 def _classification_confidence(item: Dict[str, Any], taxonomy_level: Optional[str]) -> Optional[float]:

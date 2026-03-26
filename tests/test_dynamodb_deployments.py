@@ -46,3 +46,60 @@ def test_store_deployment_device_connection_conflict(monkeypatch):
     })
 
     assert response["statusCode"] == 409
+
+
+def test_parse_time_supports_legacy_timestamp_format():
+    parsed = dynamodb._parse_time("20250425_145508")
+
+    assert parsed is not None
+    assert parsed.year == 2025
+    assert parsed.month == 4
+    assert parsed.day == 25
+
+
+def test_load_table_items_for_devices_filters_legacy_timestamps_in_memory(monkeypatch):
+    class _FakeTable:
+        pass
+
+    monkeypatch.setattr(dynamodb.dynamodb, "Table", lambda name: _FakeTable())
+    monkeypatch.setattr(
+        dynamodb,
+        "_scan_all",
+        lambda table, **kwargs: [
+            {"device_id": "test-device-json", "timestamp": "20250425_145508"},
+            {"device_id": "prod-device-1", "timestamp": "2026-01-15T10:00:00"},
+        ],
+    )
+
+    items = dynamodb._load_table_items_for_devices(
+        dynamodb.CLASSIFICATIONS_TABLE,
+        device_ids=None,
+        start_time="2025-12-12T00:00:00Z",
+        end_time="2026-03-31T23:59:59Z",
+    )
+
+    assert items == [{"device_id": "prod-device-1", "timestamp": "2026-01-15T10:00:00"}]
+
+
+def test_load_table_items_for_device_query_filters_legacy_timestamps_in_memory(monkeypatch):
+    class _FakeTable:
+        pass
+
+    monkeypatch.setattr(dynamodb.dynamodb, "Table", lambda name: _FakeTable())
+    monkeypatch.setattr(
+        dynamodb,
+        "_query_all",
+        lambda table, **kwargs: [
+            {"device_id": "device-1", "timestamp": "20250425_145508"},
+            {"device_id": "device-1", "timestamp": "2026-02-01T12:00:00"},
+        ],
+    )
+
+    items = dynamodb._load_table_items_for_devices(
+        dynamodb.CLASSIFICATIONS_TABLE,
+        device_ids=["device-1"],
+        start_time="2025-12-12T00:00:00Z",
+        end_time="2026-03-31T23:59:59Z",
+    )
+
+    assert items == [{"device_id": "device-1", "timestamp": "2026-02-01T12:00:00"}]
