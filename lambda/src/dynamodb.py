@@ -1013,86 +1013,59 @@ def get_environment_time_series(device_ids: Optional[List[str]], start_time: str
     })
     return result
 
-def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
-    """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""
-    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
-        raise ValueError(f"Invalid table_type: {table_type}")
-    
+
+def _load_items_for_query_data(table_type: str, device_id: Optional[str], model_id: Optional[str]) -> List[Dict[str, Any]]:
     table_name = {
         'detection': DETECTIONS_TABLE,
         'classification': CLASSIFICATIONS_TABLE,
         'model': MODELS_TABLE,
         'video': VIDEOS_TABLE,
-        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE
+        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE,
     }[table_type]
     table = dynamodb.Table(table_name)
-    from boto3.dynamodb.conditions import Key, Attr
-    query_params = {
-        'Select': 'COUNT'
-    }
-    # Filtering logic (same as query_data)
-    key_condition = None
-    filter_expression = None
-    if table_type in ['detection', 'classification', 'video', 'environmental_reading']:
-        if device_id:
-            key_condition = Key('device_id').eq(device_id)
-        if start_time and end_time:
-            if key_condition is not None:
-                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
-            else:
-                key_condition = Key('timestamp').between(start_time, end_time)
-        elif start_time:
-            if key_condition is not None:
-                key_condition = key_condition & Key('timestamp').gte(start_time)
-            else:
-                key_condition = Key('timestamp').gte(start_time)
-        elif end_time:
-            if key_condition is not None:
-                key_condition = key_condition & Key('timestamp').lte(end_time)
-            else:
-                key_condition = Key('timestamp').lte(end_time)
-        if key_condition is not None:
-            query_params['KeyConditionExpression'] = key_condition
-        if model_id and table_type in ['detection', 'classification']:
-            filter_expression = Attr('model_id').eq(model_id)
-            query_params['FilterExpression'] = filter_expression
-        response = table.query(**query_params) if 'KeyConditionExpression' in query_params else table.scan(**query_params)
-    elif table_type == 'model':
-        # Models table: primary key is 'id', so we have to scan for device_id/model_id
-        filter_expression = None
-        if device_id:
-            filter_expression = Attr('device_id').eq(device_id)
-        if model_id:
-            if filter_expression is not None:
-                filter_expression = filter_expression & Attr('id').eq(model_id)
-            else:
-                filter_expression = Attr('id').eq(model_id)
-        if start_time:
-            if filter_expression is not None:
-                filter_expression = filter_expression & Attr('timestamp').gte(start_time)
-            else:
-                filter_expression = Attr('timestamp').gte(start_time)
-        if end_time:
-            if filter_expression is not None:
-                filter_expression = filter_expression & Attr('timestamp').lte(end_time)
-            else:
-                filter_expression = Attr('timestamp').lte(end_time)
-        if filter_expression is not None:
-            query_params['FilterExpression'] = filter_expression
-        response = table.scan(**query_params)
-    else:
-        response = table.scan(**query_params)
-    count = response.get('Count', 0)
-    # If paginated, sum all pages
-    while 'LastEvaluatedKey' in response:
-        if 'KeyConditionExpression' in query_params:
-            query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
-            response = table.query(**query_params)
-        else:
-            query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
-            response = table.scan(**query_params)
-        count += response.get('Count', 0)
-    return {'count': count}
+
+    if table_type in {'detection', 'classification', 'video', 'environmental_reading'} and device_id:
+        return _query_all(table, KeyConditionExpression=Key('device_id').eq(device_id))
+
+    if table_type == 'model' and model_id:
+        item = table.get_item(Key={'id': model_id}).get('Item')
+        return [item] if item else []
+
+    return _scan_all(table)
+
+
+def _filter_items_for_query_data(table_type: str, items: List[Dict[str, Any]], device_id: Optional[str],
+                                 model_id: Optional[str], start_time: Optional[str],
+                                 end_time: Optional[str]) -> List[Dict[str, Any]]:
+    filtered: List[Dict[str, Any]] = []
+    for item in items:
+        if table_type == 'model':
+            if device_id and item.get('device_id') != device_id:
+                continue
+            if model_id and item.get('id') != model_id:
+                continue
+        elif table_type in {'detection', 'classification', 'video'}:
+            if device_id and item.get('device_id') != device_id:
+                continue
+            if model_id and item.get('model_id') != model_id:
+                continue
+        elif table_type == 'environmental_reading' and device_id and item.get('device_id') != device_id:
+            continue
+
+        if (start_time or end_time) and not _timestamp_in_range(item.get('timestamp'), start_time, end_time):
+            continue
+
+        filtered.append(item)
+    return filtered
+
+def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
+    """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""
+    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
+        raise ValueError(f"Invalid table_type: {table_type}")
+
+    items = _load_items_for_query_data(table_type, device_id, model_id)
+    items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
+    return {'count': len(items)}
 
 def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None,
                end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
@@ -1101,82 +1074,8 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
     if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
         raise ValueError(f"Invalid table_type: {table_type}")
 
-    table_name = {
-        'detection': DETECTIONS_TABLE,
-        'classification': CLASSIFICATIONS_TABLE,
-        'model': MODELS_TABLE,
-        'video': VIDEOS_TABLE,
-        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE
-    }[table_type]
-    table = dynamodb.Table(table_name)
-
-    # Partition key per table
-    partition_key = {
-        'detection': 'device_id',
-        'classification': 'device_id',
-        'video': 'device_id',
-        'environmental_reading': 'device_id',
-        'model': 'id'
-    }[table_type]
-    # model_id field for filtering (optional)
-    model_id_field = 'model_id' if table_type in ['detection', 'classification', 'video'] else 'id'
-
-
-    from boto3.dynamodb.conditions import Key, Attr
-    base_params = {'Limit': min(limit, 5000) if limit else 100}
-    if next_token:
-        try:
-            base_params['ExclusiveStartKey'] = json.loads(next_token)
-        except json.JSONDecodeError:
-            raise ValueError('Invalid next_token format')
-
-    # Use Query if partition key is provided, else Scan
-    partition_val = device_id if table_type != 'model' else model_id
-    use_query = partition_val is not None
-    filter_expressions = []
-    key_condition = None
-    if use_query:
-        key_condition = Key(partition_key).eq(partition_val)
-        # Add time range to KeyCondition if possible
-        if start_time and end_time:
-            key_condition = key_condition & Key('timestamp').between(start_time, end_time)
-        elif start_time:
-            key_condition = key_condition & Key('timestamp').gte(start_time)
-        elif end_time:
-            key_condition = key_condition & Key('timestamp').lte(end_time)
-    else:
-        # Add time range as filter expressions for Scan
-        if start_time:
-            filter_expressions.append(Attr('timestamp').gte(start_time))
-        if end_time:
-            filter_expressions.append(Attr('timestamp').lte(end_time))
-    # Add model_id/id filter if provided
-    if model_id:
-        filter_expressions.append(Attr(model_id_field).eq(model_id))
-    # Compose filter expression if any
-    filter_expr = None
-    if filter_expressions:
-        filter_expr = filter_expressions[0]
-        for expr in filter_expressions[1:]:
-            filter_expr = filter_expr & expr
-    # Build params
-    params = base_params.copy()
-    if use_query:
-        params['KeyConditionExpression'] = key_condition
-        if filter_expr is not None:
-            params['FilterExpression'] = filter_expr
-        # DynamoDB sort on timestamp when using Query
-        if sort_by == 'timestamp':
-            # For descending order DynamoDB requires ScanIndexForward=False
-            params['ScanIndexForward'] = not bool(sort_desc)
-        print(f"Unified QUERY params: {params}")
-        response = table.query(**params)
-    else:
-        if filter_expr is not None:
-            params['FilterExpression'] = filter_expr
-        print(f"Unified SCAN params: {params}")
-        response = table.scan(**params)
-    items = response.get('Items', [])
+    items = _load_items_for_query_data(table_type, device_id, model_id)
+    items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
     # Only do in-memory sort for non-videos/models if needed
     if table_type not in ['video', 'model'] and sort_by and items:
         from dateutil.parser import isoparse
@@ -1206,13 +1105,7 @@ def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optio
                     reverse=reverse_sort
                 )
             print(f"Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
-    result = {
-        'items': items,
-        'count': len(items)
-    }
-    if 'LastEvaluatedKey' in response:
-        result['next_token'] = json.dumps(response['LastEvaluatedKey'])
-    return result
+    return _paginate_items(items, min(limit, 5000) if limit else 100, next_token)
 
 def store_detection_data(data):
     """Store sensor detection data in DynamoDB"""
