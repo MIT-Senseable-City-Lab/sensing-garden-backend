@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -9,16 +10,18 @@ from urllib.parse import unquote_plus
 import boto3
 from botocore.exceptions import ClientError
 
-from schemas import Classification, Device, Track, Video
+from schemas import Classification, Device, Heartbeat, Track, Video
 
 
 TRACKS_TABLE = os.environ.get("TRACKS_TABLE", "sensing-garden-tracks")
 CLASSIFICATIONS_TABLE = os.environ.get("CLASSIFICATIONS_TABLE", "sensing-garden-classifications")
 DEVICES_TABLE = os.environ.get("DEVICES_TABLE", "sensing-garden-devices")
 VIDEOS_TABLE = os.environ.get("VIDEOS_TABLE", "sensing-garden-videos")
+HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats")
 OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "")
 MODEL_ID = os.environ.get("MODEL_ID", "")
 DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
+HEARTBEAT_KEY_PATTERN = re.compile(r"^v1/[^/]+/heartbeats/[^/]+\.json$")
 
 
 class StorageAdapter:
@@ -94,6 +97,7 @@ class DynamoWriter:
         self.classifications = resource.Table(CLASSIFICATIONS_TABLE)
         self.devices = resource.Table(DEVICES_TABLE)
         self.videos = resource.Table(VIDEOS_TABLE)
+        self.heartbeats = resource.Table(HEARTBEATS_TABLE)
 
     def put_tracks(self, items: List[Dict[str, Any]]) -> None:
         with self.tracks.batch_writer() as batch:
@@ -108,9 +112,17 @@ class DynamoWriter:
     def put_devices_if_missing(self, items: List[Dict[str, Any]]) -> None:
         for item in items:
             try:
-                self.devices.put_item(
-                    Item=item,
+                self.devices.update_item(
+                    Key={"device_id": item["device_id"]},
+                    UpdateExpression=(
+                        "SET parent_device_id = :parent_device_id, "
+                        "created = if_not_exists(created, :created)"
+                    ),
                     ConditionExpression="attribute_not_exists(device_id)",
+                    ExpressionAttributeValues={
+                        ":parent_device_id": item.get("parent_device_id"),
+                        ":created": item.get("created") or datetime.utcnow().isoformat(),
+                    },
                 )
             except ClientError as exc:
                 error_code = getattr(exc, "response", {}).get("Error", {}).get("Code")
@@ -122,6 +134,11 @@ class DynamoWriter:
             for item in items:
                 batch.put_item(Item=item)
 
+    def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
+        with self.heartbeats.batch_writer() as batch:
+            for item in items:
+                batch.put_item(Item=item)
+
 
 class CollectingWriter:
     def __init__(self):
@@ -129,6 +146,7 @@ class CollectingWriter:
         self.classifications: List[Dict[str, Any]] = []
         self.devices: List[Dict[str, Any]] = []
         self.videos: List[Dict[str, Any]] = []
+        self.heartbeats: List[Dict[str, Any]] = []
 
     def put_tracks(self, items: List[Dict[str, Any]]) -> None:
         self.tracks.extend(items)
@@ -140,11 +158,16 @@ class CollectingWriter:
         known = {item["device_id"] for item in self.devices}
         for item in items:
             if item["device_id"] not in known:
-                self.devices.append(item)
+                device_record = dict(item)
+                device_record.setdefault("created", datetime.utcnow().isoformat())
+                self.devices.append(device_record)
                 known.add(item["device_id"])
 
     def put_videos(self, items: List[Dict[str, Any]]) -> None:
         self.videos.extend(items)
+
+    def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
+        self.heartbeats.extend(items)
 
 
 class WriterProtocol(Protocol):
@@ -158,6 +181,9 @@ class WriterProtocol(Protocol):
         ...
 
     def put_videos(self, items: List[Dict[str, Any]]) -> None:
+        ...
+
+    def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
         ...
 
 
@@ -258,14 +284,15 @@ def _load_manifest(storage: StorageAdapter, bucket: str) -> Optional[Dict[str, A
 
 def _resolve_devices(results: Dict[str, Any], manifest: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     devices: List[Dict[str, Any]] = []
+    created = datetime.utcnow().isoformat()
     if manifest:
         flick_id = manifest.get("flick_id")
         if flick_id:
-            devices.append(_model_dump(Device(device_id=flick_id, parent_device_id=None)))
+            devices.append(_model_dump(Device(device_id=flick_id, parent_device_id=None, created=created)))
             for dot_id in manifest.get("dot_ids", []):
-                devices.append(_model_dump(Device(device_id=dot_id, parent_device_id=flick_id)))
+                devices.append(_model_dump(Device(device_id=dot_id, parent_device_id=flick_id, created=created)))
         return devices
-    return [_model_dump(Device(device_id=results["source_device"], parent_device_id=None))]
+    return [_model_dump(Device(device_id=results["source_device"], parent_device_id=None, created=created))]
 
 
 def _resolve_model_id(results: Dict[str, Any]) -> str:
@@ -486,12 +513,24 @@ def process_results_object(storage: StorageAdapter, writer: WriterProtocol, buck
     }
 
 
+def process_heartbeat_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+    try:
+        payload = storage.read_json(bucket, key)
+        heartbeat_record = _model_dump(Heartbeat(**payload))
+    except Exception as exc:
+        print(f"Heartbeat validation failed for {key}: {exc}")
+        return {"heartbeats": 0}
+    writer.put_heartbeats([heartbeat_record])
+    print(f"Processed 1 heartbeat from {key}")
+    return {"heartbeats": 1}
+
+
 def parse_s3_event(event: Dict[str, Any]) -> List[Tuple[str, str]]:
     records: List[Tuple[str, str]] = []
     for record in event.get("Records", []):
         bucket = record["s3"]["bucket"]["name"]
         key = unquote_plus(record["s3"]["object"]["key"])
-        if key.endswith("/results.json"):
+        if key.startswith("v1/"):
             records.append((bucket, key))
     return records
 
@@ -501,5 +540,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     writer = DynamoWriter()
     summaries = []
     for bucket, key in parse_s3_event(event):
-        summaries.append(process_results_object(storage, writer, bucket, key))
+        if key.endswith("/results.json"):
+            summaries.append(process_results_object(storage, writer, bucket, key))
+        elif HEARTBEAT_KEY_PATTERN.match(key):
+            summaries.append(process_heartbeat_object(storage, writer, bucket, key))
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}

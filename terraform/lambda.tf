@@ -52,7 +52,7 @@ resource "aws_lambda_permission" "api_gateway_api_handler" {
 }
 
 # =============================================================================
-# Trigger Lambda - processes S3 results.json uploads
+# Trigger Lambda - processes S3 output uploads
 # =============================================================================
 
 # IAM role for trigger Lambda
@@ -95,6 +95,7 @@ resource "aws_iam_role_policy" "trigger_lambda_dynamodb_policy" {
           "dynamodb:BatchGetItem",
           "dynamodb:DescribeTable",
           "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:BatchWriteItem"
         ]
@@ -105,6 +106,7 @@ resource "aws_iam_role_policy" "trigger_lambda_dynamodb_policy" {
           "${aws_dynamodb_table.sensor_classifications.arn}/index/*",
           aws_dynamodb_table.devices.arn,
           aws_dynamodb_table.videos.arn,
+          aws_dynamodb_table.heartbeats.arn,
         ]
       }
     ]
@@ -151,6 +153,7 @@ resource "aws_lambda_function" "trigger_handler_function" {
       CLASSIFICATIONS_TABLE = "sensing-garden-classifications"
       DEVICES_TABLE         = "sensing-garden-devices"
       VIDEOS_TABLE          = "sensing-garden-videos"
+      HEARTBEATS_TABLE      = "sensing-garden-heartbeats"
       OUTPUT_BUCKET         = "scl-sensing-garden"
     }
   }
@@ -165,7 +168,7 @@ resource "aws_lambda_permission" "s3_invoke_trigger" {
   source_arn    = aws_s3_bucket.output.arn
 }
 
-# S3 event notification to trigger Lambda on results.json upload
+# S3 event notification to trigger Lambda on output uploads
 resource "aws_s3_bucket_notification" "output_bucket_notification" {
   bucket = aws_s3_bucket.output.id
 
@@ -173,7 +176,6 @@ resource "aws_s3_bucket_notification" "output_bucket_notification" {
     lambda_function_arn = aws_lambda_function.trigger_handler_function.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "v1/"
-    filter_suffix       = "results.json"
   }
 
   depends_on = [aws_lambda_permission.s3_invoke_trigger]

@@ -251,8 +251,6 @@ def get_devices(
             for extra in filters[1:]:
                 expr = expr & extra
             params["FilterExpression"] = expr
-        params["ProjectionExpression"] = "device_id, created"
-
         response = table.scan(**params)
         items = response.get("Items", [])
         if sort_by and items and any(sort_by in item for item in items):

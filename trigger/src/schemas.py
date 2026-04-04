@@ -66,12 +66,11 @@ class MLModel(BaseModel):
 class Heartbeat(BaseModel):
     device_id: str
     timestamp: str
-    cpu_temp: Optional[float] = None
-    sd_storage_free: Optional[int] = None
-    usb_storage_free: Optional[int] = None
+    cpu_temperature_celsius: Optional[float] = None
+    storage_free_bytes: Optional[int] = None
+    storage_total_bytes: Optional[int] = None
     uptime_seconds: Optional[float] = None
-    dot_statuses: Optional[dict[str, str]] = None
-    errors: Optional[list[str]] = None
+    dot_status: Optional[list[dict]] = None
 
 
 class Deployment(BaseModel):
