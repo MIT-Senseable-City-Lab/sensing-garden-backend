@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple
 from urllib.parse import unquote_plus
@@ -160,10 +161,19 @@ class WriterProtocol(Protocol):
         ...
 
 
+def _convert_floats_to_decimal(obj: Any) -> Any:
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: _convert_floats_to_decimal(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_convert_floats_to_decimal(v) for v in obj]
+    return obj
+
+
 def _model_dump(model: Any) -> Dict[str, Any]:
-    if hasattr(model, "model_dump"):
-        return model.model_dump()
-    return dict(model.__dict__)
+    raw = model.model_dump() if hasattr(model, "model_dump") else dict(model.__dict__)
+    return _convert_floats_to_decimal(raw)
 
 
 def derive_s3_prefix(results_json_key: str) -> str:
@@ -180,7 +190,7 @@ def _derive_base_datetime(results: Dict[str, Any], track: Dict[str, Any], s3_key
     if results.get("date") and track.get("timestamp"):
         return datetime.strptime(f"{results['date']}{track['timestamp']}", "%Y%m%d%H%M%S")
 
-    prefix_part = derive_s3_prefix(s3_key).split("/", 1)[-1]
+    prefix_part = derive_s3_prefix(s3_key).rsplit("/", 1)[-1]
     if "_" in prefix_part:
         return datetime.strptime(prefix_part, "%Y%m%d_%H%M%S")
     if track.get("timestamp"):
@@ -240,7 +250,7 @@ def derive_crop_key(storage: StorageAdapter, bucket: str, s3_prefix: str, track:
 
 
 def _load_manifest(storage: StorageAdapter, bucket: str) -> Optional[Dict[str, Any]]:
-    manifest_key = "manifest.json"
+    manifest_key = "v1/manifest.json"
     if not storage.exists(bucket, manifest_key):
         return None
     return storage.read_json(bucket, manifest_key)
@@ -259,7 +269,10 @@ def _resolve_devices(results: Dict[str, Any], manifest: Optional[Dict[str, Any]]
 
 
 def _resolve_model_id(results: Dict[str, Any]) -> str:
-    return results.get("model_id") or MODEL_ID
+    model_id = results.get("model_id") or MODEL_ID
+    if not model_id:
+        return "unknown"
+    return model_id
 
 
 def _iter_confirmed_tracks(results: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
