@@ -2,7 +2,20 @@ import re
 from typing import Any, Callable, Dict, Pattern, Tuple
 
 from auth import authorize_request
-from routes import classifications, deployments, detections, devices, environment, export, heartbeats, models, tracks, videos
+from routes import (
+    classifications,
+    deployments,
+    detections,
+    devices,
+    environment,
+    export,
+    heartbeats,
+    models,
+    registration,
+    tracks,
+    uploads,
+    videos,
+)
 from utils import CORS_HEADERS, cors_response
 
 RouteHandler = Callable[..., Dict[str, Any]]
@@ -18,10 +31,12 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/detections/count"): detections.handle_get_count,
     ("GET", "/devices"): devices.handle_get,
     ("DELETE", "/devices"): devices.handle_delete,
+    ("POST", "/devices/register"): registration.handle_register,
     ("GET", "/models"): models.handle_get,
     ("GET", "/models/count"): models.handle_get_count,
     ("POST", "/models"): models.handle_post,
     ("DELETE", "/models"): models.handle_delete,
+    ("POST", "/upload-url"): uploads.handle_upload_url,
     ("GET", "/videos"): videos.handle_get,
     ("GET", "/videos/count"): videos.handle_get_count,
     ("GET", "/environment"): environment.handle_get,

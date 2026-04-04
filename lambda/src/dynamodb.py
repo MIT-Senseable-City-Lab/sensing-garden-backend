@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
+from schemas import DeviceApiKey
 from utils import json_response
 
 
@@ -23,6 +24,7 @@ DEPLOYMENTS_TABLE = "sensing-garden-deployments"
 DEPLOYMENT_DEVICE_CONNECTIONS_TABLE = "sensing-garden-deployment-device-connections"
 TRACKS_TABLE = "sensing-garden-tracks"
 HEARTBEATS_TABLE = "sensing-garden-heartbeats"
+DEVICE_API_KEYS_TABLE = os.environ.get("DEVICE_API_KEYS_TABLE", "sensing-garden-device-api-keys")
 
 IMAGES_BUCKET = os.environ.get("IMAGES_BUCKET", "scl-sensing-garden-images")
 VIDEOS_BUCKET = os.environ.get("VIDEOS_BUCKET", "scl-sensing-garden-videos")
@@ -37,12 +39,8 @@ def add_device(device_id: str, created: Optional[str] = None) -> Dict[str, Any]:
         "device_id": device_id,
         "created": created or datetime.now(timezone.utc).isoformat(),
     }
-    try:
-        dynamodb.Table(DEVICES_TABLE).put_item(Item=item)
-        return json_response(200, {"message": "Device added", "device": item})
-    except Exception as exc:
-        print(f"[add_device] ERROR: {exc}")
-        return json_response(500, {"error": str(exc)})
+    dynamodb.Table(DEVICES_TABLE).put_item(Item=item)
+    return item
 
 
 def store_device_if_not_exists(device_id: str) -> Dict[str, Any]:
@@ -52,8 +50,36 @@ def store_device_if_not_exists(device_id: str) -> Dict[str, Any]:
     table = dynamodb.Table(DEVICES_TABLE)
     response = table.get_item(Key={"device_id": device_id})
     if "Item" in response and response["Item"].get("device_id") == device_id:
-        return json_response(200, {"message": "Device already exists", "device_id": device_id})
+        return response["Item"]
     return add_device(device_id)
+
+
+def store_device_api_key(data: Dict[str, Any]) -> Dict[str, Any]:
+    item = DeviceApiKey(**data).model_dump()
+    dynamodb.Table(DEVICE_API_KEYS_TABLE).put_item(Item=item)
+    return item
+
+
+def delete_device_api_key(device_id: str) -> None:
+    dynamodb.Table(DEVICE_API_KEYS_TABLE).delete_item(Key={"device_id": device_id})
+
+
+def get_active_device_api_key(api_key: str) -> Optional[Dict[str, Any]]:
+    if not api_key:
+        return None
+
+    response = dynamodb.Table(DEVICE_API_KEYS_TABLE).query(
+        IndexName="api_key_index",
+        KeyConditionExpression=Key("api_key").eq(api_key),
+        Limit=1,
+    )
+    items = response.get("Items", [])
+    if not items:
+        return None
+    item = items[0]
+    if item.get("status") != "active":
+        return None
+    return item
 
 
 def _delete_device_table_data(device_id: str, summary: Dict[str, Any]) -> None:

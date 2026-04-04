@@ -2,6 +2,8 @@ import os
 import re
 from typing import Any, Dict, Optional, Tuple
 
+import dynamodb
+
 
 FULL_ACCESS_KEY_ENVS = ("TEST_API_KEY", "EDGE_API_KEY")
 READ_ONLY_KEY_ENVS = ("FRONTEND_API_KEY",)
@@ -55,6 +57,11 @@ DEPLOYMENTS_ALLOWED_WRITE_PATTERNS = (
     ("DELETE", re.compile(r"^/deployments/[^/]+/devices/[^/]+$")),
 )
 
+DEVICE_ALLOWED_ROUTES = (
+    ("POST", "/upload-url"),
+    ("GET", "/models"),
+)
+
 
 def _extract_api_key(event: Dict[str, Any]) -> Optional[str]:
     headers = event.get("headers", {}) or {}
@@ -64,14 +71,15 @@ def _extract_api_key(event: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _lookup_device_api_key(api_key: str) -> Optional[Dict[str, Any]]:
+    return dynamodb.get_active_device_api_key(api_key)
+
+
 def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
     try:
         api_key = _extract_api_key(event)
         if not api_key:
             return False, "Missing API key. Include X-Api-Key header.", None
-
-        if not CONFIGURED_KEYS:
-            return False, "API keys are not configured on the server.", None
 
         for key_name, key_value in CONFIGURED_KEYS.items():
             if api_key == key_value:
@@ -80,6 +88,9 @@ def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str
                 if key_name in READ_ONLY_KEY_ENVS:
                     return True, "", "readonly"
                 return True, "", "admin"
+
+        if _lookup_device_api_key(api_key):
+            return True, "", "device"
 
         return False, "Invalid API key", None
     except Exception as exc:
@@ -95,6 +106,8 @@ def validate_api_key(event: Dict[str, Any]) -> Tuple[bool, str]:
 def authorize_request(event: Dict[str, Any], http_method: str, path: str) -> Tuple[bool, int, str]:
     if http_method == "OPTIONS":
         return True, 200, ""
+    if http_method == "POST" and path == "/devices/register":
+        return True, 200, ""
 
     is_valid, error_message, principal = authenticate_api_key(event)
     if not is_valid:
@@ -102,6 +115,11 @@ def authorize_request(event: Dict[str, Any], http_method: str, path: str) -> Tup
 
     if principal == "admin":
         return True, 200, ""
+
+    if principal == "device":
+        if (http_method, path) in DEVICE_ALLOWED_ROUTES:
+            return True, 200, ""
+        return False, 403, f"API key is not allowed to call {http_method} {path}"
 
     if http_method == "GET":
         if path in READ_ONLY_ALLOWED_GET_PATHS:

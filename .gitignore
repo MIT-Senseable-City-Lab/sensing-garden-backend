@@ -113,3 +113,4 @@ config.py
 secrets.py
 *.secrets.py
 trigger/deployment_package.zip
+terraform/setup_code.auto.tfvars

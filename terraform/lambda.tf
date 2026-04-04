@@ -32,6 +32,8 @@ resource "aws_lambda_function" "api_handler_function" {
       OUTPUT_BUCKET       = "scl-sensing-garden"
       TRACKS_TABLE        = "sensing-garden-tracks"
       HEARTBEATS_TABLE    = "sensing-garden-heartbeats"
+      DEVICE_API_KEYS_TABLE = "sensing-garden-device-api-keys"
+      SETUP_CODE            = var.setup_code
       TEST_API_KEY        = aws_api_gateway_api_key.test_key.value
       EDGE_API_KEY        = aws_api_gateway_api_key.edge_key.value
       FRONTEND_API_KEY    = aws_api_gateway_api_key.frontend_key.value

@@ -51,6 +51,14 @@ class Device(BaseModel):
     created: Optional[str] = None
 
 
+class DeviceApiKey(BaseModel):
+    device_id: str
+    api_key: str
+    device_name: str
+    created: str
+    status: str
+
+
 class MLModel(BaseModel):
     id: str
     timestamp: str

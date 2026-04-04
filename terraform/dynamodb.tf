@@ -313,3 +313,31 @@ resource "aws_dynamodb_table" "heartbeats" {
     prevent_destroy = true
   }
 }
+
+resource "aws_dynamodb_table" "device_api_keys" {
+  name         = "sensing-garden-device-api-keys"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "device_id"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "api_key"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "api_key_index"
+    hash_key        = "api_key"
+    projection_type = "ALL"
+  }
+
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

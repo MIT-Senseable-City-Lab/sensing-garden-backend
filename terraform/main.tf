@@ -3,3 +3,9 @@ variable "deployments_api_key_value" {
   type        = string
   sensitive   = true
 }
+
+variable "setup_code" {
+  description = "Shared setup code for device self-registration"
+  type        = string
+  sensitive   = true
+}

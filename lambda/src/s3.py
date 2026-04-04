@@ -29,6 +29,22 @@ def generate_presigned_url(
         return None
 
 
+def generate_presigned_put_url(
+    s3_key: str,
+    bucket: str = OUTPUT_BUCKET,
+    expiration: int = PRESIGNED_URL_EXPIRY,
+) -> Optional[str]:
+    try:
+        return s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": bucket, "Key": s3_key},
+            ExpiresIn=expiration,
+        )
+    except Exception as exc:
+        print(f"Error generating presigned PUT URL: {exc}")
+        return None
+
+
 def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
     for item in result.get("items", []):
         if "image_key" in item and "image_bucket" in item:
@@ -36,6 +52,7 @@ def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
         if "video_key" in item and "video_bucket" in item:
             item["video_url"] = generate_presigned_url(item["video_key"], item["video_bucket"])
     return result
+
 
 def delete_s3_object(s3_key: str, bucket: str = IMAGES_BUCKET) -> None:
     s3.delete_object(Bucket=bucket, Key=s3_key)
