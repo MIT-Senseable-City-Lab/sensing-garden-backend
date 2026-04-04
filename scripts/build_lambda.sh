@@ -16,8 +16,14 @@ build_package() {
     rm -rf "$build_dir"
     mkdir -p "$build_dir"
 
-    # Install dependencies
-    pip3 install -r "$src_dir/requirements.txt" -t "$build_dir" --quiet
+    # Install dependencies targeting Lambda runtime (Amazon Linux x86_64, Python 3.11)
+    pip3 install -r "$src_dir/requirements.txt" -t "$build_dir" \
+        --platform manylinux2014_x86_64 \
+        --only-binary=:all: \
+        --python-version 3.11 \
+        --implementation cp \
+        --no-cache-dir \
+        --quiet
 
     # Copy source files
     cp -r "$src_dir"/*.py "$build_dir/"
