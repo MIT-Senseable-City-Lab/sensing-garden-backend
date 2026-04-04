@@ -2,9 +2,10 @@ import os
 from typing import Any, Dict, Optional
 
 import boto3
+from botocore.config import Config
 
 
-s3 = boto3.client("s3")
+s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
 
 IMAGES_BUCKET = os.environ.get("IMAGES_BUCKET", "scl-sensing-garden-images")
 VIDEOS_BUCKET = os.environ.get("VIDEOS_BUCKET", "scl-sensing-garden-videos")
