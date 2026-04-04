@@ -1,602 +1,275 @@
 import json
 import os
+import traceback
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
+from utils import json_response
 
 
-# Custom JSON encoder to handle DynamoDB data types
-class DynamoDBEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        elif isinstance(obj, list) and all(isinstance(x, (int, float, Decimal)) for x in obj):
-            return [float(x) if isinstance(x, Decimal) else x for x in obj]
-        return super(DynamoDBEncoder, self).default(obj)
+dynamodb = boto3.resource("dynamodb")
 
-# Initialize DynamoDB client
-dynamodb = boto3.resource('dynamodb')
+DETECTIONS_TABLE = "sensing-garden-detections"
+CLASSIFICATIONS_TABLE = "sensing-garden-classifications"
+MODELS_TABLE = "sensing-garden-models"
+VIDEOS_TABLE = "sensing-garden-videos"
+DEVICES_TABLE = "sensing-garden-devices"
+ENVIRONMENTAL_READINGS_TABLE = "sensing-garden-environmental-readings"
+DEPLOYMENTS_TABLE = "sensing-garden-deployments"
+DEPLOYMENT_DEVICE_CONNECTIONS_TABLE = "sensing-garden-deployment-device-connections"
+TRACKS_TABLE = "sensing-garden-tracks"
+HEARTBEATS_TABLE = "sensing-garden-heartbeats"
 
-# Table names
-DETECTIONS_TABLE = 'sensing-garden-detections'
-CLASSIFICATIONS_TABLE = 'sensing-garden-classifications'
-MODELS_TABLE = 'sensing-garden-models'
-VIDEOS_TABLE = 'sensing-garden-videos'
-DEVICES_TABLE = 'sensing-garden-devices'
-ENVIRONMENTAL_READINGS_TABLE = 'sensing-garden-environmental-readings'
-DEPLOYMENTS_TABLE = 'sensing-garden-deployments'
-DEPLOYMENT_DEVICE_CONNECTIONS_TABLE = 'sensing-garden-deployment-device-connections'
+IMAGES_BUCKET = os.environ.get("IMAGES_BUCKET", "scl-sensing-garden-images")
+VIDEOS_BUCKET = os.environ.get("VIDEOS_BUCKET", "scl-sensing-garden-videos")
+DEFAULT_PAGE_LIMIT = 100
 
-import traceback
-
-from typing import Dict, Any, List, Optional
 
 def add_device(device_id: str, created: Optional[str] = None) -> Dict[str, Any]:
-    """Add a device to the devices table."""
-    table = dynamodb.Table(DEVICES_TABLE)
-    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
     if not device_id:
-        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
-        return result
-    item = {'device_id': device_id}
-    if created:
-        item['created'] = created
-    else:
-        from datetime import datetime, timezone
-        item['created'] = datetime.now(timezone.utc).isoformat()
+        raise ValueError("device_id is required")
+
+    item = {
+        "device_id": device_id,
+        "created": created or datetime.now(timezone.utc).isoformat(),
+    }
     try:
-        table.put_item(Item=item)
-        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device added', 'device': item}, cls=DynamoDBEncoder)}
-    except Exception as e:
-        print(f"[add_device] ERROR: {str(e)}")
-        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
-    return result
+        dynamodb.Table(DEVICES_TABLE).put_item(Item=item)
+        return json_response(200, {"message": "Device added", "device": item})
+    except Exception as exc:
+        print(f"[add_device] ERROR: {exc}")
+        return json_response(500, {"error": str(exc)})
+
 
 def store_device_if_not_exists(device_id: str) -> Dict[str, Any]:
-    """
-    Check if a device exists in the devices table. If not, add it. Idempotent.
-    """
     if not device_id:
         raise ValueError("device_id is required")
-    table = dynamodb.Table(DEVICES_TABLE)
-    try:
-        response = table.get_item(Key={'device_id': device_id})
-        if 'Item' in response and response['Item'].get('device_id') == device_id:
-            # Device already exists
-            return {'statusCode': 200, 'body': json.dumps({'message': 'Device already exists', 'device_id': device_id})}
-        # Device does not exist, add it
-        return add_device(device_id)
-    except Exception as e:
-        print(f"[store_device_if_not_exists] ERROR: {str(e)}")
-        raise
 
-    """
-    Check if a device exists in the devices table. If not, add it. Idempotent.
-    """
-    if not device_id:
-        raise ValueError("device_id is required")
     table = dynamodb.Table(DEVICES_TABLE)
-    try:
-        response = table.get_item(Key={'device_id': device_id})
-        if 'Item' in response and response['Item'].get('device_id') == device_id:
-            # Device already exists
-            return {'statusCode': 200, 'body': json.dumps({'message': 'Device already exists', 'device_id': device_id})}
-        # Device does not exist, add it
-        return add_device(device_id)
-    except Exception as e:
-        print(f"[store_device_if_not_exists] ERROR: {str(e)}")
-        raise
+    response = table.get_item(Key={"device_id": device_id})
+    if "Item" in response and response["Item"].get("device_id") == device_id:
+        return json_response(200, {"message": "Device already exists", "device_id": device_id})
+    return add_device(device_id)
 
-    """Add a device to the devices table."""
-    table = dynamodb.Table(DEVICES_TABLE)
-    result = {'statusCode': 500, 'body': json.dumps({'error': 'Unknown error'})}
-    if not device_id:
-        result = {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
-        return result
-    item = {'device_id': device_id}
-    if created:
-        item['created'] = created
-    else:
-        from datetime import datetime, timezone
-        item['created'] = datetime.now(timezone.utc).isoformat()
-    try:
-        table.put_item(Item=item)
-        result = {'statusCode': 200, 'body': json.dumps({'message': 'Device added', 'device': item}, cls=DynamoDBEncoder)}
-    except Exception as e:
-        print(f"[add_device] ERROR: {str(e)}")
-        result = {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
-    return result
+
+def _delete_device_table_data(device_id: str, summary: Dict[str, Any]) -> None:
+    for table_name, label in (
+        (DETECTIONS_TABLE, "detections"),
+        (CLASSIFICATIONS_TABLE, "classifications"),
+        (VIDEOS_TABLE, "videos"),
+        (ENVIRONMENTAL_READINGS_TABLE, "environmental_readings"),
+    ):
+        try:
+            summary["deleted_counts"][label] = _delete_device_data_from_table(device_id, table_name)
+        except Exception as exc:
+            summary["deleted_counts"][label] = f"ERROR: {exc}"
+
+
+def _delete_device_s3_data(device_id: str, summary: Dict[str, Any]) -> None:
+    image_count = 0
+    video_count = 0
+    for bucket_name, prefix, label in (
+        (IMAGES_BUCKET, "detection", "images"),
+        (IMAGES_BUCKET, "classification", "images"),
+        (VIDEOS_BUCKET, "videos", "videos"),
+    ):
+        try:
+            deleted = _delete_s3_objects_for_device(device_id, bucket_name, f"{prefix}/{device_id}")
+            if label == "images":
+                image_count += deleted
+            else:
+                video_count += deleted
+        except Exception as exc:
+            print(f"[delete_device] Failed to delete s3 data {bucket_name}/{prefix}: {exc}")
+    summary["deleted_counts"]["s3_images"] = image_count
+    summary["deleted_counts"]["s3_videos"] = video_count
+
+
+def _cascade_delete_device_data(device_id: str, summary: Dict[str, Any]) -> None:
+    _delete_device_table_data(device_id, summary)
+    _delete_device_s3_data(device_id, summary)
+
 
 def _delete_device_data_from_table(device_id: str, table_name: str) -> int:
-    """Delete all items for a device from a specific table using batch operations."""
-    from boto3.dynamodb.conditions import Key
-    import boto3
-    
     table = dynamodb.Table(table_name)
     deleted_count = 0
-    
-    try:
-        # Query all items for this device
+
+    response = table.query(
+        KeyConditionExpression=Key("device_id").eq(device_id),
+        ProjectionExpression="device_id, #ts",
+        ExpressionAttributeNames={"#ts": "timestamp"},
+    )
+    items_to_delete = response.get("Items", [])
+
+    while "LastEvaluatedKey" in response:
         response = table.query(
-            KeyConditionExpression=Key('device_id').eq(device_id),
-            ProjectionExpression='device_id, #ts',
-            ExpressionAttributeNames={'#ts': 'timestamp'}
+            KeyConditionExpression=Key("device_id").eq(device_id),
+            ProjectionExpression="device_id, #ts",
+            ExpressionAttributeNames={"#ts": "timestamp"},
+            ExclusiveStartKey=response["LastEvaluatedKey"],
         )
-        
-        items_to_delete = response.get('Items', [])
-        
-        # Handle pagination if there are more items
-        while 'LastEvaluatedKey' in response:
-            response = table.query(
-                KeyConditionExpression=Key('device_id').eq(device_id),
-                ProjectionExpression='device_id, #ts',
-                ExpressionAttributeNames={'#ts': 'timestamp'},
-                ExclusiveStartKey=response['LastEvaluatedKey']
-            )
-            items_to_delete.extend(response.get('Items', []))
-        
-        # Delete items in batches of 25 (DynamoDB limit)
-        for i in range(0, len(items_to_delete), 25):
-            batch = items_to_delete[i:i + 25]
-            
-            with table.batch_writer() as batch_writer:
-                for item in batch:
-                    batch_writer.delete_item(
-                        Key={'device_id': item['device_id'], 'timestamp': item['timestamp']}
-                    )
-                    deleted_count += 1
-        
-        print(f"[_delete_device_data_from_table] Deleted {deleted_count} items from {table_name}")
-        return deleted_count
-        
-    except Exception as e:
-        print(f"[_delete_device_data_from_table] ERROR deleting from {table_name}: {str(e)}")
-        raise
+        items_to_delete.extend(response.get("Items", []))
+
+    with table.batch_writer() as batch_writer:
+        for item in items_to_delete:
+            batch_writer.delete_item(Key={"device_id": item["device_id"], "timestamp": item["timestamp"]})
+            deleted_count += 1
+
+    return deleted_count
+
 
 def _delete_s3_objects_for_device(device_id: str, bucket_name: str, prefix: str) -> int:
-    """Delete all S3 objects for a device from a specific bucket."""
-    import boto3
-    
-    s3_client = boto3.client('s3')
+    s3_client = boto3.client("s3")
+    paginator = s3_client.get_paginator("list_objects_v2")
+    pages = paginator.paginate(Bucket=bucket_name, Prefix=f"{prefix}/")
+
+    objects_to_delete = []
+    for page in pages:
+        if "Contents" in page:
+            objects_to_delete.extend({"Key": obj["Key"]} for obj in page["Contents"])
+
     deleted_count = 0
-    
-    try:
-        # List all objects with the device prefix
-        paginator = s3_client.get_paginator('list_objects_v2')
-        pages = paginator.paginate(Bucket=bucket_name, Prefix=f"{prefix}/")
-        
-        objects_to_delete = []
-        for page in pages:
-            if 'Contents' in page:
-                objects_to_delete.extend([{'Key': obj['Key']} for obj in page['Contents']])
-        
-        # Delete objects in batches of 1000 (S3 limit)
-        for i in range(0, len(objects_to_delete), 1000):
-            batch = objects_to_delete[i:i + 1000]
-            
-            if batch:
-                response = s3_client.delete_objects(
-                    Bucket=bucket_name,
-                    Delete={'Objects': batch, 'Quiet': True}
-                )
-                deleted_count += len(batch)
-                
-                # Log any errors
-                if 'Errors' in response:
-                    for error in response['Errors']:
-                        print(f"[_delete_s3_objects_for_device] Error deleting {error['Key']}: {error['Message']}")
-        
-        print(f"[_delete_s3_objects_for_device] Deleted {deleted_count} objects from s3://{bucket_name}/{prefix}/")
-        return deleted_count
-        
-    except Exception as e:
-        print(f"[_delete_s3_objects_for_device] ERROR deleting from s3://{bucket_name}: {str(e)}")
-        raise
+    for index in range(0, len(objects_to_delete), 1000):
+        batch = objects_to_delete[index:index + 1000]
+        if not batch:
+            continue
+        s3_client.delete_objects(Bucket=bucket_name, Delete={"Objects": batch, "Quiet": True})
+        deleted_count += len(batch)
+
+    return deleted_count
+
 
 def delete_device(device_id: str, cascade: bool = True) -> Dict[str, Any]:
-    """Delete a device and optionally all associated data (cascade delete).
-    
-    Args:
-        device_id: The device ID to delete
-        cascade: If True, delete all associated data from DynamoDB and S3
-    
-    Returns:
-        Dict with deletion results and counts
-    """
     if not device_id:
-        return {'statusCode': 400, 'body': json.dumps({'error': 'device_id is required'})}
-    
-    deletion_summary = {
-        'device_id': device_id,
-        'device_deleted': False,
-        'cascade': cascade,
-        'deleted_counts': {}
+        raise ValueError("device_id is required")
+
+    summary: Dict[str, Any] = {
+        "device_id": device_id,
+        "device_deleted": False,
+        "cascade": cascade,
+        "deleted_counts": {},
     }
-    
+
     try:
         if cascade:
-            # Delete from all device-related tables
-            tables_to_clean = [
-                (DETECTIONS_TABLE, 'detections'),
-                (CLASSIFICATIONS_TABLE, 'classifications'), 
-                (VIDEOS_TABLE, 'videos'),
-                (ENVIRONMENTAL_READINGS_TABLE, 'environmental_readings')
-            ]
-            
-            for table_name, data_type in tables_to_clean:
-                try:
-                    count = _delete_device_data_from_table(device_id, table_name)
-                    deletion_summary['deleted_counts'][data_type] = count
-                except Exception as e:
-                    print(f"[delete_device] Failed to delete {data_type}: {str(e)}")
-                    deletion_summary['deleted_counts'][data_type] = f"ERROR: {str(e)}"
-            
-            # Delete S3 objects
-            s3_operations = [
-                ('scl-sensing-garden-images', 'detection', 'images'),
-                ('scl-sensing-garden-images', 'classification', 'images'),
-                ('scl-sensing-garden-videos', 'videos', 'videos')
-            ]
-            
-            total_images = 0
-            total_videos = 0
-            
-            for bucket_name, prefix, data_type in s3_operations:
-                try:
-                    count = _delete_s3_objects_for_device(device_id, bucket_name, f"{prefix}/{device_id}")
-                    if data_type == 'images':
-                        total_images += count
-                    else:
-                        total_videos += count
-                except Exception as e:
-                    print(f"[delete_device] Failed to delete S3 {data_type} from {prefix}: {str(e)}")
-            
-            deletion_summary['deleted_counts']['s3_images'] = total_images
-            deletion_summary['deleted_counts']['s3_videos'] = total_videos
-        
-        # Finally, delete the device record itself
-        device_table = dynamodb.Table(DEVICES_TABLE)
-        device_table.delete_item(Key={'device_id': device_id})
-        deletion_summary['device_deleted'] = True
-        
-        result = {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': f'Device {device_id} deleted successfully' + (' with all associated data' if cascade else ''),
-                'summary': deletion_summary
-            }, cls=DynamoDBEncoder)
-        }
-        
-    except Exception as e:
-        print(f"[delete_device] ERROR: {str(e)}")
-        result = {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': str(e),
-                'summary': deletion_summary
-            }, cls=DynamoDBEncoder)
-        }
-    
-    return result
+            _cascade_delete_device_data(device_id, summary)
+
+        dynamodb.Table(DEVICES_TABLE).delete_item(Key={"device_id": device_id})
+        summary["device_deleted"] = True
+        message = f"Device {device_id} deleted successfully"
+        if cascade:
+            message += " with all associated data"
+        return json_response(200, {"message": message, "summary": summary})
+    except Exception as exc:
+        print(f"[delete_device] ERROR: {exc}")
+        return json_response(500, {"error": str(exc), "summary": summary})
 
 
 def delete_model(model_id: str) -> Dict[str, Any]:
-    """Delete a model record from the models table."""
     if not model_id:
-        return {'statusCode': 400, 'body': json.dumps({'error': 'model_id is required'})}
+        return json_response(400, {"error": "model_id is required"})
 
     try:
         table = dynamodb.Table(MODELS_TABLE)
         lookup = table.query(
-            KeyConditionExpression=Key('id').eq(model_id),
+            KeyConditionExpression=Key("id").eq(model_id),
             Limit=1,
             ScanIndexForward=False,
         )
-        items = lookup.get('Items', [])
+        items = lookup.get("Items", [])
         if not items:
-            return {
-                'statusCode': 404,
-                'body': json.dumps({'error': f'Model {model_id} not found'}, cls=DynamoDBEncoder),
-            }
+            return json_response(404, {"error": f"Model {model_id} not found"})
 
         existing = items[0]
         response = table.delete_item(
-            Key={'id': model_id, 'timestamp': existing['timestamp']},
-            ReturnValues='ALL_OLD',
+            Key={"id": model_id, "timestamp": existing["timestamp"]},
+            ReturnValues="ALL_OLD",
         )
-        deleted = response.get('Attributes')
+        deleted = response.get("Attributes")
         if not deleted:
-            return {
-                'statusCode': 404,
-                'body': json.dumps({'error': f'Model {model_id} not found'}, cls=DynamoDBEncoder),
-            }
+            return json_response(404, {"error": f"Model {model_id} not found"})
+        return json_response(200, {"message": f"Model {model_id} deleted successfully", "data": deleted})
+    except Exception as exc:
+        print(f"[delete_model] ERROR: {exc}")
+        return json_response(500, {"error": str(exc)})
 
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': f'Model {model_id} deleted successfully',
-                'data': deleted,
-            }, cls=DynamoDBEncoder),
-        }
-    except Exception as e:
-        print(f"[delete_model] ERROR: {str(e)}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)}, cls=DynamoDBEncoder),
-        }
 
-def get_devices(device_id: Optional[str] = None, created: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None, sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
-    """Query devices table with optional filters and pagination."""
-    from boto3.dynamodb.conditions import Key, Attr
+def get_devices(
+    device_id: Optional[str] = None,
+    created: Optional[str] = None,
+    limit: int = DEFAULT_PAGE_LIMIT,
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False,
+) -> Dict[str, Any]:
     table = dynamodb.Table(DEVICES_TABLE)
-    base_params = {}
+    params: Dict[str, Any] = {"Limit": min(limit, 5000) if limit else DEFAULT_PAGE_LIMIT}
     try:
-        base_params['Limit'] = min(limit, 5000) if limit else 100
         if next_token:
             try:
-                base_params['ExclusiveStartKey'] = json.loads(next_token)
-            except json.JSONDecodeError:
-                raise ValueError('Invalid next_token format')
-        filter_expressions = []
+                params["ExclusiveStartKey"] = json.loads(next_token)
+            except json.JSONDecodeError as exc:
+                raise ValueError("Invalid next_token format") from exc
+
+        filters = []
         if device_id:
-            filter_expressions.append(Attr('device_id').eq(device_id))
+            filters.append(Attr("device_id").eq(device_id))
         if created:
-            filter_expressions.append(Attr('created').eq(created))
-        if filter_expressions:
-            combined_filter = filter_expressions[0]
-            for expr in filter_expressions[1:]:
-                combined_filter = combined_filter & expr
-            base_params['FilterExpression'] = combined_filter
-        # Only set projection if both fields are known to exist
-        base_params['ProjectionExpression'] = "device_id, created"
-        print(f"[get_devices] SCAN params: {base_params}")
-        response = table.scan(**base_params)
-        items = response.get('Items', [])
-        if sort_by and items:
-            if any(sort_by in item for item in items):
-                reverse_sort = bool(sort_desc)
-                items = sorted(
-                    items,
-                    key=lambda x: (sort_by in x, x.get(sort_by)),
-                    reverse=reverse_sort
-                )
-                print(f"[get_devices] Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
-        result = {
-            'items': items,
-            'next_token': json.dumps(response.get('LastEvaluatedKey')) if response.get('LastEvaluatedKey') else None
-        }
+            filters.append(Attr("created").eq(created))
+        if filters:
+            expr = filters[0]
+            for extra in filters[1:]:
+                expr = expr & extra
+            params["FilterExpression"] = expr
+        params["ProjectionExpression"] = "device_id, created"
+
+        response = table.scan(**params)
+        items = response.get("Items", [])
+        if sort_by and items and any(sort_by in item for item in items):
+            items = sorted(items, key=lambda item: (sort_by in item, item.get(sort_by)), reverse=bool(sort_desc))
+        result = {"items": items, "next_token": None}
+        if response.get("LastEvaluatedKey"):
+            result["next_token"] = json.dumps(response["LastEvaluatedKey"])
         return result
-    except Exception as e:
-        print(f"[get_devices] ERROR: {str(e)}\n{traceback.format_exc()}")
-        return {'items': [], 'next_token': None, 'error': str(e), 'traceback': traceback.format_exc()}
-
-def _load_schema() -> Dict[str, Any]:
-    """Load the DB schema from the appropriate location"""
-    try:
-        # First try to look for schema in the deployed Lambda environment
-        schema_path = os.path.join('/opt', 'db-schema.json')
-        if os.path.exists(schema_path):
-            print(f"Loading DB schema from Lambda layer: {schema_path}")
-            with open(schema_path, 'r') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Could not load schema from Lambda layer: {str(e)}")
-    
-    # Fall back to loading from common directory during local development
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    schema_path = os.path.join(base_dir, 'common', 'db-schema.json')
-    print(f"Loading DB schema from local path: {schema_path}")
-    
-    try:
-        with open(schema_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        error_msg = f"Failed to load schema from {schema_path}: {str(e)}"
-        print(error_msg)
-        raise ValueError(error_msg)
-
-# Load the schema once
-SCHEMA = _load_schema()
-
-def _validate_data(data: Dict[str, Any], table_type: str) -> (bool, str):
-    """Generic validation function for both detection and classification data"""
-    try:
-        # Print debugging info
-        print(f"Validating {table_type} data")
-        print(f"Available schema keys: {list(SCHEMA['properties'].keys())}")
-        print(f"Input data keys: {list(data.keys())}")
-        
-        # Map table types to schema keys (handling singular/plural mismatch)
-        schema_type_mapping = {
-            'model': 'models',
-            'detection': 'sensor_detections',
-            'classification': 'sensor_classifications',
-            'video': 'videos',
-            'environmental_reading': 'environmental_readings',
-            'deployment': 'deployments',
-            'deployment_device_connection': 'deployment_device_connections',
+    except Exception as exc:
+        print(f"[get_devices] ERROR: {exc}\n{traceback.format_exc()}")
+        return {
+            "items": [],
+            "next_token": None,
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
         }
-        
-        # Use mapped schema key if available
-        schema_key = schema_type_mapping.get(table_type, table_type)
-        
-        # Check schema existence
-        if schema_key not in SCHEMA['properties']:
-            error_msg = f"Schema for {table_type} not found in DB schema (looked for '{schema_key}')"
-            print(error_msg)
-            return False, error_msg
-        
-        # Use the mapped schema key to get the schema properties
-        db_schema = SCHEMA['properties'][schema_key]
-        
-        # Print schema info for debugging
-        print(f"Schema required fields: {db_schema.get('required', [])}")
-        print(f"Schema properties: {list(db_schema.get('properties', {}).keys())}")
-        
-        # Check required fields
-        required_fields = db_schema.get('required', [])
-        missing_fields = [field for field in required_fields if field not in data]
-        if missing_fields:
-            error_msg = f"Missing required fields: {', '.join(missing_fields)}"
-            print(error_msg)
-            return False, error_msg
-        
-        # Check field types
-        for field, value in data.items():
-            if field in db_schema.get('properties', {}):
-                field_type = db_schema['properties'][field].get('type')
-                
-                # String validation
-                if field_type == 'string' and not isinstance(value, str):
-                    error_msg = f"Field {field} should be a string, got {type(value)}"
-                    print(error_msg)
-                    return False, error_msg
-                    
-                # Number validation and conversion to Decimal
-                elif field_type == 'number':
-                    try:
-                        if not isinstance(value, Decimal):
-                            if isinstance(value, str):
-                                data[field] = Decimal(value)
-                            elif isinstance(value, (float, int)):
-                                data[field] = Decimal(str(value))
-                            else:
-                                error_msg = f"Field {field} should be a number, got {type(value)}"
-                                print(error_msg)
-                                return False, error_msg
-                    except (ValueError, TypeError) as e:
-                        error_msg = f"Could not convert {field} to Decimal: {value}. Error: {str(e)}"
-                        print(error_msg)
-                        return False, error_msg
-                
-                # Array validation for bounding_box: must be [xmin, ymin, xmax, ymax]
-                elif field == "bounding_box" and isinstance(value, list):
-                    if len(value) != 4:
-                        error_msg = f"Bounding box must be a list of 4 numbers [xmin, ymin, xmax, ymax], got {value}"
-                        print(error_msg)
-                        return False, error_msg
-                    if not all(isinstance(coord, (int, float, Decimal)) for coord in value):
-                        error_msg = f"All bounding box coordinates should be numbers, got {value}"
-                        print(error_msg)
-                        return False, error_msg
-                    xmin, ymin, xmax, ymax = value
-                    if not (xmin < xmax and ymin < ymax):
-                        error_msg = f"Bounding box coordinates must satisfy xmin < xmax and ymin < ymax, got {value}"
-                        print(error_msg)
-                        return False, error_msg
-                    # Convert all coordinates to Decimal for DynamoDB compatibility
-                    try:
-                        for i, coord in enumerate(value):
-                            if not isinstance(coord, Decimal):
-                                data[field][i] = Decimal(str(coord))
-                    except (ValueError, TypeError) as e:
-                        error_msg = f"Could not convert bounding_box coordinates to Decimal: {value}. Error: {str(e)}"
-                        print(error_msg)
-                        return False, error_msg
-                elif field == "bounding_box":
-                    error_msg = f"Field bounding_box should be an array of numbers, got {type(value)}"
-                    print(error_msg)
-                    return False, error_msg
-        
-        return True, ""
-    except Exception as e:
-        error_msg = f"Unexpected error in validation: {str(e)}"
-        print(error_msg)
-        return False, error_msg
 
 
-def _store_data(data: Dict[str, Any], table_name: str, data_type: str) -> Dict[str, Any]:
-    """Generic function to store data in DynamoDB"""
-    # Validate against schema
-    is_valid, error_message = _validate_data(data, data_type)
-    if not is_valid:
-        detailed_error = f"{data_type} data does not match schema: {error_message}"
-        print(detailed_error)
-        raise ValueError(detailed_error)
-    
-
-    
-    # Store in DynamoDB
-    table = dynamodb.Table(table_name)
-    table.put_item(Item=data)
-    
-    return {
-        'statusCode': 200,
-        'body': json.dumps({
-            'message': f'{data_type.replace("sensor_", "").capitalize()} data stored successfully',
-            'data': data
-        }, cls=DynamoDBEncoder)
-    }
-
-def store_detection_data(data):
-    """Store sensor detection data in DynamoDB"""
-    return _store_data(data, DETECTIONS_TABLE, 'detection')
-
-def store_classification_data(data):
-    """Store sensor classification data in DynamoDB"""
-    return _store_data(data, CLASSIFICATIONS_TABLE, 'classification')
-
-def store_model_data(data):
-    """Store model data in DynamoDB"""
-    # Models must have an id field which is the primary key
-    if 'id' not in data:
+def store_model_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    if "id" not in data:
         raise ValueError("Model data must contain an 'id' field")
-        
-    # Set the type field which is required by the schema
-    if 'type' not in data:
-        data['type'] = 'model'  # Default type
-        
-    return _store_data(data, MODELS_TABLE, 'model')
-
-def store_video_data(data):
-    """Store video data in DynamoDB"""
-    # Set the type field which is required by the schema
-    if 'type' not in data:
-        data['type'] = 'video'  # Default type
-        
-    return _store_data(data, VIDEOS_TABLE, 'video')
-
-def store_environmental_data(data):
-    """Store environmental reading data in DynamoDB"""
-    return _store_data(data, ENVIRONMENTAL_READINGS_TABLE, 'environmental_reading')
-
-def query_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None,
-                           end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
-                           sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
-    """Query environmental readings data with filtering and pagination."""
-    return query_data('environmental_reading', device_id, None, start_time, end_time, limit, next_token, sort_by, sort_desc)
-
-def count_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
-    """Count environmental readings with filtering."""
-    return count_data('environmental_reading', device_id, None, start_time, end_time)
-
-
-def _response(status_code: int, payload: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        'statusCode': status_code,
-        'body': json.dumps(payload, cls=DynamoDBEncoder),
-    }
+    if "type" not in data:
+        data["type"] = "model"
+    dynamodb.Table(MODELS_TABLE).put_item(Item=data)
+    return json_response(200, {"message": "Model data stored successfully", "data": data})
 
 
 def _parse_time(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
+    normalized_value = str(value)
     try:
-        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-        if parsed.tzinfo is not None:
-            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
-        return parsed
-    except Exception:
-        pass
-    for fmt in ('%Y%m%d_%H%M%S', '%Y-%m-%d %H:%M:%S'):
-        try:
-            return datetime.strptime(str(value), fmt)
-        except Exception:
-            continue
-    return None
+        parsed = datetime.fromisoformat(normalized_value.replace("Z", "+00:00"))
+    except ValueError:
+        for fmt in ("%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(normalized_value, fmt)
+            except ValueError:
+                continue
+        raise ValueError(f"Unsupported timestamp format: {value}")
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
 
 
 def _timestamp_in_range(timestamp: Optional[str], start_time: Optional[str], end_time: Optional[str]) -> bool:
@@ -627,26 +300,22 @@ def _coerce_number(value: Any) -> Optional[float]:
         return None
 
 
-def _scan_all(table, **kwargs) -> List[Dict[str, Any]]:
+def _paginate_all(table: Any, method: str, **kwargs: Any) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
-    response = table.scan(**kwargs)
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
-        response = table.scan(**kwargs)
-        items.extend(response.get('Items', []))
+    paginator = getattr(table, method)
+    response = paginator(**kwargs)
+    items.extend(response.get("Items", []))
+    while "LastEvaluatedKey" in response:
+        kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+        response = paginator(**kwargs)
+        items.extend(response.get("Items", []))
     return items
 
 
-def _query_all(table, **kwargs) -> List[Dict[str, Any]]:
-    items: List[Dict[str, Any]] = []
-    response = table.query(**kwargs)
-    items.extend(response.get('Items', []))
-    while 'LastEvaluatedKey' in response:
-        kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
-        response = table.query(**kwargs)
-        items.extend(response.get('Items', []))
-    return items
+def _list_all_device_ids() -> List[str]:
+    devices_table = dynamodb.Table(DEVICES_TABLE)
+    devices = _paginate_all(devices_table, "scan", ProjectionExpression="device_id")
+    return [device["device_id"] for device in devices if device.get("device_id")]
 
 
 def _sort_items(items: List[Dict[str, Any]], sort_by: Optional[str], sort_desc: bool) -> List[Dict[str, Any]]:
@@ -654,9 +323,8 @@ def _sort_items(items: List[Dict[str, Any]], sort_by: Optional[str], sort_desc: 
         return items
 
     def sort_key(item: Dict[str, Any]) -> Any:
-        if sort_by == 'timestamp':
-            parsed = _parse_time(item.get('timestamp'))
-            return parsed or datetime.min
+        if sort_by == "timestamp":
+            return _parse_time(item.get("timestamp")) or datetime.min
         return item.get(sort_by)
 
     return sorted(items, key=sort_key, reverse=sort_desc)
@@ -667,104 +335,104 @@ def _parse_offset_token(next_token: Optional[str]) -> int:
         return 0
     try:
         data = json.loads(next_token)
-        return max(int(data.get('offset', 0)), 0)
+        return max(int(data.get("offset", 0)), 0)
     except Exception as exc:
-        raise ValueError('Invalid next_token format') from exc
+        raise ValueError("Invalid next_token format") from exc
 
 
 def _build_offset_token(offset: int) -> str:
-    return json.dumps({'offset': offset})
+    return json.dumps({"offset": offset})
 
 
 def _paginate_items(items: List[Dict[str, Any]], limit: int, next_token: Optional[str]) -> Dict[str, Any]:
     offset = _parse_offset_token(next_token)
     page = items[offset:offset + limit]
-    result = {
-        'items': page,
-        'count': len(page),
-    }
+    result = {"items": page, "count": len(page)}
     if offset + limit < len(items):
-        result['next_token'] = _build_offset_token(offset + limit)
+        result["next_token"] = _build_offset_token(offset + limit)
     return result
 
 
 def device_exists(device_id: str) -> bool:
-    table = dynamodb.Table(DEVICES_TABLE)
-    response = table.get_item(Key={'device_id': device_id})
-    return 'Item' in response
+    response = dynamodb.Table(DEVICES_TABLE).get_item(Key={"device_id": device_id})
+    return "Item" in response
 
 
 def get_deployment(deployment_id: str) -> Optional[Dict[str, Any]]:
-    table = dynamodb.Table(DEPLOYMENTS_TABLE)
-    response = table.get_item(Key={'deployment_id': deployment_id})
-    return response.get('Item')
+    response = dynamodb.Table(DEPLOYMENTS_TABLE).get_item(Key={"deployment_id": deployment_id})
+    return response.get("Item")
 
 
-def list_deployments(limit: int = 100, next_token: Optional[str] = None,
-                     sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
+def list_deployments(
+    limit: int = DEFAULT_PAGE_LIMIT,
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False,
+) -> Dict[str, Any]:
     table = dynamodb.Table(DEPLOYMENTS_TABLE)
-    params: Dict[str, Any] = {'Limit': min(limit, 5000) if limit else 100}
+    params: Dict[str, Any] = {"Limit": min(limit, 5000) if limit else DEFAULT_PAGE_LIMIT}
     if next_token:
         try:
-            params['ExclusiveStartKey'] = json.loads(next_token)
+            params["ExclusiveStartKey"] = json.loads(next_token)
         except json.JSONDecodeError as exc:
-            raise ValueError('Invalid next_token format') from exc
+            raise ValueError("Invalid next_token format") from exc
     response = table.scan(**params)
-    items = _sort_items(response.get('Items', []), sort_by, sort_desc)
-    result = {'items': items, 'count': len(items)}
-    if 'LastEvaluatedKey' in response:
-        result['next_token'] = json.dumps(response['LastEvaluatedKey'])
+    items = _sort_items(response.get("Items", []), sort_by, sort_desc)
+    result = {"items": items, "count": len(items)}
+    if "LastEvaluatedKey" in response:
+        result["next_token"] = json.dumps(response["LastEvaluatedKey"])
     return result
 
 
 def store_deployment_data(data: Dict[str, Any]) -> Dict[str, Any]:
     table = dynamodb.Table(DEPLOYMENTS_TABLE)
     try:
-        table.put_item(
-            Item=data,
-            ConditionExpression='attribute_not_exists(deployment_id)',
-        )
+        table.put_item(Item=data, ConditionExpression="attribute_not_exists(deployment_id)")
     except ClientError as exc:
-        if exc.response.get('Error', {}).get('Code') == 'ConditionalCheckFailedException':
-            return _response(409, {'error': f"Deployment {data['deployment_id']} already exists"})
+        if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            return json_response(409, {"error": f"Deployment {data['deployment_id']} already exists"})
         raise
-    return _response(200, {'message': 'Deployment stored successfully', 'deployment': data})
+    return json_response(200, {"message": "Deployment stored successfully", "deployment": data})
 
 
 def update_deployment_data(deployment_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
     table = dynamodb.Table(DEPLOYMENTS_TABLE)
     if not get_deployment(deployment_id):
-        return _response(404, {'error': f'Deployment {deployment_id} not found'})
+        return json_response(404, {"error": f"Deployment {deployment_id} not found"})
 
-    update_parts = []
-    expr_attr_values = {}
-    expr_attr_names = {}
-    for key, value in updates.items():
-        expr_attr_names[f'#field_{key}'] = key
-        expr_attr_values[f':val_{key}'] = value
-        update_parts.append(f'#field_{key} = :val_{key}')
-
+    update_expression = _build_update_expression(updates)
     response = table.update_item(
-        Key={'deployment_id': deployment_id},
-        UpdateExpression='SET ' + ', '.join(update_parts),
-        ExpressionAttributeNames=expr_attr_names,
-        ExpressionAttributeValues=expr_attr_values,
-        ReturnValues='ALL_NEW',
+        Key={"deployment_id": deployment_id},
+        **update_expression,
+        ReturnValues="ALL_NEW",
     )
-    return _response(200, {'message': 'Deployment updated successfully', 'deployment': response.get('Attributes', {})})
+    return json_response(200, {"message": "Deployment updated successfully", "deployment": response.get("Attributes", {})})
 
 
 def list_deployment_devices(deployment_id: str) -> List[Dict[str, Any]]:
-    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
-    items = _query_all(
-        table,
-        KeyConditionExpression=Key('deployment_id').eq(deployment_id),
+    return _paginate_all(
+        dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE),
+        "query",
+        KeyConditionExpression=Key("deployment_id").eq(deployment_id),
     )
-    return items
 
 
 def list_device_ids_for_deployment(deployment_id: str) -> List[str]:
-    return [item['device_id'] for item in list_deployment_devices(deployment_id) if 'device_id' in item]
+    return [item["device_id"] for item in list_deployment_devices(deployment_id) if "device_id" in item]
+
+
+def _build_update_expression(updates: Dict[str, Any]) -> Dict[str, Any]:
+    expression_attribute_names = {f"#field_{key}": key for key in updates}
+    expression_attribute_values = {f":val_{key}": value for key, value in updates.items()}
+    update_expression = "SET " + ", ".join(
+        f"#field_{key} = :val_{key}"
+        for key in updates
+    )
+    return {
+        "UpdateExpression": update_expression,
+        "ExpressionAttributeNames": expression_attribute_names,
+        "ExpressionAttributeValues": expression_attribute_values,
+    }
 
 
 def store_deployment_device_connection_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -772,225 +440,277 @@ def store_deployment_device_connection_data(data: Dict[str, Any]) -> Dict[str, A
     try:
         table.put_item(
             Item=data,
-            ConditionExpression='attribute_not_exists(deployment_id) AND attribute_not_exists(device_id)',
+            ConditionExpression="attribute_not_exists(deployment_id) AND attribute_not_exists(device_id)",
         )
     except ClientError as exc:
-        if exc.response.get('Error', {}).get('Code') == 'ConditionalCheckFailedException':
-            return _response(409, {
-                'error': f"Deployment device {data['deployment_id']}/{data['device_id']} already exists"
-            })
+        if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            return json_response(
+                409,
+                {"error": f"Deployment device {data['deployment_id']}/{data['device_id']} already exists"},
+            )
         raise
-    return _response(200, data)
+    return json_response(200, data)
 
 
 def update_deployment_device_connection(deployment_id: str, device_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
     table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
-    existing = table.get_item(Key={'deployment_id': deployment_id, 'device_id': device_id}).get('Item')
+    existing = table.get_item(Key={"deployment_id": deployment_id, "device_id": device_id}).get("Item")
     if not existing:
-        return _response(404, {'error': f'Deployment device {deployment_id}/{device_id} not found'})
+        return json_response(404, {"error": f"Deployment device {deployment_id}/{device_id} not found"})
 
-    expr_attr_names = {}
-    expr_attr_values = {}
-    update_parts = []
-    for key, value in updates.items():
-        expr_attr_names[f'#field_{key}'] = key
-        expr_attr_values[f':val_{key}'] = value
-        update_parts.append(f'#field_{key} = :val_{key}')
+    update_expression = _build_update_expression(updates)
     response = table.update_item(
-        Key={'deployment_id': deployment_id, 'device_id': device_id},
-        UpdateExpression='SET ' + ', '.join(update_parts),
-        ExpressionAttributeNames=expr_attr_names,
-        ExpressionAttributeValues=expr_attr_values,
-        ReturnValues='ALL_NEW',
+        Key={"deployment_id": deployment_id, "device_id": device_id},
+        **update_expression,
+        ReturnValues="ALL_NEW",
     )
-    return _response(200, response.get('Attributes', {}))
+    return json_response(200, response.get("Attributes", {}))
 
 
 def delete_deployment_device_connection(deployment_id: str, device_id: str) -> Dict[str, Any]:
     table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
     response = table.delete_item(
-        Key={'deployment_id': deployment_id, 'device_id': device_id},
-        ReturnValues='ALL_OLD',
+        Key={"deployment_id": deployment_id, "device_id": device_id},
+        ReturnValues="ALL_OLD",
     )
-    deleted = response.get('Attributes')
+    deleted = response.get("Attributes")
     if not deleted:
-        return _response(404, {'error': f'Deployment device {deployment_id}/{device_id} not found'})
-    return _response(200, deleted)
+        return json_response(404, {"error": f"Deployment device {deployment_id}/{device_id} not found"})
+    return json_response(200, deleted)
 
 
 def delete_deployment(deployment_id: str) -> Dict[str, Any]:
     deployment = get_deployment(deployment_id)
     if not deployment:
-        return _response(404, {'error': f'Deployment {deployment_id} not found'})
+        return json_response(404, {"error": f"Deployment {deployment_id} not found"})
 
-    connections_table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
     connections = list_deployment_devices(deployment_id)
-    with connections_table.batch_writer() as batch_writer:
+    table = dynamodb.Table(DEPLOYMENT_DEVICE_CONNECTIONS_TABLE)
+    with table.batch_writer() as batch_writer:
         for connection in connections:
             batch_writer.delete_item(
-                Key={'deployment_id': connection['deployment_id'], 'device_id': connection['device_id']}
+                Key={"deployment_id": connection["deployment_id"], "device_id": connection["device_id"]}
             )
 
-    deployments_table = dynamodb.Table(DEPLOYMENTS_TABLE)
-    deployments_table.delete_item(Key={'deployment_id': deployment_id})
-    return _response(200, {'deployment': deployment, 'deleted_connections': len(connections)})
+    dynamodb.Table(DEPLOYMENTS_TABLE).delete_item(Key={"deployment_id": deployment_id})
+    return json_response(200, {"deployment": deployment, "deleted_connections": len(connections)})
 
 
-def _load_table_items_for_devices(table_name: str, device_ids: Optional[List[str]], start_time: Optional[str],
-                                  end_time: Optional[str]) -> List[Dict[str, Any]]:
+def _load_table_items_for_devices(
+    table_name: str,
+    device_ids: Optional[List[str]],
+    start_time: Optional[str],
+    end_time: Optional[str],
+) -> List[Dict[str, Any]]:
     table = dynamodb.Table(table_name)
-    if device_ids is not None:
-        if not device_ids:
-            return []
-        all_items: List[Dict[str, Any]] = []
-        for device_id in device_ids:
-            all_items.extend(_query_all(table, KeyConditionExpression=Key('device_id').eq(device_id)))
-    else:
-        all_items = _scan_all(table)
+    resolved_device_ids = _list_all_device_ids() if device_ids is None else device_ids
+    if not resolved_device_ids:
+        return []
+
+    all_items: List[Dict[str, Any]] = []
+    for device_id in resolved_device_ids:
+        all_items.extend(_paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(device_id)))
 
     if start_time or end_time:
         all_items = [
-            item for item in all_items
-            if _timestamp_in_range(item.get('timestamp'), start_time, end_time)
+            item for item in all_items if _timestamp_in_range(item.get("timestamp"), start_time, end_time)
+        ]
+    return all_items
+
+
+def _load_tracks_for_devices(
+    device_ids: Optional[List[str]],
+    start_time: Optional[str],
+    end_time: Optional[str],
+) -> List[Dict[str, Any]]:
+    table = dynamodb.Table(TRACKS_TABLE)
+    resolved_device_ids = _list_all_device_ids() if device_ids is None else device_ids
+    if not resolved_device_ids:
+        return []
+
+    all_items: List[Dict[str, Any]] = []
+    for device_id in resolved_device_ids:
+        all_items.extend(
+            _paginate_all(
+                table,
+                "query",
+                IndexName="device_id_index",
+                KeyConditionExpression=Key("device_id").eq(device_id),
+            )
+        )
+
+    if start_time or end_time:
+        all_items = [
+            item for item in all_items if _timestamp_in_range(item.get("timestamp"), start_time, end_time)
         ]
     return all_items
 
 
 def _classification_confidence(item: Dict[str, Any], taxonomy_level: Optional[str]) -> Optional[float]:
-    confidence_field = f'{taxonomy_level}_confidence' if taxonomy_level else 'species_confidence'
-    confidence = _coerce_number(item.get(confidence_field))
-    if confidence is not None:
-        return confidence
-    for fallback in ('species_confidence', 'genus_confidence', 'family_confidence'):
-        confidence = _coerce_number(item.get(fallback))
-        if confidence is not None:
-            return confidence
-    return None
+    confidence_field = f"{taxonomy_level}_confidence" if taxonomy_level else "species_confidence"
+    return _coerce_number(item.get(confidence_field))
 
 
-def _filter_classification_items(items: List[Dict[str, Any]], model_id: Optional[str],
-                                 min_confidence: Optional[float], taxonomy_level: Optional[str],
-                                 selected_taxa: List[str]) -> List[Dict[str, Any]]:
+def _filter_classification_items(
+    items: List[Dict[str, Any]],
+    model_id: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> List[Dict[str, Any]]:
     filtered: List[Dict[str, Any]] = []
     for item in items:
-        if model_id and item.get('model_id') != model_id:
+        if model_id and item.get("model_id") != model_id:
             continue
         if min_confidence is not None:
             confidence = _classification_confidence(item, taxonomy_level)
             if confidence is None or confidence < min_confidence:
                 continue
-        if taxonomy_level and selected_taxa:
-            if item.get(taxonomy_level) not in selected_taxa:
-                continue
+        if taxonomy_level and selected_taxa and item.get(taxonomy_level) not in selected_taxa:
+            continue
         filtered.append(item)
     return filtered
 
 
-def list_classifications(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
-                         end_time: Optional[str], min_confidence: Optional[float],
-                         taxonomy_level: Optional[str], selected_taxa: List[str], limit: int,
-                         next_token: Optional[str], sort_by: Optional[str], sort_desc: bool) -> Dict[str, Any]:
+def list_classifications(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: Optional[str],
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+    limit: int,
+    next_token: Optional[str],
+    sort_by: Optional[str],
+    sort_desc: bool,
+) -> Dict[str, Any]:
     items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
     items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
-    items = _sort_items(items, sort_by or 'timestamp', sort_desc)
-    return _paginate_items(items, min(limit, 5000) if limit else 100, next_token)
+    items = _sort_items(items, sort_by or "timestamp", sort_desc)
+    return _paginate_items(items, min(limit, 5000) if limit else DEFAULT_PAGE_LIMIT, next_token)
 
 
-def count_classifications(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
-                          end_time: Optional[str], min_confidence: Optional[float],
-                          taxonomy_level: Optional[str], selected_taxa: List[str]) -> Dict[str, Any]:
+def count_classifications(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: Optional[str],
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> Dict[str, Any]:
     items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
     items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
-    return {'count': len(items)}
+    return {"count": len(items)}
 
 
-def get_classification_taxa_count(device_ids: Optional[List[str]], model_id: Optional[str], start_time: Optional[str],
-                                  end_time: Optional[str], min_confidence: Optional[float],
-                                  taxonomy_level: str, selected_taxa: List[str], sort_desc: bool) -> Dict[str, Any]:
+def get_classification_taxa_count(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: Optional[str],
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: str,
+    selected_taxa: List[str],
+    sort_desc: bool,
+) -> Dict[str, Any]:
     items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
     items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
     counts: Dict[str, int] = {}
     for item in items:
         taxa_value = item.get(taxonomy_level)
-        if not taxa_value:
-            continue
-        counts[taxa_value] = counts.get(taxa_value, 0) + 1
-    counted = [{'taxa': taxa, 'count': count} for taxa, count in counts.items()]
-    counted = sorted(counted, key=lambda item: item['count'], reverse=sort_desc)
-    return {'counts': counted}
+        if taxa_value:
+            counts[taxa_value] = counts.get(taxa_value, 0) + 1
+    counted = [{"taxa": taxa, "count": count} for taxa, count in counts.items()]
+    counted = sorted(counted, key=lambda item: item["count"], reverse=sort_desc)
+    return {"counts": counted}
 
 
-def _bucket_timestamps(items: List[Dict[str, Any]], start_time: str, end_time: Optional[str],
-                       interval_length: int, interval_unit: str) -> Dict[str, Any]:
+def _bucket_timestamps(
+    items: List[Dict[str, Any]],
+    start_time: str,
+    end_time: Optional[str],
+    interval_length: int,
+    interval_unit: str,
+) -> Dict[str, Any]:
     start_dt = _parse_time(start_time)
     if start_dt is None:
-        raise ValueError('Invalid start_time')
-    interval_delta = timedelta(hours=interval_length) if interval_unit == 'h' else timedelta(days=interval_length)
+        raise ValueError("Invalid start_time")
+    interval_delta = timedelta(hours=interval_length) if interval_unit == "h" else timedelta(days=interval_length)
     end_dt = _parse_time(end_time)
     if end_dt is None:
-        parsed_items = [_parse_time(item.get('timestamp')) for item in items if _parse_time(item.get('timestamp'))]
+        parsed_items = [_parse_time(item.get("timestamp")) for item in items if _parse_time(item.get("timestamp"))]
         end_dt = (max(parsed_items) + interval_delta) if parsed_items else (start_dt + interval_delta)
     if end_dt <= start_dt:
         end_dt = start_dt + interval_delta
     bucket_count = max(int((end_dt - start_dt) / interval_delta), 1)
     return {
-        'start_dt': start_dt,
-        'end_dt': end_dt,
-        'interval_delta': interval_delta,
-        'bucket_count': bucket_count,
+        "start_dt": start_dt,
+        "end_dt": end_dt,
+        "interval_delta": interval_delta,
+        "bucket_count": bucket_count,
     }
 
 
-def get_classification_time_series(device_ids: Optional[List[str]], model_id: Optional[str], start_time: str,
-                                   end_time: Optional[str], min_confidence: Optional[float],
-                                   taxonomy_level: Optional[str], selected_taxa: List[str],
-                                   interval_length: int, interval_unit: str) -> Dict[str, Any]:
+def get_classification_time_series(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: str,
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+    interval_length: int,
+    interval_unit: str,
+) -> Dict[str, Any]:
     items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
     items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
     bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
-    counts = [0] * bucket_config['bucket_count']
+    counts = [0] * bucket_config["bucket_count"]
     for item in items:
-        item_time = _parse_time(item.get('timestamp'))
-        if not item_time:
+        item_time = _parse_time(item.get("timestamp"))
+        if not item_time or item_time < bucket_config["start_dt"] or item_time >= bucket_config["end_dt"]:
             continue
-        if item_time < bucket_config['start_dt'] or item_time >= bucket_config['end_dt']:
-            continue
-        bucket_index = int((item_time - bucket_config['start_dt']) / bucket_config['interval_delta'])
+        bucket_index = int((item_time - bucket_config["start_dt"]) / bucket_config["interval_delta"])
         if 0 <= bucket_index < len(counts):
             counts[bucket_index] += 1
     return {
-        'counts': counts,
-        'start_time': bucket_config['start_dt'].isoformat(),
-        'interval_length': interval_length,
-        'interval_unit': interval_unit,
+        "counts": counts,
+        "start_time": bucket_config["start_dt"].isoformat(),
+        "interval_length": interval_length,
+        "interval_unit": interval_unit,
     }
 
 
-def get_environment_time_series(device_ids: Optional[List[str]], start_time: str, end_time: Optional[str],
-                                interval_length: int, interval_unit: str) -> Dict[str, Any]:
+def get_environment_time_series(
+    device_ids: Optional[List[str]],
+    start_time: str,
+    end_time: Optional[str],
+    interval_length: int,
+    interval_unit: str,
+) -> Dict[str, Any]:
     items = _load_table_items_for_devices(ENVIRONMENTAL_READINGS_TABLE, device_ids, start_time, end_time)
     bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
     metric_map = {
-        'ambient_temperature': 'temperature',
-        'ambient_humidity': 'humidity',
-        'pm1p0': 'pm1p0',
-        'pm2p5': 'pm2p5',
-        'pm4p0': 'pm4p0',
-        'pm10p0': 'pm10',
-        'voc_index': 'voc',
-        'nox_index': 'nox',
+        "ambient_temperature": "temperature",
+        "ambient_humidity": "humidity",
+        "pm1p0": "pm1p0",
+        "pm2p5": "pm2p5",
+        "pm4p0": "pm4p0",
+        "pm10p0": "pm10",
+        "voc_index": "voc",
+        "nox_index": "nox",
     }
-    bucket_totals = {output_key: [0.0] * bucket_config['bucket_count'] for output_key in metric_map.values()}
-    bucket_counts = {output_key: [0] * bucket_config['bucket_count'] for output_key in metric_map.values()}
+    bucket_totals = {output_key: [0.0] * bucket_config["bucket_count"] for output_key in metric_map.values()}
+    bucket_counts = {output_key: [0] * bucket_config["bucket_count"] for output_key in metric_map.values()}
 
     for item in items:
-        item_time = _parse_time(item.get('timestamp'))
-        if not item_time:
+        item_time = _parse_time(item.get("timestamp"))
+        if not item_time or item_time < bucket_config["start_dt"] or item_time >= bucket_config["end_dt"]:
             continue
-        if item_time < bucket_config['start_dt'] or item_time >= bucket_config['end_dt']:
-            continue
-        bucket_index = int((item_time - bucket_config['start_dt']) / bucket_config['interval_delta'])
-        if not (0 <= bucket_index < bucket_config['bucket_count']):
+        bucket_index = int((item_time - bucket_config["start_dt"]) / bucket_config["interval_delta"])
+        if not (0 <= bucket_index < bucket_config["bucket_count"]):
             continue
         for source_key, output_key in metric_map.items():
             value = _coerce_number(item.get(source_key))
@@ -1002,149 +722,161 @@ def get_environment_time_series(device_ids: Optional[List[str]], start_time: str
     result = {}
     for output_key in metric_map.values():
         result[output_key] = [
-            (bucket_totals[output_key][index] / bucket_counts[output_key][index]) if bucket_counts[output_key][index] else 0
-            for index in range(bucket_config['bucket_count'])
+            (bucket_totals[output_key][index] / bucket_counts[output_key][index])
+            if bucket_counts[output_key][index]
+            else 0
+            for index in range(bucket_config["bucket_count"])
         ]
-
-    result.update({
-        'start_time': bucket_config['start_dt'].isoformat(),
-        'interval_length': interval_length,
-        'interval_unit': interval_unit,
-    })
+    result.update(
+        {
+            "start_time": bucket_config["start_dt"].isoformat(),
+            "interval_length": interval_length,
+            "interval_unit": interval_unit,
+        }
+    )
     return result
+
+
+def list_tracks(
+    device_ids: Optional[List[str]],
+    start_time: Optional[str],
+    end_time: Optional[str],
+    limit: int,
+    next_token: Optional[str],
+    sort_by: Optional[str],
+    sort_desc: bool,
+) -> Dict[str, Any]:
+    items = _load_tracks_for_devices(device_ids, start_time, end_time)
+    items = _sort_items(items, sort_by or "timestamp", sort_desc)
+    return _paginate_items(items, min(limit, 5000) if limit else DEFAULT_PAGE_LIMIT, next_token)
+
+
+def count_tracks(
+    device_ids: Optional[List[str]],
+    start_time: Optional[str],
+    end_time: Optional[str],
+) -> Dict[str, Any]:
+    items = _load_tracks_for_devices(device_ids, start_time, end_time)
+    return {"count": len(items)}
+
+
+def get_track(track_id: str) -> Optional[Dict[str, Any]]:
+    response = dynamodb.Table(TRACKS_TABLE).get_item(Key={"track_id": track_id})
+    return response.get("Item")
+
+
+def get_latest_heartbeats() -> Dict[str, Any]:
+    table = dynamodb.Table(HEARTBEATS_TABLE)
+    items: List[Dict[str, Any]] = []
+    for device_id in _list_all_device_ids():
+        response = table.query(
+            KeyConditionExpression=Key("device_id").eq(device_id),
+            ScanIndexForward=False,
+            Limit=1,
+        )
+        latest = response.get("Items", [])
+        if latest:
+            items.append(latest[0])
+    items = _sort_items(items, "timestamp", True)
+    return {"items": items, "count": len(items)}
+
+
+def put_track(item: Dict[str, Any]) -> None:
+    dynamodb.Table(TRACKS_TABLE).put_item(Item=item)
+
+
+def put_heartbeat(item: Dict[str, Any]) -> None:
+    dynamodb.Table(HEARTBEATS_TABLE).put_item(Item=item)
 
 
 def _load_items_for_query_data(table_type: str, device_id: Optional[str], model_id: Optional[str]) -> List[Dict[str, Any]]:
     table_name = {
-        'detection': DETECTIONS_TABLE,
-        'classification': CLASSIFICATIONS_TABLE,
-        'model': MODELS_TABLE,
-        'video': VIDEOS_TABLE,
-        'environmental_reading': ENVIRONMENTAL_READINGS_TABLE,
+        "detection": DETECTIONS_TABLE,
+        "classification": CLASSIFICATIONS_TABLE,
+        "model": MODELS_TABLE,
+        "video": VIDEOS_TABLE,
+        "environmental_reading": ENVIRONMENTAL_READINGS_TABLE,
     }[table_type]
     table = dynamodb.Table(table_name)
 
-    if table_type in {'detection', 'classification', 'video', 'environmental_reading'} and device_id:
-        return _query_all(table, KeyConditionExpression=Key('device_id').eq(device_id))
+    if table_type in {"detection", "classification", "video", "environmental_reading"} and device_id:
+        return _paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(device_id))
 
-    if table_type == 'model' and model_id:
-        item = table.get_item(Key={'id': model_id}).get('Item')
-        return [item] if item else []
+    if table_type == "model" and model_id:
+        try:
+            lookup = table.query(KeyConditionExpression=Key("id").eq(model_id))
+            return lookup.get("Items", [])
+        except Exception:
+            item = table.get_item(Key={"id": model_id}).get("Item")
+            return [item] if item else []
 
-    return _scan_all(table)
+    if table_type in {"detection", "classification", "video", "environmental_reading"}:
+        all_items: List[Dict[str, Any]] = []
+        for known_device_id in _list_all_device_ids():
+            all_items.extend(_paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(known_device_id)))
+        return all_items
+
+    return _paginate_all(table, "scan")
 
 
-def _filter_items_for_query_data(table_type: str, items: List[Dict[str, Any]], device_id: Optional[str],
-                                 model_id: Optional[str], start_time: Optional[str],
-                                 end_time: Optional[str]) -> List[Dict[str, Any]]:
+def _filter_items_for_query_data(
+    table_type: str,
+    items: List[Dict[str, Any]],
+    device_id: Optional[str],
+    model_id: Optional[str],
+    start_time: Optional[str],
+    end_time: Optional[str],
+) -> List[Dict[str, Any]]:
     filtered: List[Dict[str, Any]] = []
     for item in items:
-        if table_type == 'model':
-            if device_id and item.get('device_id') != device_id:
+        if table_type == "model":
+            if device_id and item.get("device_id") != device_id:
                 continue
-            if model_id and item.get('id') != model_id:
+            if model_id and item.get("id") != model_id:
                 continue
-        elif table_type in {'detection', 'classification', 'video'}:
-            if device_id and item.get('device_id') != device_id:
+        elif table_type in {"detection", "classification", "video"}:
+            if device_id and item.get("device_id") != device_id:
                 continue
-            if model_id and item.get('model_id') != model_id:
+            if model_id and item.get("model_id") != model_id:
                 continue
-        elif table_type == 'environmental_reading' and device_id and item.get('device_id') != device_id:
+        elif table_type == "environmental_reading" and device_id and item.get("device_id") != device_id:
             continue
 
-        if (start_time or end_time) and not _timestamp_in_range(item.get('timestamp'), start_time, end_time):
+        if (start_time or end_time) and not _timestamp_in_range(item.get("timestamp"), start_time, end_time):
             continue
-
         filtered.append(item)
     return filtered
 
-def count_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
-    """Count items in DynamoDB with filtering (efficiently using Select='COUNT')"""
-    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
+
+def count_data(
+    table_type: str,
+    device_id: Optional[str] = None,
+    model_id: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+) -> Dict[str, Any]:
+    if table_type not in ["detection", "classification", "model", "video", "environmental_reading"]:
+        raise ValueError(f"Invalid table_type: {table_type}")
+    items = _load_items_for_query_data(table_type, device_id, model_id)
+    items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
+    return {"count": len(items)}
+
+
+def query_data(
+    table_type: str,
+    device_id: Optional[str] = None,
+    model_id: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    limit: int = DEFAULT_PAGE_LIMIT,
+    next_token: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    sort_desc: bool = False,
+) -> Dict[str, Any]:
+    if table_type not in ["detection", "classification", "model", "video", "environmental_reading"]:
         raise ValueError(f"Invalid table_type: {table_type}")
 
     items = _load_items_for_query_data(table_type, device_id, model_id)
     items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
-    return {'count': len(items)}
-
-def query_data(table_type: str, device_id: Optional[str] = None, model_id: Optional[str] = None, start_time: Optional[str] = None,
-               end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
-               sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
-    """Unified query for all DynamoDB tables with filtering and pagination."""
-    if table_type not in ['detection', 'classification', 'model', 'video', 'environmental_reading']:
-        raise ValueError(f"Invalid table_type: {table_type}")
-
-    items = _load_items_for_query_data(table_type, device_id, model_id)
-    items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
-    # Only do in-memory sort for non-videos/models if needed
-    if table_type not in ['video', 'model'] and sort_by and items:
-        from dateutil.parser import isoparse
-        from datetime import datetime, timezone, MINYEAR
-        def safe_parse(val):
-            try:
-                dt = isoparse(val)
-                if dt.tzinfo is not None:
-                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-                return dt
-            except Exception:
-                # Always return a datetime for consistent sorting
-                # Use datetime.min for ascending, datetime.max for descending
-                return datetime.min if not sort_desc else datetime.max
-        if any(sort_by in item for item in items):
-            reverse_sort = bool(sort_desc)
-            if sort_by == "timestamp":
-                items = sorted(
-                    items,
-                    key=lambda x: safe_parse(x.get(sort_by)) if sort_by in x else (datetime.min if not sort_desc else datetime.max),
-                    reverse=reverse_sort
-                )
-            else:
-                items = sorted(
-                    items,
-                    key=lambda x: (sort_by in x, x.get(sort_by)),
-                    reverse=reverse_sort
-                )
-            print(f"Sorted {len(items)} items by {sort_by} in {'descending' if reverse_sort else 'ascending'} order")
-    return _paginate_items(items, min(limit, 5000) if limit else 100, next_token)
-
-def store_detection_data(data):
-    """Store sensor detection data in DynamoDB"""
-    return _store_data(data, DETECTIONS_TABLE, 'detection')
-
-def store_classification_data(data):
-    """Store sensor classification data in DynamoDB"""
-    return _store_data(data, CLASSIFICATIONS_TABLE, 'classification')
-
-def store_model_data(data):
-    """Store model data in DynamoDB"""
-    # Models must have an id field which is the primary key
-    if 'id' not in data:
-        raise ValueError("Model data must contain an 'id' field")
-        
-    # Set the type field which is required by the schema
-    if 'type' not in data:
-        data['type'] = 'model'  # Default type
-        
-    return _store_data(data, MODELS_TABLE, 'model')
-
-def store_video_data(data):
-    """Store video data in DynamoDB"""
-    # Set the type field which is required by the schema
-    if 'type' not in data:
-        data['type'] = 'video'  # Default type
-        
-    return _store_data(data, VIDEOS_TABLE, 'video')
-
-def store_environmental_data(data):
-    """Store environmental reading data in DynamoDB"""
-    return _store_data(data, ENVIRONMENTAL_READINGS_TABLE, 'environmental_reading')
-
-def query_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None,
-                           end_time: Optional[str] = None, limit: int = 100, next_token: Optional[str] = None,
-                           sort_by: Optional[str] = None, sort_desc: bool = False) -> Dict[str, Any]:
-    """Query environmental readings data with filtering and pagination."""
-    return query_data('environmental_reading', device_id, None, start_time, end_time, limit, next_token, sort_by, sort_desc)
-
-def count_environmental_data(device_id: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> Dict[str, Any]:
-    """Count environmental readings with filtering."""
-    return count_data('environmental_reading', device_id, None, start_time, end_time)
+    items = _sort_items(items, sort_by, sort_desc)
+    return _paginate_items(items, min(limit, 5000) if limit else DEFAULT_PAGE_LIMIT, next_token)

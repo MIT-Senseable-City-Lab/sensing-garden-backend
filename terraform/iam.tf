@@ -41,12 +41,16 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
         Resource = [
           aws_dynamodb_table.sensor_detections.arn,
           aws_dynamodb_table.sensor_classifications.arn,
+          "${aws_dynamodb_table.sensor_classifications.arn}/index/*",
           aws_dynamodb_table.models.arn,
           aws_dynamodb_table.devices.arn,
           aws_dynamodb_table.videos.arn,
           aws_dynamodb_table.environmental_readings.arn,
           aws_dynamodb_table.deployments.arn,
-          aws_dynamodb_table.deployment_device_connections.arn
+          aws_dynamodb_table.deployment_device_connections.arn,
+          aws_dynamodb_table.tracks.arn,
+          "${aws_dynamodb_table.tracks.arn}/index/*",
+          aws_dynamodb_table.heartbeats.arn,
         ]
       }
     ]
@@ -73,7 +77,9 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
           aws_s3_bucket.sensor_images.arn,
           "${aws_s3_bucket.sensor_images.arn}/*",
           aws_s3_bucket.sensor_videos.arn,
-          "${aws_s3_bucket.sensor_videos.arn}/*"
+          "${aws_s3_bucket.sensor_videos.arn}/*",
+          aws_s3_bucket.output.arn,
+          "${aws_s3_bucket.output.arn}/*"
         ]
       }
     ]

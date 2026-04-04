@@ -112,3 +112,4 @@ config.py
 *.config.py
 secrets.py
 *.secrets.py
+trigger/deployment_package.zip

@@ -65,8 +65,6 @@ resource "aws_apigatewayv2_integration" "api_lambda" {
   payload_format_version = "2.0"
 }
 
-# These routes have been replaced by the consolidated plural endpoint routes below
-
 # Create a usage plan for the API key
 # Note: For HTTP APIs, we need to create a REST API Gateway usage plan
 # and link it to our API key
@@ -119,7 +117,10 @@ resource "aws_api_gateway_usage_plan_key" "deployments_usage_plan_key" {
 
 # The integration for the API is defined above as aws_apigatewayv2_integration.api_lambda
 
-# Routes for data fetching - GET endpoints (read)
+# =============================================================================
+# GET routes - read endpoints
+# =============================================================================
+
 resource "aws_apigatewayv2_route" "get_detections" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /detections"
@@ -176,46 +177,6 @@ resource "aws_apigatewayv2_route" "get_export" {
   authorization_type = "NONE"
 }
 
-# POST routes for write operations
-resource "aws_apigatewayv2_route" "post_models" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /models"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-resource "aws_apigatewayv2_route" "delete_models" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "DELETE /models"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-# POST for detections
-resource "aws_apigatewayv2_route" "post_detections" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /detections"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-# POST for classifications
-resource "aws_apigatewayv2_route" "post_classifications" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /classifications"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-# POST for environment
-resource "aws_apigatewayv2_route" "post_environment" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /environment"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-# GET for videos
 resource "aws_apigatewayv2_route" "get_videos" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /videos"
@@ -223,17 +184,9 @@ resource "aws_apigatewayv2_route" "get_videos" {
   authorization_type = "NONE"
 }
 
-# Count endpoints (moved to end of file)
 resource "aws_apigatewayv2_route" "get_devices" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /devices"
-  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
-  authorization_type = "NONE"
-}
-
-resource "aws_apigatewayv2_route" "post_devices" {
-  api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /devices"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
@@ -244,6 +197,38 @@ resource "aws_apigatewayv2_route" "delete_devices" {
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
+
+resource "aws_apigatewayv2_route" "get_tracks" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /tracks"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_tracks_count" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /tracks/count"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_track" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /tracks/{track_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_heartbeats" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /heartbeats"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+# =============================================================================
+# Count endpoints
+# =============================================================================
 
 resource "aws_apigatewayv2_route" "get_models_count" {
   api_id             = aws_apigatewayv2_api.http_api.id
@@ -280,19 +265,20 @@ resource "aws_apigatewayv2_route" "get_environment_count" {
   authorization_type = "NONE"
 }
 
+# =============================================================================
+# POST/PATCH/DELETE routes - write endpoints
+# =============================================================================
 
-# POST for videos
-resource "aws_apigatewayv2_route" "post_videos" {
+resource "aws_apigatewayv2_route" "post_models" {
   api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /videos"
+  route_key          = "POST /models"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
 
-# POST for registering videos uploaded directly to S3
-resource "aws_apigatewayv2_route" "post_videos_register" {
+resource "aws_apigatewayv2_route" "delete_models" {
   api_id             = aws_apigatewayv2_api.http_api.id
-  route_key          = "POST /videos/register"
+  route_key          = "DELETE /models"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }

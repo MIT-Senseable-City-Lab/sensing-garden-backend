@@ -78,6 +78,11 @@ resource "aws_dynamodb_table" "sensor_classifications" {
     type = "S"
   }
 
+  attribute {
+    name = "track_id"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "model_id_index"
     hash_key        = "model_id"
@@ -92,9 +97,23 @@ resource "aws_dynamodb_table" "sensor_classifications" {
     projection_type = "ALL"
   }
 
+  global_secondary_index {
+    name            = "track_id_index"
+    hash_key        = "track_id"
+    range_key       = "timestamp"
+    projection_type = "ALL"
+  }
+
+  deletion_protection_enabled = true
+
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      billing_mode,
+      read_capacity,
+      write_capacity,
+      tags,
+    ]
   }
 }
 
@@ -230,5 +249,59 @@ resource "aws_dynamodb_table" "deployment_device_connections" {
   lifecycle {
     prevent_destroy = true
     ignore_changes  = all
+  }
+}
+
+# Create tracks table
+resource "aws_dynamodb_table" "tracks" {
+  name         = "sensing-garden-tracks"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "track_id"
+  range_key    = "device_id"
+
+  attribute {
+    name = "track_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "device_id_index"
+    hash_key        = "device_id"
+    range_key       = "timestamp"
+    projection_type = "ALL"
+  }
+
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# Create heartbeats table
+resource "aws_dynamodb_table" "heartbeats" {
+  name         = "sensing-garden-heartbeats"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "device_id"
+  range_key    = "timestamp"
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp"
+    type = "S"
   }
 }

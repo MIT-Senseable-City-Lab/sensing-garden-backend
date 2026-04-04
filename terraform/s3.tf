@@ -122,3 +122,34 @@ resource "aws_s3_bucket_cors_configuration" "models" {
     max_age_seconds = 3600
   }
 }
+
+# =============================================================================
+# Output Bucket - Private bucket for pipeline results
+# =============================================================================
+
+# Create S3 bucket for pipeline output
+resource "aws_s3_bucket" "output" {
+  bucket = "scl-sensing-garden"
+}
+
+# Configure public access settings for output bucket (private)
+resource "aws_s3_bucket_public_access_block" "output" {
+  bucket = aws_s3_bucket.output.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Configure CORS for output bucket
+resource "aws_s3_bucket_cors_configuration" "output" {
+  bucket = aws_s3_bucket.output.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3000
+  }
+}

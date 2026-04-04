@@ -1,32 +1,15 @@
-# Archive the Lambda source code
+# Archive the API Lambda source code
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/src"
   output_path = "${path.module}/../lambda/deployment_package.zip"
 }
 
-# Create an archive for the schema layer
-data "archive_file" "schema_layer_zip" {
+# Archive the Trigger Lambda source code
+data "archive_file" "trigger_lambda_zip" {
   type        = "zip"
-  output_path = "${path.module}/../lambda/schema_layer.zip"
-
-  source {
-    content  = file("${path.module}/../common/api-schema.json")
-    filename = "api-schema.json"
-  }
-
-  source {
-    content  = file("${path.module}/../common/db-schema.json")
-    filename = "db-schema.json"
-  }
-}
-
-# Create Lambda layer with the schema
-resource "aws_lambda_layer_version" "schema_layer" {
-  layer_name          = "schema-layer"
-  filename            = data.archive_file.schema_layer_zip.output_path
-  source_code_hash    = data.archive_file.schema_layer_zip.output_base64sha256
-  compatible_runtimes = ["python3.9"]
+  source_dir  = "${path.module}/../trigger/src"
+  output_path = "${path.module}/../trigger/deployment_package.zip"
 }
 
 # Attach permissions for Lambda to access DynamoDB
@@ -46,20 +29,22 @@ resource "aws_lambda_function" "api_handler_function" {
   function_name    = "sensing-garden-api-handler"
   role             = aws_iam_role.lambda_exec.arn
   handler          = "handler.handler"
-  runtime          = "python3.9"
+  runtime          = "python3.11"
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 30  # Longer timeout for pagination and processing
   memory_size      = 256 # Increased memory for better performance
-  layers           = [aws_lambda_layer_version.schema_layer.arn]
 
   environment {
     variables = {
-      IMAGES_BUCKET    = "scl-sensing-garden-images"
-      VIDEOS_BUCKET    = "scl-sensing-garden-videos"
-      TEST_API_KEY     = aws_api_gateway_api_key.test_key.value
-      EDGE_API_KEY     = aws_api_gateway_api_key.edge_key.value
-      FRONTEND_API_KEY = aws_api_gateway_api_key.frontend_key.value
+      IMAGES_BUCKET       = "scl-sensing-garden-images"
+      VIDEOS_BUCKET       = "scl-sensing-garden-videos"
+      OUTPUT_BUCKET       = "scl-sensing-garden"
+      TRACKS_TABLE        = "sensing-garden-tracks"
+      HEARTBEATS_TABLE    = "sensing-garden-heartbeats"
+      TEST_API_KEY        = aws_api_gateway_api_key.test_key.value
+      EDGE_API_KEY        = aws_api_gateway_api_key.edge_key.value
+      FRONTEND_API_KEY    = aws_api_gateway_api_key.frontend_key.value
       DEPLOYMENTS_API_KEY = aws_api_gateway_api_key.deployments_key.value
     }
   }
@@ -72,4 +57,131 @@ resource "aws_lambda_permission" "api_gateway_api_handler" {
   function_name = aws_lambda_function.api_handler_function.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*/*"
+}
+
+# =============================================================================
+# Trigger Lambda - processes S3 results.json uploads
+# =============================================================================
+
+# IAM role for trigger Lambda
+resource "aws_iam_role" "trigger_lambda_exec" {
+  name = "trigger_lambda_exec_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# CloudWatch Logs policy for trigger Lambda
+resource "aws_iam_role_policy_attachment" "trigger_lambda_logs" {
+  role       = aws_iam_role.trigger_lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# DynamoDB policy for trigger Lambda
+resource "aws_iam_role_policy" "trigger_lambda_dynamodb_policy" {
+  name = "trigger-lambda-dynamodb-policy"
+  role = aws_iam_role.trigger_lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:BatchWriteItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.tracks.arn,
+          "${aws_dynamodb_table.tracks.arn}/index/*",
+          aws_dynamodb_table.sensor_classifications.arn,
+          "${aws_dynamodb_table.sensor_classifications.arn}/index/*",
+          aws_dynamodb_table.devices.arn,
+          aws_dynamodb_table.videos.arn,
+        ]
+      }
+    ]
+  })
+}
+
+# S3 read policy for trigger Lambda
+resource "aws_iam_role_policy" "trigger_lambda_s3_policy" {
+  name = "trigger-lambda-s3-policy"
+  role = aws_iam_role.trigger_lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.output.arn,
+          "${aws_s3_bucket.output.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Trigger Lambda function
+resource "aws_lambda_function" "trigger_handler_function" {
+  function_name    = "sensing-garden-trigger-handler"
+  role             = aws_iam_role.trigger_lambda_exec.arn
+  handler          = "trigger_handler.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.trigger_lambda_zip.output_path
+  source_code_hash = data.archive_file.trigger_lambda_zip.output_base64sha256
+  timeout          = 300
+  memory_size      = 512
+
+  environment {
+    variables = {
+      TRACKS_TABLE          = "sensing-garden-tracks"
+      CLASSIFICATIONS_TABLE = "sensing-garden-classifications"
+      DEVICES_TABLE         = "sensing-garden-devices"
+      VIDEOS_TABLE          = "sensing-garden-videos"
+      OUTPUT_BUCKET         = "scl-sensing-garden"
+    }
+  }
+}
+
+# Permission for S3 to invoke trigger Lambda
+resource "aws_lambda_permission" "s3_invoke_trigger" {
+  statement_id  = "AllowS3InvokeTrigger"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.trigger_handler_function.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.output.arn
+}
+
+# S3 event notification to trigger Lambda on results.json upload
+resource "aws_s3_bucket_notification" "output_bucket_notification" {
+  bucket = aws_s3_bucket.output.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.trigger_handler_function.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_suffix       = "results.json"
+  }
+
+  depends_on = [aws_lambda_permission.s3_invoke_trigger]
 }
