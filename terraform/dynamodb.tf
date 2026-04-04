@@ -206,6 +206,8 @@ resource "aws_dynamodb_table" "environmental_readings" {
     type = "S"
   }
 
+  deletion_protection_enabled = true
+
   lifecycle {
     prevent_destroy = true
     ignore_changes  = all
@@ -303,5 +305,11 @@ resource "aws_dynamodb_table" "heartbeats" {
   attribute {
     name = "timestamp"
     type = "S"
+  }
+
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
   }
 }

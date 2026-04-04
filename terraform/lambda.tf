@@ -1,16 +1,6 @@
-# Archive the API Lambda source code
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda/src"
-  output_path = "${path.module}/../lambda/deployment_package.zip"
-}
-
-# Archive the Trigger Lambda source code
-data "archive_file" "trigger_lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/../trigger/src"
-  output_path = "${path.module}/../trigger/deployment_package.zip"
-}
+# Lambda deployment packages are built by scripts/build_lambda.sh
+# Run it before terraform apply to bundle dependencies (pydantic, boto3, etc.)
+# The script creates deployment_package.zip in each lambda/trigger directory.
 
 # Attach permissions for Lambda to access DynamoDB
 resource "aws_iam_role_policy_attachment" "lambda_dynamodb_access" {
@@ -30,8 +20,8 @@ resource "aws_lambda_function" "api_handler_function" {
   role             = aws_iam_role.lambda_exec.arn
   handler          = "handler.handler"
   runtime          = "python3.11"
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  filename         = "${path.module}/../lambda/deployment_package.zip"
+  source_code_hash = filebase64sha256("${path.module}/../lambda/deployment_package.zip")
   timeout          = 30  # Longer timeout for pagination and processing
   memory_size      = 256 # Increased memory for better performance
 
@@ -148,8 +138,8 @@ resource "aws_lambda_function" "trigger_handler_function" {
   role             = aws_iam_role.trigger_lambda_exec.arn
   handler          = "trigger_handler.lambda_handler"
   runtime          = "python3.11"
-  filename         = data.archive_file.trigger_lambda_zip.output_path
-  source_code_hash = data.archive_file.trigger_lambda_zip.output_base64sha256
+  filename         = "${path.module}/../trigger/deployment_package.zip"
+  source_code_hash = filebase64sha256("${path.module}/../trigger/deployment_package.zip")
   timeout          = 300
   memory_size      = 512
 

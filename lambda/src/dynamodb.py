@@ -761,8 +761,12 @@ def count_tracks(
 
 
 def get_track(track_id: str) -> Optional[Dict[str, Any]]:
-    response = dynamodb.Table(TRACKS_TABLE).get_item(Key={"track_id": track_id})
-    return response.get("Item")
+    response = dynamodb.Table(TRACKS_TABLE).query(
+        KeyConditionExpression=Key("track_id").eq(track_id),
+        Limit=1,
+    )
+    items = response.get("Items", [])
+    return items[0] if items else None
 
 
 def get_latest_heartbeats() -> Dict[str, Any]:
