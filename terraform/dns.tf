@@ -20,18 +20,22 @@ resource "aws_route53_record" "dashboard_apex" {
   type    = "A"
 
   alias {
-    name                   = aws_elastic_beanstalk_environment.web.cname
-    zone_id                = "Z117KPS5GTRQ2G"
-    evaluate_target_health = true
+    name                   = aws_cloudfront_distribution.web.domain_name
+    zone_id                = aws_cloudfront_distribution.web.hosted_zone_id
+    evaluate_target_health = false
   }
 }
 
 resource "aws_route53_record" "dashboard_www" {
   zone_id = aws_route53_zone.main.zone_id
   name    = "www.sensinggarden.com"
-  type    = "CNAME"
-  ttl     = 300
-  records = ["sensinggarden.com"]
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.web.domain_name
+    zone_id                = aws_cloudfront_distribution.web.hosted_zone_id
+    evaluate_target_health = false
+  }
 }
 
 output "nameservers" {

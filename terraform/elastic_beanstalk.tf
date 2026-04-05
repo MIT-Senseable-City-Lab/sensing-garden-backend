@@ -218,9 +218,69 @@ resource "aws_elastic_beanstalk_environment" "web" {
 }
 
 # =============================================================================
+# CloudFront Distribution (HTTPS termination)
+# =============================================================================
+
+resource "aws_cloudfront_distribution" "web" {
+  enabled         = true
+  aliases         = ["sensinggarden.com", "www.sensinggarden.com"]
+  comment         = "Sensing Garden Dashboard"
+  price_class     = "PriceClass_100"
+  is_ipv6_enabled = true
+
+  origin {
+    domain_name = aws_elastic_beanstalk_environment.web.cname
+    origin_id   = "eb-origin"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "eb-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods         = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Host", "Origin", "Accept", "Authorization"]
+
+      cookies {
+        forward = "all"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:436312947046:certificate/a147ee46-99b4-43a9-8b8b-2af887e18f08"
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+}
+
+# =============================================================================
 # Outputs
 # =============================================================================
 
 output "dashboard_url" {
-  value = aws_elastic_beanstalk_environment.web.cname
+  value = aws_cloudfront_distribution.web.domain_name
+}
+
+output "cloudfront_distribution_id" {
+  value = aws_cloudfront_distribution.web.id
 }
