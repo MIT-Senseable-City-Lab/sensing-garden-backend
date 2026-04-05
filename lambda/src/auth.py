@@ -42,6 +42,7 @@ READ_ONLY_ALLOWED_GET_PATHS = (
     "/heartbeats",
     "/export",
     "/deployments",
+    "/admin/orphaned-devices",
 )
 
 READ_ONLY_ALLOWED_GET_PATTERNS = (

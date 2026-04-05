@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Pattern, Tuple
 
 from auth import AuthContext, authorize_request
 from routes import (
+    admin,
     classifications,
     deployments,
     detections,
@@ -44,6 +45,7 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/tracks/count"): tracks.handle_get_count,
     ("GET", "/heartbeats"): heartbeats.handle_get,
     ("GET", "/export"): export.handle_export,
+    ("GET", "/admin/orphaned-devices"): admin.handle_orphaned_devices,
     ("GET", "/deployments"): deployments.handle_get_list,
     ("POST", "/deployments"): deployments.handle_post,
 }

@@ -962,6 +962,38 @@ def get_heartbeats_for_device(device_id: str) -> Dict[str, Any]:
     return {"items": items, "count": len(items)}
 
 
+def find_orphaned_device_ids() -> Dict[str, Any]:
+    """Find device_ids in data tables that are not in the devices table."""
+    registered = set(_list_all_device_ids())
+    orphaned: Dict[str, List[str]] = {}
+
+    scan_targets = [
+        ("classifications", CLASSIFICATIONS_TABLE),
+        ("videos", VIDEOS_TABLE),
+        ("heartbeats", HEARTBEATS_TABLE),
+    ]
+
+    for label, table_name in scan_targets:
+        table = dynamodb.Table(table_name)
+        items = _paginate_all(table, "scan", ProjectionExpression="device_id")
+        for item in items:
+            did = item.get("device_id", "")
+            if did and did not in registered:
+                if did not in orphaned:
+                    orphaned[did] = []
+                if label not in orphaned[did]:
+                    orphaned[did].append(label)
+
+    return {
+        "orphaned_devices": [
+            {"device_id": did, "found_in": tables}
+            for did, tables in sorted(orphaned.items())
+        ],
+        "count": len(orphaned),
+        "known_device_count": len(registered),
+    }
+
+
 def put_track(item: Dict[str, Any]) -> None:
     dynamodb.Table(TRACKS_TABLE).put_item(Item=item)
 
