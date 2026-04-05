@@ -956,6 +956,12 @@ def get_latest_heartbeats() -> Dict[str, Any]:
     return {"items": items, "count": len(items)}
 
 
+def get_heartbeats_for_device(device_id: str) -> Dict[str, Any]:
+    table = dynamodb.Table(HEARTBEATS_TABLE)
+    items = _paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(device_id), ScanIndexForward=False)
+    return {"items": items, "count": len(items)}
+
+
 def put_track(item: Dict[str, Any]) -> None:
     dynamodb.Table(TRACKS_TABLE).put_item(Item=item)
 
