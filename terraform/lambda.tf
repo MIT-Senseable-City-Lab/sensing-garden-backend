@@ -107,6 +107,7 @@ resource "aws_iam_role_policy" "trigger_lambda_dynamodb_policy" {
           aws_dynamodb_table.devices.arn,
           aws_dynamodb_table.videos.arn,
           aws_dynamodb_table.heartbeats.arn,
+          aws_dynamodb_table.environmental_readings.arn,
         ]
       }
     ]
@@ -154,6 +155,7 @@ resource "aws_lambda_function" "trigger_handler_function" {
       DEVICES_TABLE         = "sensing-garden-devices"
       VIDEOS_TABLE          = "sensing-garden-videos"
       HEARTBEATS_TABLE      = "sensing-garden-heartbeats"
+      ENVIRONMENTAL_TABLE   = "sensing-garden-environmental-readings"
       OUTPUT_BUCKET         = "scl-sensing-garden"
     }
   }

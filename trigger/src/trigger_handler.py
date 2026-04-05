@@ -11,7 +11,7 @@ from urllib.parse import unquote_plus
 import boto3
 from botocore.exceptions import ClientError
 
-from schemas import Classification, Device, Heartbeat, Track, Video
+from schemas import Classification, Device, EnvironmentalReading, Heartbeat, Track, Video
 
 
 TRACKS_TABLE = os.environ.get("TRACKS_TABLE", "sensing-garden-tracks")
@@ -19,10 +19,12 @@ CLASSIFICATIONS_TABLE = os.environ.get("CLASSIFICATIONS_TABLE", "sensing-garden-
 DEVICES_TABLE = os.environ.get("DEVICES_TABLE", "sensing-garden-devices")
 VIDEOS_TABLE = os.environ.get("VIDEOS_TABLE", "sensing-garden-videos")
 HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats")
+ENVIRONMENTAL_TABLE = os.environ.get("ENVIRONMENTAL_TABLE", "sensing-garden-environmental-readings")
 OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "")
 MODEL_ID = os.environ.get("MODEL_ID", "")
 DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
 HEARTBEAT_KEY_PATTERN = re.compile(r"^v1/[^/]+/heartbeats/[^/]+\.json$")
+ENVIRONMENT_KEY_PATTERN = re.compile(r"^v1/[^/]+/environment/[^/]+\.json$")
 
 
 class StorageAdapter:
@@ -99,6 +101,7 @@ class DynamoWriter:
         self.devices = resource.Table(DEVICES_TABLE)
         self.videos = resource.Table(VIDEOS_TABLE)
         self.heartbeats = resource.Table(HEARTBEATS_TABLE)
+        self.environmental_readings = resource.Table(ENVIRONMENTAL_TABLE)
 
     def put_tracks(self, items: List[Dict[str, Any]]) -> None:
         with self.tracks.batch_writer() as batch:
@@ -140,6 +143,11 @@ class DynamoWriter:
             for item in items:
                 batch.put_item(Item=item)
 
+    def put_environmental_readings(self, items: List[Dict[str, Any]]) -> None:
+        with self.environmental_readings.batch_writer() as batch:
+            for item in items:
+                batch.put_item(Item=item)
+
 
 class CollectingWriter:
     def __init__(self):
@@ -148,6 +156,7 @@ class CollectingWriter:
         self.devices: List[Dict[str, Any]] = []
         self.videos: List[Dict[str, Any]] = []
         self.heartbeats: List[Dict[str, Any]] = []
+        self.environmental_readings: List[Dict[str, Any]] = []
 
     def put_tracks(self, items: List[Dict[str, Any]]) -> None:
         self.tracks.extend(items)
@@ -170,6 +179,9 @@ class CollectingWriter:
     def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
         self.heartbeats.extend(items)
 
+    def put_environmental_readings(self, items: List[Dict[str, Any]]) -> None:
+        self.environmental_readings.extend(items)
+
 
 class WriterProtocol(Protocol):
     def put_tracks(self, items: List[Dict[str, Any]]) -> None:
@@ -185,6 +197,9 @@ class WriterProtocol(Protocol):
         ...
 
     def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
+        ...
+
+    def put_environmental_readings(self, items: List[Dict[str, Any]]) -> None:
         ...
 
 
@@ -527,6 +542,18 @@ def process_heartbeat_object(storage: StorageAdapter, writer: WriterProtocol, bu
     return {"heartbeats": 1}
 
 
+def process_environment_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+    try:
+        payload = storage.read_json(bucket, key)
+        environment_record = _model_dump(EnvironmentalReading(**payload))
+    except Exception as exc:
+        print(f"Environment validation failed for {key}: {exc}")
+        return {"environmental_readings": 0}
+    writer.put_environmental_readings([environment_record])
+    print(f"Processed 1 environmental reading from {key}")
+    return {"environmental_readings": 1}
+
+
 def parse_s3_event(event: Dict[str, Any]) -> List[Tuple[str, str]]:
     records: List[Tuple[str, str]] = []
     for record in event.get("Records", []):
@@ -546,4 +573,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             summaries.append(process_results_object(storage, writer, bucket, key))
         elif HEARTBEAT_KEY_PATTERN.match(key):
             summaries.append(process_heartbeat_object(storage, writer, bucket, key))
+        elif ENVIRONMENT_KEY_PATTERN.match(key):
+            summaries.append(process_environment_object(storage, writer, bucket, key))
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}
