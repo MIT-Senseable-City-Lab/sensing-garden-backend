@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -608,6 +609,111 @@ def _classification_confidence(item: Dict[str, Any], taxonomy_level: Optional[st
     return _coerce_number(item.get(confidence_field))
 
 
+def _build_device_time_key_condition(
+    device_id: str,
+    start_time: Optional[str],
+    end_time: Optional[str],
+) -> Any:
+    condition = Key("device_id").eq(device_id)
+    if start_time and end_time:
+        return condition & Key("timestamp").between(start_time, end_time)
+    if start_time:
+        return condition & Key("timestamp").gte(start_time)
+    if end_time:
+        return condition & Key("timestamp").lte(end_time)
+    return condition
+
+
+def _build_classification_filter_expression(
+    model_id: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> Optional[Any]:
+    filters: List[Any] = []
+    if model_id:
+        filters.append(Attr("model_id").eq(model_id))
+    if min_confidence is not None:
+        confidence_field = f"{taxonomy_level}_confidence" if taxonomy_level else "species_confidence"
+        filters.append(Attr(confidence_field).gte(Decimal(str(min_confidence))))
+    if taxonomy_level and selected_taxa:
+        filters.append(Attr(taxonomy_level).is_in(selected_taxa))
+    if not filters:
+        return None
+
+    expression = filters[0]
+    for extra in filters[1:]:
+        expression = expression & extra
+    return expression
+
+
+def _count_items_for_device(
+    table_name: str,
+    device_id: str,
+    start_time: Optional[str],
+    end_time: Optional[str],
+    model_id: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> int:
+    table = dynamodb.Table(table_name)
+    params: Dict[str, Any] = {
+        "KeyConditionExpression": _build_device_time_key_condition(device_id, start_time, end_time),
+        "Select": "COUNT",
+    }
+    filter_expression = _build_classification_filter_expression(
+        model_id,
+        min_confidence,
+        taxonomy_level,
+        selected_taxa,
+    )
+    if filter_expression is not None:
+        params["FilterExpression"] = filter_expression
+
+    total = 0
+    response = table.query(**params)
+    total += int(response.get("Count", 0))
+    while "LastEvaluatedKey" in response:
+        params["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+        response = table.query(**params)
+        total += int(response.get("Count", 0))
+    return total
+
+
+def _count_items_for_devices(
+    table_name: str,
+    device_ids: Optional[List[str]],
+    start_time: Optional[str],
+    end_time: Optional[str],
+    model_id: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> int:
+    resolved_device_ids = _list_all_device_ids() if device_ids is None else device_ids
+    if not resolved_device_ids:
+        return 0
+
+    max_workers = min(len(resolved_device_ids), 32)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(
+                _count_items_for_device,
+                table_name,
+                device_id,
+                start_time,
+                end_time,
+                model_id,
+                min_confidence,
+                taxonomy_level,
+                selected_taxa,
+            )
+            for device_id in resolved_device_ids
+        ]
+        return sum(future.result() for future in futures)
+
+
 def _filter_classification_items(
     items: List[Dict[str, Any]],
     model_id: Optional[str],
@@ -657,9 +763,17 @@ def count_classifications(
     taxonomy_level: Optional[str],
     selected_taxa: List[str],
 ) -> Dict[str, Any]:
-    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
-    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
-    return {"count": len(items)}
+    count = _count_items_for_devices(
+        CLASSIFICATIONS_TABLE,
+        device_ids,
+        start_time,
+        end_time,
+        model_id,
+        min_confidence,
+        taxonomy_level,
+        selected_taxa,
+    )
+    return {"count": count}
 
 
 def get_classification_taxa_count(
