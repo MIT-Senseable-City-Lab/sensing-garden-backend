@@ -46,6 +46,7 @@ READ_ONLY_ALLOWED_GET_PATHS = (
 
 READ_ONLY_ALLOWED_GET_PATTERNS = (
     re.compile(r"^/tracks/[^/]+$"),
+    re.compile(r"^/deployments/[^/]+$"),
 )
 
 DEPLOYMENTS_ALLOWED_WRITE_PATTERNS = (
