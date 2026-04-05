@@ -1,7 +1,7 @@
 import re
 from typing import Any, Callable, Dict, Pattern, Tuple
 
-from auth import authorize_request
+from auth import AuthContext, authorize_request
 from routes import (
     classifications,
     deployments,
@@ -77,6 +77,19 @@ def _resolve_http_request(event: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
+def _invoke_route(
+    route_handler: RouteHandler,
+    event: Dict[str, Any],
+    auth_context: AuthContext,
+    **path_params: str,
+) -> Dict[str, Any]:
+    if route_handler is uploads.handle_upload_url:
+        return route_handler(event, authenticated_device=auth_context.get("device_record"))
+    if path_params:
+        return route_handler(event, **path_params)
+    return route_handler(event)
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         request = _resolve_http_request(event)
@@ -86,20 +99,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if method == "OPTIONS":
             return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
-        is_authorized, status_code, auth_message = authorize_request(event, method, path)
+        is_authorized, status_code, auth_message, auth_context = authorize_request(event, method, path)
         if not is_authorized:
             return cors_response(status_code, {"error": auth_message})
 
         route_handler = ROUTES.get((method, path))
         if route_handler:
-            return route_handler(event)
+            return _invoke_route(route_handler, event, auth_context)
 
         for route_method, pattern, route_handler in PARAMETERIZED_ROUTES:
             if route_method != method:
                 continue
             match = pattern.match(path)
             if match:
-                return route_handler(event, **match.groupdict())
+                return _invoke_route(route_handler, event, auth_context, **match.groupdict())
 
         return cors_response(404, {"error": f"No handler for {method} {path}"})
     except Exception as exc:

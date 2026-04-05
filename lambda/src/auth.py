@@ -20,6 +20,7 @@ def _load_configured_keys() -> Dict[str, str]:
 
 
 CONFIGURED_KEYS = _load_configured_keys()
+AuthContext = Dict[str, Any]
 
 READ_ONLY_ALLOWED_GET_PATHS = (
     "/devices",
@@ -75,66 +76,71 @@ def _lookup_device_api_key(api_key: str) -> Optional[Dict[str, Any]]:
     return dynamodb.get_active_device_api_key(api_key)
 
 
-def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
+def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str], AuthContext]:
     try:
         api_key = _extract_api_key(event)
         if not api_key:
-            return False, "Missing API key. Include X-Api-Key header.", None
+            return False, "Missing API key. Include X-Api-Key header.", None, {}
 
         for key_name, key_value in CONFIGURED_KEYS.items():
             if api_key == key_value:
                 if key_name == DEPLOYMENTS_API_KEY_ENV:
-                    return True, "", "deployments"
+                    return True, "", "deployments", {"principal": "deployments"}
                 if key_name in READ_ONLY_KEY_ENVS:
-                    return True, "", "readonly"
-                return True, "", "admin"
+                    return True, "", "readonly", {"principal": "readonly"}
+                return True, "", "admin", {"principal": "admin"}
 
-        if _lookup_device_api_key(api_key):
-            return True, "", "device"
+        device_record = _lookup_device_api_key(api_key)
+        if device_record:
+            return True, "", "device", {"principal": "device", "device_record": device_record}
 
-        return False, "Invalid API key", None
+        return False, "Invalid API key", None, {}
     except Exception as exc:
         print(f"API key validation error: {exc}")
-        return False, "Authentication error", None
+        return False, "Authentication error", None, {}
 
 
 def validate_api_key(event: Dict[str, Any]) -> Tuple[bool, str]:
-    is_valid, error_message, _ = authenticate_api_key(event)
+    is_valid, error_message, _, _ = authenticate_api_key(event)
     return is_valid, error_message
 
 
-def authorize_request(event: Dict[str, Any], http_method: str, path: str) -> Tuple[bool, int, str]:
+def authorize_request(
+    event: Dict[str, Any],
+    http_method: str,
+    path: str,
+) -> Tuple[bool, int, str, AuthContext]:
     if http_method == "OPTIONS":
-        return True, 200, ""
+        return True, 200, "", {}
     if http_method == "POST" and path == "/devices/register":
-        return True, 200, ""
+        return True, 200, "", {}
 
-    is_valid, error_message, principal = authenticate_api_key(event)
+    is_valid, error_message, principal, auth_context = authenticate_api_key(event)
     if not is_valid:
-        return False, 401, error_message
+        return False, 401, error_message, {}
 
     if principal == "admin":
-        return True, 200, ""
+        return True, 200, "", auth_context
 
     if principal == "device":
         if (http_method, path) in DEVICE_ALLOWED_ROUTES:
-            return True, 200, ""
-        return False, 403, f"API key is not allowed to call {http_method} {path}"
+            return True, 200, "", auth_context
+        return False, 403, f"API key is not allowed to call {http_method} {path}", auth_context
 
     if http_method == "GET":
         if path in READ_ONLY_ALLOWED_GET_PATHS:
-            return True, 200, ""
+            return True, 200, "", auth_context
         if any(pattern.match(path) for pattern in READ_ONLY_ALLOWED_GET_PATTERNS):
-            return True, 200, ""
+            return True, 200, "", auth_context
         if principal == "deployments" and any(
             method == "GET" and pattern.match(path)
             for method, pattern in DEPLOYMENTS_ALLOWED_WRITE_PATTERNS
         ):
-            return True, 200, ""
+            return True, 200, "", auth_context
     elif principal == "deployments" and any(
         method == http_method and pattern.match(path)
         for method, pattern in DEPLOYMENTS_ALLOWED_WRITE_PATTERNS
     ):
-        return True, 200, ""
+        return True, 200, "", auth_context
 
-    return False, 403, f"API key is not allowed to call {http_method} {path}"
+    return False, 403, f"API key is not allowed to call {http_method} {path}", auth_context

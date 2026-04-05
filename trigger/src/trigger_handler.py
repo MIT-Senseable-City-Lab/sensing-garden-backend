@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import hashlib
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -235,7 +236,8 @@ def derive_track_timestamp(results: Dict[str, Any], track: Dict[str, Any], s3_ke
 def derive_frame_timestamp(results: Dict[str, Any], track: Dict[str, Any], frame: Dict[str, Any], s3_key: str) -> str:
     base = _derive_base_datetime(results, track, s3_key).replace(microsecond=0)
     frame_number = int(frame["frame_number"])
-    return (base + timedelta(microseconds=frame_number)).isoformat(timespec="microseconds")
+    track_offset_microseconds = int(hashlib.md5(track["track_id"].encode("utf-8")).hexdigest()[:6], 16)
+    return (base + timedelta(microseconds=track_offset_microseconds + frame_number)).isoformat(timespec="microseconds")
 
 
 def _candidate_composite_keys(s3_prefix: str, track: Dict[str, Any]) -> List[str]:

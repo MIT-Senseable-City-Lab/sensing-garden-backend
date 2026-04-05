@@ -31,7 +31,11 @@ VIDEOS_BUCKET = os.environ.get("VIDEOS_BUCKET", "scl-sensing-garden-videos")
 DEFAULT_PAGE_LIMIT = 100
 
 
-def add_device(device_id: str, created: Optional[str] = None) -> Dict[str, Any]:
+def add_device(
+    device_id: str,
+    created: Optional[str] = None,
+    parent_device_id: Optional[str] = None,
+) -> Dict[str, Any]:
     if not device_id:
         raise ValueError("device_id is required")
 
@@ -39,6 +43,8 @@ def add_device(device_id: str, created: Optional[str] = None) -> Dict[str, Any]:
         "device_id": device_id,
         "created": created or datetime.now(timezone.utc).isoformat(),
     }
+    if parent_device_id is not None:
+        item["parent_device_id"] = parent_device_id
     dynamodb.Table(DEVICES_TABLE).put_item(Item=item)
     return item
 
@@ -52,6 +58,26 @@ def store_device_if_not_exists(device_id: str) -> Dict[str, Any]:
     if "Item" in response and response["Item"].get("device_id") == device_id:
         return response["Item"]
     return add_device(device_id)
+
+
+def upsert_device(
+    device_id: str,
+    created: Optional[str] = None,
+    parent_device_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    if not device_id:
+        raise ValueError("device_id is required")
+
+    table = dynamodb.Table(DEVICES_TABLE)
+    existing = table.get_item(Key={"device_id": device_id}).get("Item", {})
+    item: Dict[str, Any] = {
+        "device_id": device_id,
+        "created": existing.get("created") or created or datetime.now(timezone.utc).isoformat(),
+    }
+    if parent_device_id is not None:
+        item["parent_device_id"] = parent_device_id
+    table.put_item(Item=item)
+    return item
 
 
 def store_device_api_key(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -80,6 +106,13 @@ def get_active_device_api_key(api_key: str) -> Optional[Dict[str, Any]]:
     if item.get("status") != "active":
         return None
     return item
+
+
+def get_device_api_key_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
+    if not device_id:
+        return None
+    response = dynamodb.Table(DEVICE_API_KEYS_TABLE).get_item(Key={"device_id": device_id})
+    return response.get("Item")
 
 
 def _delete_device_table_data(device_id: str, summary: Dict[str, Any]) -> None:

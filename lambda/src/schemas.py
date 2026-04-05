@@ -54,7 +54,7 @@ class Device(BaseModel):
 class DeviceApiKey(BaseModel):
     device_id: str
     api_key: str
-    device_name: str
+    dot_ids: Optional[list[str]] = None
     created: str
     status: str
 
