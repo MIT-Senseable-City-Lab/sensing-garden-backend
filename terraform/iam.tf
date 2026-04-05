@@ -81,7 +81,9 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
           aws_s3_bucket.sensor_videos.arn,
           "${aws_s3_bucket.sensor_videos.arn}/*",
           aws_s3_bucket.output.arn,
-          "${aws_s3_bucket.output.arn}/*"
+          "${aws_s3_bucket.output.arn}/*",
+          aws_s3_bucket.models.arn,
+          "${aws_s3_bucket.models.arn}/*"
         ]
       }
     ]

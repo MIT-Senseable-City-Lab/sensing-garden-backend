@@ -34,8 +34,6 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("POST", "/devices/register"): registration.handle_register,
     ("GET", "/models"): models.handle_get,
     ("GET", "/models/count"): models.handle_get_count,
-    ("POST", "/models"): models.handle_post,
-    ("DELETE", "/models"): models.handle_delete,
     ("POST", "/upload-url"): uploads.handle_upload_url,
     ("GET", "/videos"): videos.handle_get,
     ("GET", "/videos/count"): videos.handle_get_count,

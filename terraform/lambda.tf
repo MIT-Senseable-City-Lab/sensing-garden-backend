@@ -30,6 +30,7 @@ resource "aws_lambda_function" "api_handler_function" {
       IMAGES_BUCKET       = "scl-sensing-garden-images"
       VIDEOS_BUCKET       = "scl-sensing-garden-videos"
       OUTPUT_BUCKET       = "scl-sensing-garden"
+      MODELS_BUCKET       = aws_s3_bucket.models.id
       TRACKS_TABLE        = "sensing-garden-tracks"
       HEARTBEATS_TABLE    = "sensing-garden-heartbeats"
       DEVICE_API_KEYS_TABLE = "sensing-garden-device-api-keys"

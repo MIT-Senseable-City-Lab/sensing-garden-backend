@@ -10,6 +10,7 @@ s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
 IMAGES_BUCKET = os.environ.get("IMAGES_BUCKET", "scl-sensing-garden-images")
 VIDEOS_BUCKET = os.environ.get("VIDEOS_BUCKET", "scl-sensing-garden-videos")
 OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "scl-sensing-garden")
+MODELS_BUCKET = os.environ.get("MODELS_BUCKET", "scl-sensing-garden-models")
 PRESIGNED_URL_EXPIRY = 3600
 
 
@@ -57,3 +58,23 @@ def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
 
 def delete_s3_object(s3_key: str, bucket: str = IMAGES_BUCKET) -> None:
     s3.delete_object(Bucket=bucket, Key=s3_key)
+
+
+def list_model_bundles() -> list[Dict[str, Any]]:
+    """List model bundles from S3 by scanning for */model.hef keys."""
+    paginator = s3.get_paginator("list_objects_v2")
+    bundles: Dict[str, Dict[str, Any]] = {}
+    for page in paginator.paginate(Bucket=MODELS_BUCKET):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            parts = key.split("/", 1)
+            if len(parts) != 2:
+                continue
+            bundle_name, filename = parts
+            if bundle_name not in bundles:
+                bundles[bundle_name] = {"model_id": bundle_name, "files": []}
+            bundles[bundle_name]["files"].append(filename)
+            if filename == "model.hef":
+                bundles[bundle_name]["size_bytes"] = obj.get("Size", 0)
+                bundles[bundle_name]["last_modified"] = obj["LastModified"].isoformat() if obj.get("LastModified") else ""
+    return sorted(bundles.values(), key=lambda b: b.get("model_id", ""))
