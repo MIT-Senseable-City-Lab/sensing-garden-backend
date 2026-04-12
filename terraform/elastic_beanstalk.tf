@@ -247,6 +247,12 @@ resource "aws_elastic_beanstalk_environment" "web" {
     name      = "ACTIVITY_EVENTS_TABLE"
     value     = "sensing-garden-activity-events"
   }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "AWS_REGION"
+    value     = "us-east-1"
+  }
 }
 
 # =============================================================================
