@@ -1,9 +1,11 @@
 import json
+import logging
 import os
 import re
 import hashlib
 from datetime import datetime, timedelta
 from decimal import Decimal
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple
 from urllib.parse import unquote_plus
@@ -26,6 +28,32 @@ MODEL_ID = os.environ.get("MODEL_ID", "")
 DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
 HEARTBEAT_KEY_PATTERN = re.compile(r"^v1/[^/]+/heartbeats/[^/]+\.json$")
 ENVIRONMENT_KEY_PATTERN = re.compile(r"^v1/[^/]+/environment/[^/]+\.json$")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+class S3TriggerAction(str, Enum):
+    RECEIVED = "received"
+    IGNORED = "ignored"
+    PROCESSING = "processing"
+    PROCESSED = "processed"
+    FAILED = "failed"
+
+
+def log_s3_trigger(action: S3TriggerAction, bucket: str, key: str, **fields: Any) -> None:
+    logger.info(
+        json.dumps(
+            {
+                "component": "s3_trigger",
+                "action": action.value,
+                "bucket": bucket,
+                "key": key,
+                **fields,
+            },
+            sort_keys=True,
+            default=str,
+        )
+    )
 
 
 class StorageAdapter:
@@ -249,6 +277,15 @@ def derive_track_timestamp(results: Dict[str, Any], track: Dict[str, Any], s3_ke
     return base.isoformat(timespec="microseconds")
 
 
+def derive_record_track_id(track: Dict[str, Any], s3_key: str) -> str:
+    track_id = str(track["track_id"])
+    timestamp = track.get("timestamp")
+    prefix_part = derive_s3_prefix(s3_key).rsplit("/", 1)[-1]
+    if re.fullmatch(r"\d{8}", prefix_part) and timestamp:
+        return f"{track_id}_{timestamp}"
+    return track_id
+
+
 def derive_frame_timestamp(results: Dict[str, Any], track: Dict[str, Any], frame: Dict[str, Any], s3_key: str) -> str:
     base = _derive_base_datetime(results, track, s3_key).replace(microsecond=0)
     frame_number = int(frame["frame_number"])
@@ -360,7 +397,7 @@ def _build_track_record(
 ) -> Dict[str, Any]:
     prefix = derive_s3_prefix(key)
     track_payload = {
-        "track_id": track["track_id"],
+        "track_id": derive_record_track_id(track, key),
         "device_id": results["source_device"],
         "timestamp": derive_track_timestamp(results, track, key),
         "model_id": _resolve_model_id(results),
@@ -392,12 +429,11 @@ def _build_classification_payload(
     frame_number = int(frame["frame_number"])
     bbox = frame.get("bbox") or get_bbox_from_labels(storage, bucket, prefix, track, frame_number, labels_cache)
     if bbox is None:
-        print(f"Missing bbox for track {track['track_id']} frame {frame_number}")
         return None
     return {
         "device_id": results["source_device"],
         "timestamp": derive_frame_timestamp(results, track, frame, key),
-        "track_id": track["track_id"],
+        "track_id": derive_record_track_id(track, key),
         "model_id": _resolve_model_id(results),
         "image_key": derive_crop_key(storage, bucket, prefix, track, frame),
         "image_bucket": bucket,
@@ -419,8 +455,9 @@ def _build_classification_records(
     results: Dict[str, Any],
     track: Dict[str, Any],
     labels_cache: Dict[str, Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], int]:
     records: List[Dict[str, Any]] = []
+    skipped_count = 0
     for frame in track.get("frames", []):
         try:
             classification_payload = _build_classification_payload(
@@ -433,14 +470,23 @@ def _build_classification_records(
                 labels_cache,
             )
             if classification_payload is None:
+                skipped_count += 1
                 continue
             record = Classification(**classification_payload)
             records.append(_model_dump(record))
         except Exception as exc:
-            print(
-                f"Classification validation failed for {track.get('track_id')} frame {frame.get('frame_number')}: {exc}"
+            skipped_count += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED,
+                bucket,
+                key,
+                kind="classification",
+                reason="validation_failed",
+                track_id=track.get("track_id"),
+                frame_number=frame.get("frame_number"),
+                error=str(exc),
             )
-    return records
+    return records, skipped_count
 
 
 def _build_video_records(
@@ -475,31 +521,46 @@ def _parse_and_build_records(
     storage: StorageAdapter,
     bucket: str,
     key: str,
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, int]]:
     try:
         results = storage.read_json(bucket, key)
     except Exception as exc:
-        print(f"Malformed results.json at {key}: {exc}")
-        return [], [], [], []
+        log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind="results", reason="malformed_json", error=str(exc))
+        return [], [], [], [], {"input_tracks": 0, "skipped_tracks": 0, "skipped_classifications": 0}
 
     manifest = _load_manifest(storage, bucket)
     labels_cache: Dict[str, Dict[str, Any]] = {}
     track_records: List[Dict[str, Any]] = []
     classification_records: List[Dict[str, Any]] = []
+    confirmed_tracks = list(_iter_confirmed_tracks(results))
+    stats = {
+        "input_tracks": len(confirmed_tracks),
+        "skipped_tracks": 0,
+        "skipped_classifications": 0,
+    }
 
-    for track in _iter_confirmed_tracks(results):
+    for track in confirmed_tracks:
         try:
             track_records.append(_build_track_record(storage, bucket, key, results, track))
         except Exception as exc:
-            print(f"Track validation failed for {track.get('track_id')}: {exc}")
+            log_s3_trigger(
+                S3TriggerAction.FAILED,
+                bucket,
+                key,
+                kind="track",
+                reason="validation_failed",
+                track_id=track.get("track_id"),
+                error=str(exc),
+            )
+            stats["skipped_tracks"] += 1
             continue
-        classification_records.extend(
-            _build_classification_records(storage, bucket, key, results, track, labels_cache)
-        )
+        records, skipped_count = _build_classification_records(storage, bucket, key, results, track, labels_cache)
+        classification_records.extend(records)
+        stats["skipped_classifications"] += skipped_count
 
     device_records = _resolve_devices(results, manifest)
     video_records = _build_video_records(storage, bucket, key, results)
-    return track_records, classification_records, device_records, video_records
+    return track_records, classification_records, device_records, video_records, stats
 
 
 def _write_records(
@@ -516,7 +577,7 @@ def _write_records(
 
 
 def process_results_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
-    track_records, classification_records, device_records, video_records = _parse_and_build_records(
+    track_records, classification_records, device_records, video_records, stats = _parse_and_build_records(
         storage,
         bucket,
         key,
@@ -528,6 +589,7 @@ def process_results_object(storage: StorageAdapter, writer: WriterProtocol, buck
         "classifications": len(classification_records),
         "devices": len(device_records),
         "videos": len(video_records),
+        **stats,
     }
 
 
@@ -560,9 +622,55 @@ def parse_s3_event(event: Dict[str, Any]) -> List[Tuple[str, str]]:
     for record in event.get("Records", []):
         bucket = record["s3"]["bucket"]["name"]
         key = unquote_plus(record["s3"]["object"]["key"])
-        if key.startswith("v1/"):
-            records.append((bucket, key))
+        records.append((bucket, key))
     return records
+
+
+def _processing_status(summary: Dict[str, int]) -> str:
+    row_keys = {"tracks", "classifications", "devices", "videos", "heartbeats", "environmental_readings"}
+    if any(summary.get(key, 0) > 0 for key in row_keys):
+        return "success"
+    if any(summary.get(key, 0) > 0 for key in {"skipped_tracks", "skipped_classifications"}):
+        return "error"
+    return "empty"
+
+
+def _processing_kind(key: str) -> str:
+    if key.endswith("/results.json"):
+        return "results"
+    if HEARTBEAT_KEY_PATTERN.match(key):
+        return "heartbeat"
+    if ENVIRONMENT_KEY_PATTERN.match(key):
+        return "environment"
+    return "ignored"
+
+
+def process_s3_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+    kind = _processing_kind(key)
+    log_s3_trigger(S3TriggerAction.RECEIVED, bucket, key, kind=kind)
+    if not key.startswith("v1/"):
+        log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="outside_v1_prefix")
+        return {}
+    if kind == "ignored":
+        log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="unsupported_key")
+        return {}
+
+    log_s3_trigger(S3TriggerAction.PROCESSING, bucket, key, kind=kind)
+    try:
+        if kind == "results":
+            summary = process_results_object(storage, writer, bucket, key)
+        elif kind == "heartbeat":
+            summary = process_heartbeat_object(storage, writer, bucket, key)
+        else:
+            summary = process_environment_object(storage, writer, bucket, key)
+    except Exception as exc:
+        log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind=kind, error=str(exc))
+        raise
+
+    status = _processing_status(summary)
+    log_s3_trigger(S3TriggerAction.PROCESSED, bucket, key, kind=kind, status=status, summary=summary)
+    activity.record_s3_processed(bucket, key, status, summary)
+    return summary
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -570,19 +678,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     writer = DynamoWriter()
     summaries = []
     for bucket, key in parse_s3_event(event):
-        if key.endswith("/results.json"):
-            summary = process_results_object(storage, writer, bucket, key)
-        elif HEARTBEAT_KEY_PATTERN.match(key):
-            summary = process_heartbeat_object(storage, writer, bucket, key)
-        elif ENVIRONMENT_KEY_PATTERN.match(key):
-            summary = process_environment_object(storage, writer, bucket, key)
-        else:
-            summary = {}
+        summary = process_s3_object(storage, writer, bucket, key)
         if summary:
-            activity.record_s3_processed(bucket, key, _processing_status(summary), summary)
             summaries.append(summary)
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}
-
-
-def _processing_status(summary: Dict[str, int]) -> str:
-    return "success" if any(count > 0 for count in summary.values()) else "error"
