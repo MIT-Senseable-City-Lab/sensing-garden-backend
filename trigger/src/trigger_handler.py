@@ -11,6 +11,7 @@ from urllib.parse import unquote_plus
 import boto3
 from botocore.exceptions import ClientError
 
+import activity
 from schemas import Classification, Device, EnvironmentalReading, Heartbeat, Track, Video
 
 
@@ -570,9 +571,18 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     summaries = []
     for bucket, key in parse_s3_event(event):
         if key.endswith("/results.json"):
-            summaries.append(process_results_object(storage, writer, bucket, key))
+            summary = process_results_object(storage, writer, bucket, key)
         elif HEARTBEAT_KEY_PATTERN.match(key):
-            summaries.append(process_heartbeat_object(storage, writer, bucket, key))
+            summary = process_heartbeat_object(storage, writer, bucket, key)
         elif ENVIRONMENT_KEY_PATTERN.match(key):
-            summaries.append(process_environment_object(storage, writer, bucket, key))
+            summary = process_environment_object(storage, writer, bucket, key)
+        else:
+            summary = {}
+        if summary:
+            activity.record_s3_processed(bucket, key, _processing_status(summary), summary)
+            summaries.append(summary)
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}
+
+
+def _processing_status(summary: Dict[str, int]) -> str:
+    return "success" if any(count > 0 for count in summary.values()) else "error"

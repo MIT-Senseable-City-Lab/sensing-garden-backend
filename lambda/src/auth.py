@@ -19,7 +19,6 @@ def _load_configured_keys() -> Dict[str, str]:
     return configured_keys
 
 
-CONFIGURED_KEYS = _load_configured_keys()
 AuthContext = Dict[str, Any]
 
 READ_ONLY_ALLOWED_GET_PATHS = (
@@ -43,6 +42,7 @@ READ_ONLY_ALLOWED_GET_PATHS = (
     "/export",
     "/deployments",
     "/admin/orphaned-devices",
+    "/admin/activity",
 )
 
 READ_ONLY_ALLOWED_GET_PATTERNS = (
@@ -84,7 +84,7 @@ def authenticate_api_key(event: Dict[str, Any]) -> Tuple[bool, str, Optional[str
         if not api_key:
             return False, "Missing API key. Include X-Api-Key header.", None, {}
 
-        for key_name, key_value in CONFIGURED_KEYS.items():
+        for key_name, key_value in _load_configured_keys().items():
             if api_key == key_value:
                 if key_name == DEPLOYMENTS_API_KEY_ENV:
                     return True, "", "deployments", {"principal": "deployments"}

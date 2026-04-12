@@ -109,6 +109,26 @@ resource "aws_iam_role_policy" "eb_s3_access" {
   })
 }
 
+resource "aws_iam_role_policy" "eb_activity_events_access" {
+  name = "eb-sensing-garden-web-activity-events"
+  role = aws_iam_role.eb_ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:DescribeTable"
+        ]
+        Resource = [aws_dynamodb_table.activity_events.arn]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "eb_ec2_profile" {
   name = "eb-sensing-garden-web-profile"
   role = aws_iam_role.eb_ec2_role.name
@@ -214,6 +234,18 @@ resource "aws_elastic_beanstalk_environment" "web" {
     namespace = "aws:elasticbeanstalk:application:environment"
     name      = "WEB_READ_ONLY"
     value     = "false"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "OUTPUT_BUCKET"
+    value     = "scl-sensing-garden"
+  }
+
+  setting {
+    namespace = "aws:elasticbeanstalk:application:environment"
+    name      = "ACTIVITY_EVENTS_TABLE"
+    value     = "sensing-garden-activity-events"
   }
 }
 

@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+import activity
 from s3 import OUTPUT_BUCKET, PRESIGNED_URL_EXPIRY, generate_presigned_put_url
 from utils import _parse_request, json_response
 
@@ -41,10 +42,29 @@ def _validate_device_scope(s3_key: str, authenticated_device: Dict[str, Any]) ->
         raise PermissionError(f"s3_key is outside the authenticated device scope: {key_device_id}")
 
 
+def _record_upload_url(device_id: str, s3_key: str, status_code: int) -> None:
+    activity.record_activity_event(
+        activity.ActivityEvent(
+            timestamp=activity.utc_now(),
+            source=activity.ActivitySource.BACKEND,
+            event_type=activity.ActivityEventType.UPLOAD_URL_REQUESTED,
+            device_id=device_id or None,
+            method="POST",
+            path="/upload-url",
+            status_code=status_code,
+            s3_bucket=OUTPUT_BUCKET,
+            s3_key=s3_key or None,
+            message=f"Upload URL requested -> {status_code}",
+        )
+    )
+
+
 def handle_upload_url(
     event: Dict[str, Any],
     authenticated_device: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
+    device_id = str((authenticated_device or {}).get("device_id") or "")
+    s3_key = ""
     try:
         if not authenticated_device:
             raise PermissionError("Authenticated device context is required")
@@ -54,6 +74,7 @@ def handle_upload_url(
         upload_url = generate_presigned_put_url(s3_key, OUTPUT_BUCKET, PRESIGNED_URL_EXPIRY)
         if not upload_url:
             raise RuntimeError("Failed to generate upload URL")
+        _record_upload_url(device_id, s3_key, 200)
         return json_response(
             200,
             {
@@ -63,8 +84,11 @@ def handle_upload_url(
             },
         )
     except ValueError as exc:
+        _record_upload_url(device_id, s3_key, 400)
         return json_response(400, {"error": str(exc)})
     except PermissionError as exc:
+        _record_upload_url(device_id, s3_key, 403)
         return json_response(403, {"error": str(exc)})
     except Exception as exc:
+        _record_upload_url(device_id, s3_key, 500)
         return json_response(500, {"error": str(exc)})

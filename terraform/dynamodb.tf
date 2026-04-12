@@ -341,3 +341,31 @@ resource "aws_dynamodb_table" "device_api_keys" {
     prevent_destroy = true
   }
 }
+
+resource "aws_dynamodb_table" "activity_events" {
+  name         = "sensing-garden-activity-events"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "event_date"
+  range_key    = "timestamp_event_id"
+
+  attribute {
+    name = "event_date"
+    type = "S"
+  }
+
+  attribute {
+    name = "timestamp_event_id"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

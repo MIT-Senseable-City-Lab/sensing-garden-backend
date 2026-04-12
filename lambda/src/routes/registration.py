@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+import activity
 import dynamodb
 from schemas import DeviceApiKey
 from utils import _parse_request, json_response
@@ -47,7 +48,23 @@ def _ensure_registered_devices(flick_id: str, dot_ids: list[str], created: str) 
         dynamodb.upsert_device(dot_id, created=created, parent_device_id=flick_id)
 
 
+def _record_setup(flick_id: str, status_code: int) -> None:
+    activity.record_activity_event(
+        activity.ActivityEvent(
+            timestamp=activity.utc_now(),
+            source=activity.ActivitySource.BACKEND,
+            event_type=activity.ActivityEventType.DEVICE_SETUP,
+            device_id=flick_id or None,
+            method="POST",
+            path="/devices/register",
+            status_code=status_code,
+            message=f"Device setup request -> {status_code}",
+        )
+    )
+
+
 def handle_register(event: Dict[str, Any]) -> Dict[str, Any]:
+    flick_id = ""
     try:
         body = _parse_request(event)
         setup_code = str(body.get("setup_code", "")).strip()
@@ -59,6 +76,7 @@ def handle_register(event: Dict[str, Any]) -> Dict[str, Any]:
         if not flick_id:
             raise ValueError("flick_id is required")
         if setup_code != _get_setup_code():
+            _record_setup(flick_id, 401)
             return json_response(401, {"error": "Invalid setup code"})
 
         dot_ids = _build_dot_ids(flick_id, dot_count)
@@ -78,8 +96,10 @@ def handle_register(event: Dict[str, Any]) -> Dict[str, Any]:
                 dynamodb.delete_device_api_key(record["device_id"])
             raise
 
+        status_code = 201 if existing_record is None else 200
+        _record_setup(flick_id, status_code)
         return json_response(
-            201 if existing_record is None else 200,
+            status_code,
             {
                 "device_id": record["device_id"],
                 "api_key": record["api_key"],
@@ -88,6 +108,8 @@ def handle_register(event: Dict[str, Any]) -> Dict[str, Any]:
             },
         )
     except ValueError as exc:
+        _record_setup(flick_id, 400)
         return json_response(400, {"error": str(exc)})
     except Exception as exc:
+        _record_setup(flick_id, 500)
         return json_response(500, {"error": str(exc)})

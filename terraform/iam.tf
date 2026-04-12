@@ -53,6 +53,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           aws_dynamodb_table.heartbeats.arn,
           aws_dynamodb_table.device_api_keys.arn,
           "${aws_dynamodb_table.device_api_keys.arn}/index/*",
+          aws_dynamodb_table.activity_events.arn,
         ]
       }
     ]

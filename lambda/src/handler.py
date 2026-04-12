@@ -1,6 +1,7 @@
 import re
 from typing import Any, Callable, Dict, Pattern, Tuple
 
+import dynamodb
 from auth import AuthContext, authorize_request
 from routes import (
     admin,
@@ -46,6 +47,7 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/heartbeats"): heartbeats.handle_get,
     ("GET", "/export"): export.handle_export,
     ("GET", "/admin/orphaned-devices"): admin.handle_orphaned_devices,
+    ("GET", "/admin/activity"): admin.handle_activity,
     ("GET", "/deployments"): deployments.handle_get_list,
     ("POST", "/deployments"): deployments.handle_post,
 }

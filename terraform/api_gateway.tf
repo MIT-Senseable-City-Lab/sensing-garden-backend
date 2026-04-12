@@ -359,3 +359,9 @@ resource "aws_apigatewayv2_route" "get_admin_orphaned_devices" {
   route_key = "GET /admin/orphaned-devices"
   target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
 }
+
+resource "aws_apigatewayv2_route" "get_admin_activity" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /admin/activity"
+  target    = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+}
