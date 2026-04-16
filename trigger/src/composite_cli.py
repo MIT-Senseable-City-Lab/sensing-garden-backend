@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Sequence
 
+from composite_repair import DynamoTrackStore, RepairManifest, apply_repair_manifest, build_repair_manifest
 from composites import CompositeResult, ensure_results_composites
 from trigger_handler import LocalStorageAdapter, S3StorageAdapter, StorageAdapter
 
@@ -15,9 +16,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     storage = _storage(args.local_root)
     if args.command == "generate":
         results = ensure_results_composites(storage, args.bucket, args.results_key)
-    else:
+        print(json.dumps([_result_payload(result) for result in results], indent=2, sort_keys=True))
+    elif args.command == "backfill":
         results = _backfill(storage, args.bucket, args.prefix)
-    print(json.dumps([_result_payload(result) for result in results], indent=2, sort_keys=True))
+        print(json.dumps([_result_payload(result) for result in results], indent=2, sort_keys=True))
+    elif args.command == "repair-plan":
+        manifest = build_repair_manifest(storage, DynamoTrackStore(), args.bucket, args.results_key)
+        print(manifest.model_dump_json(indent=2))
+    else:
+        manifest = RepairManifest.model_validate_json(args.manifest.read_text(encoding="utf-8"))
+        results = apply_repair_manifest(DynamoTrackStore(), manifest)
+        print(json.dumps([result.model_dump(mode="json") for result in results], indent=2, sort_keys=True))
     return 0
 
 
@@ -32,6 +41,12 @@ def _parser() -> argparse.ArgumentParser:
 
     backfill = subparsers.add_parser("backfill")
     backfill.add_argument("--prefix", required=True)
+
+    repair_plan = subparsers.add_parser("repair-plan")
+    repair_plan.add_argument("--results-key", required=True)
+
+    repair_apply = subparsers.add_parser("repair-apply")
+    repair_apply.add_argument("--manifest", type=Path, required=True)
     return parser
 
 
