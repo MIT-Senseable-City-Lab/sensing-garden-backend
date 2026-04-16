@@ -4,13 +4,18 @@ import json
 import logging
 import os
 import sys
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 TRIGGER_SRC = Path(__file__).resolve().parents[1] / "trigger" / "src"
+sys.modules.pop("activity", None)
+sys.modules.pop("schemas", None)
+sys.modules.pop("trigger_handler", None)
 sys.path.insert(0, str(TRIGGER_SRC))
 
 import trigger_handler  # noqa: E402
@@ -53,6 +58,36 @@ class JsonStorage:
 
     def list_keys(self, bucket: str, prefix: str, suffix: str = "") -> list[str]:
         return []
+
+
+class MemoryStorage:
+    def __init__(self, objects: dict[str, bytes]) -> None:
+        self.objects = objects
+
+    def read_text(self, bucket: str, key: str) -> str:
+        return self.objects[key].decode("utf-8")
+
+    def read_json(self, bucket: str, key: str) -> dict[str, object]:
+        return json.loads(self.read_text(bucket, key))
+
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        return self.objects[key]
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        self.objects[key] = body
+
+    def exists(self, bucket: str, key: str) -> bool:
+        return key in self.objects
+
+    def list_keys(self, bucket: str, prefix: str, suffix: str = "") -> list[str]:
+        return sorted(key for key in self.objects if key.startswith(prefix) and key.endswith(suffix))
+
+
+def _jpeg_bytes() -> bytes:
+    image = Image.new("RGB", (10, 10), "white")
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG")
+    return buffer.getvalue()
 
 
 @pytest.fixture(autouse=True)
@@ -178,3 +213,101 @@ def test_dot_date_results_use_timestamped_track_ids() -> None:
 
     assert summary["tracks"] == 2
     assert [item["track_id"] for item in writer.tracks] == ["3409_163112", "3409_163116"]
+
+
+def test_results_processing_creates_missing_dot_composite_before_track_write() -> None:
+    results_key = "v1/FLIK2-dot01/20260412/results.json"
+    composite_key = "v1/FLIK2-dot01/20260412/composites/12224_163315.jpg"
+    storage = MemoryStorage(
+        {
+            results_key: json.dumps(
+                {
+                    "source_device": "FLIK2-dot01",
+                    "date": "20260412",
+                    "tracks": [
+                        {
+                            "track_id": "12224",
+                            "timestamp": "163315",
+                            "final_prediction": {
+                                "family": "Family",
+                                "genus": "Genus",
+                                "species": "Species",
+                                "family_confidence": 0.9,
+                                "genus_confidence": 0.8,
+                                "species_confidence": 0.7,
+                            },
+                            "num_detections": 1,
+                            "frames": [],
+                        }
+                    ],
+                }
+            ).encode("utf-8"),
+            "v1/FLIK2-dot01/20260412/labels/12224.json": json.dumps(
+                {
+                    "resolution": {"width": 100, "height": 80},
+                    "points": [{"x": 10, "y": 20, "width": 10, "height": 10, "frameIndex": 1505}],
+                }
+            ).encode("utf-8"),
+            "v1/FLIK2-dot01/20260412/crops/12224_163315/frame_000000.jpg": _jpeg_bytes(),
+        }
+    )
+    writer = trigger_handler.CollectingWriter()
+
+    summary = trigger_handler.process_results_object(storage, writer, "bucket", results_key)
+
+    assert summary["tracks"] == 1
+    assert summary["composites_created"] == 1
+    assert storage.exists("bucket", composite_key)
+    assert writer.tracks[0]["composite_key"] == composite_key
+
+
+def test_composite_generation_failure_does_not_skip_track(caplog: pytest.LogCaptureFixture) -> None:
+    results_key = "v1/FLIK2-dot01/20260412/results.json"
+    storage = MemoryStorage(
+        {
+            results_key: json.dumps(
+                {
+                    "source_device": "FLIK2-dot01",
+                    "date": "20260412",
+                    "tracks": [
+                        {
+                            "track_id": "12224",
+                            "timestamp": "163315",
+                            "final_prediction": {
+                                "family": "Family",
+                                "genus": "Genus",
+                                "species": "Species",
+                                "family_confidence": 0.9,
+                                "genus_confidence": 0.8,
+                                "species_confidence": 0.7,
+                            },
+                            "num_detections": 1,
+                            "frames": [],
+                        }
+                    ],
+                }
+            ).encode("utf-8"),
+            "v1/FLIK2-dot01/20260412/labels/12224.json": json.dumps(
+                {
+                    "resolution": {"width": 100, "height": 80},
+                    "points": [{"x": 10, "y": 20, "width": 10, "height": 10, "frameIndex": 1505}],
+                }
+            ).encode("utf-8"),
+            "v1/FLIK2-dot01/20260412/crops/12224_163315/frame_000000.jpg": b"not-a-jpeg",
+        }
+    )
+    writer = trigger_handler.CollectingWriter()
+    caplog.set_level(logging.INFO, logger=trigger_handler.logger.name)
+
+    summary = trigger_handler.process_results_object(storage, writer, "bucket", results_key)
+
+    payloads = _payloads(caplog)
+    assert summary["tracks"] == 1
+    assert summary["composites_failed"] == 1
+    assert len(writer.tracks) == 1
+    assert any(
+        payload["kind"] == "composite"
+        and payload["reason"] == "generation_failed"
+        and payload["track_id"] == "12224"
+        for payload in payloads
+    )

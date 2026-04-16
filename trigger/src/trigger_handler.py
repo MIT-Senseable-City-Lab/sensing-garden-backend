@@ -14,6 +14,13 @@ import boto3
 from botocore.exceptions import ClientError
 
 import activity
+from composites import (
+    CompositeSkipReason,
+    CompositeStatus,
+    candidate_composite_keys,
+    ensure_track_composite,
+    iter_result_tracks,
+)
 from schemas import Classification, Device, EnvironmentalReading, Heartbeat, Track, Video
 
 
@@ -63,6 +70,12 @@ class StorageAdapter:
     def read_json(self, bucket: str, key: str) -> Dict[str, Any]:
         return json.loads(self.read_text(bucket, key))
 
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        raise NotImplementedError
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        raise NotImplementedError
+
     def exists(self, bucket: str, key: str) -> bool:
         raise NotImplementedError
 
@@ -71,12 +84,19 @@ class StorageAdapter:
 
 
 class S3StorageAdapter(StorageAdapter):
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = boto3.client("s3")
 
     def read_text(self, bucket: str, key: str) -> str:
         response = self.client.get_object(Bucket=bucket, Key=key)
         return response["Body"].read().decode("utf-8")
+
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        response = self.client.get_object(Bucket=bucket, Key=key)
+        return response["Body"].read()
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        self.client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type)
 
     def exists(self, bucket: str, key: str) -> bool:
         try:
@@ -97,7 +117,7 @@ class S3StorageAdapter(StorageAdapter):
 
 
 class LocalStorageAdapter(StorageAdapter):
-    def __init__(self, root: str):
+    def __init__(self, root: str) -> None:
         self.root = Path(root)
 
     def _path(self, key: str) -> Path:
@@ -105,6 +125,14 @@ class LocalStorageAdapter(StorageAdapter):
 
     def read_text(self, bucket: str, key: str) -> str:
         return self._path(key).read_text()
+
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        return self._path(key).read_bytes()
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        path = self._path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
 
     def exists(self, bucket: str, key: str) -> bool:
         return self._path(key).exists()
@@ -294,13 +322,7 @@ def derive_frame_timestamp(results: Dict[str, Any], track: Dict[str, Any], frame
 
 
 def _candidate_composite_keys(s3_prefix: str, track: Dict[str, Any]) -> List[str]:
-    short_id = track["track_id"][:8]
-    timestamp = track.get("timestamp")
-    candidates = [f"{s3_prefix}/composites/track_{short_id}.jpg"]
-    if timestamp:
-        candidates.append(f"{s3_prefix}/composites/{track['track_id']}_{timestamp}.jpg")
-        candidates.append(f"{s3_prefix}/composites/{short_id}_{timestamp}.jpg")
-    return candidates
+    return candidate_composite_keys(s3_prefix, track)
 
 
 def _resolve_s3_key(storage: StorageAdapter, bucket: str, candidates: List[str]) -> str:
@@ -358,9 +380,7 @@ def _resolve_model_id(results: Dict[str, Any]) -> str:
 
 
 def _iter_confirmed_tracks(results: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
-    tracks = results.get("tracks", [])
-    explicit = [track for track in tracks if track.get("confirmed") is True or track.get("is_confirmed") is True]
-    return explicit or tracks
+    return iter_result_tracks(results)
 
 
 def _load_labels(storage: StorageAdapter, bucket: str, s3_prefix: str, track_id: str, cache: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -526,7 +546,14 @@ def _parse_and_build_records(
         results = storage.read_json(bucket, key)
     except Exception as exc:
         log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind="results", reason="malformed_json", error=str(exc))
-        return [], [], [], [], {"input_tracks": 0, "skipped_tracks": 0, "skipped_classifications": 0}
+        return [], [], [], [], {
+            "input_tracks": 0,
+            "skipped_tracks": 0,
+            "skipped_classifications": 0,
+            "composites_created": 0,
+            "composites_skipped": 0,
+            "composites_failed": 0,
+        }
 
     manifest = _load_manifest(storage, bucket)
     labels_cache: Dict[str, Dict[str, Any]] = {}
@@ -537,9 +564,30 @@ def _parse_and_build_records(
         "input_tracks": len(confirmed_tracks),
         "skipped_tracks": 0,
         "skipped_classifications": 0,
+        "composites_created": 0,
+        "composites_skipped": 0,
+        "composites_failed": 0,
     }
 
     for track in confirmed_tracks:
+        try:
+            composite_result = ensure_track_composite(storage, bucket, key, track)
+            if composite_result.status == CompositeStatus.CREATED:
+                stats["composites_created"] += 1
+            elif composite_result.reason and composite_result.reason is not CompositeSkipReason.EXISTS:
+                stats["composites_skipped"] += 1
+        except Exception as exc:
+            log_s3_trigger(
+                S3TriggerAction.FAILED,
+                bucket,
+                key,
+                kind="composite",
+                reason="generation_failed",
+                track_id=track.get("track_id"),
+                error=str(exc),
+            )
+            stats["composites_failed"] += 1
+
         try:
             track_records.append(_build_track_record(storage, bucket, key, results, track))
         except Exception as exc:
@@ -629,8 +677,10 @@ def parse_s3_event(event: Dict[str, Any]) -> List[Tuple[str, str]]:
 def _processing_status(summary: Dict[str, int]) -> str:
     row_keys = {"tracks", "classifications", "devices", "videos", "heartbeats", "environmental_readings"}
     if any(summary.get(key, 0) > 0 for key in row_keys):
+        if summary.get("composites_failed", 0) > 0:
+            return "error"
         return "success"
-    if any(summary.get(key, 0) > 0 for key in {"skipped_tracks", "skipped_classifications"}):
+    if any(summary.get(key, 0) > 0 for key in {"skipped_tracks", "skipped_classifications", "composites_failed"}):
         return "error"
     return "empty"
 

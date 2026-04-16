@@ -136,6 +136,15 @@ resource "aws_iam_role_policy" "trigger_lambda_s3_policy" {
           aws_s3_bucket.output.arn,
           "${aws_s3_bucket.output.arn}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.output.arn}/v1/*/composites/*"
+        ]
       }
     ]
   })
