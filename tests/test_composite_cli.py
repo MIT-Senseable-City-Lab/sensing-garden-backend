@@ -173,7 +173,7 @@ def test_cli_generates_dot_composite_from_frame_bboxes(tmp_path: Path) -> None:
 
     composite = Image.open(tmp_path / "v1/FLIK2-dot01/20260413/composites/157868_184852.jpg")
     assert exit_code == 0
-    assert composite.size == (1080, 1080)
+    assert composite.size == (1920, 1080)
     _assert_near_color(composite, (15, 25), (255, 255, 255))
     _assert_near_color(composite, (65, 65), (0, 0, 255))
 
@@ -188,7 +188,7 @@ def test_cli_clips_dot_frame_bboxes_to_fake_canvas(tmp_path: Path) -> None:
     _write_json(
         tmp_path,
         "v1/FLIK2-dot01/20260413/labels/157868.json",
-        {"frames": [{"frame_number": 1616870, "bbox": [1070, 1070, 20, 20]}]},
+        {"frames": [{"frame_number": 1616870, "bbox": [1910, 1070, 20, 20]}]},
     )
     _write_jpeg(tmp_path, "v1/FLIK2-dot01/20260413/crops/157868_184852/frame_000000.jpg", "white")
 
@@ -206,7 +206,7 @@ def test_cli_clips_dot_frame_bboxes_to_fake_canvas(tmp_path: Path) -> None:
 
     composite = Image.open(tmp_path / "v1/FLIK2-dot01/20260413/composites/157868_184852.jpg")
     assert exit_code == 0
-    assert composite.size == (1080, 1080)
+    assert composite.size == (1920, 1080)
 
 
 def test_cli_skips_dot_frame_bboxes_outside_fake_canvas(tmp_path: Path, capsys: CaptureFixture[str]) -> None:
@@ -219,7 +219,7 @@ def test_cli_skips_dot_frame_bboxes_outside_fake_canvas(tmp_path: Path, capsys: 
     _write_json(
         tmp_path,
         "v1/FLIK2-dot01/20260413/labels/157868.json",
-        {"frames": [{"frame_number": 1616870, "bbox": [1200, 1200, 20, 20]}]},
+        {"frames": [{"frame_number": 1616870, "bbox": [2000, 1200, 20, 20]}]},
     )
     _write_jpeg(tmp_path, "v1/FLIK2-dot01/20260413/crops/157868_184852/frame_000000.jpg", "white")
 

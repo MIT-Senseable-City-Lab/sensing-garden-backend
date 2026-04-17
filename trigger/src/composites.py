@@ -9,7 +9,8 @@ from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field
 
 
-DOT_FAKE_CANVAS_SIZE = 1080
+DOT_FAKE_CANVAS_WIDTH = 1920
+DOT_FAKE_CANVAS_HEIGHT = 1080
 
 
 class CompositeSource(str, Enum):
@@ -282,8 +283,8 @@ def _dot_plan_from_frames(
     return CompositePlan(
         source=source,
         composite_key=composite_key,
-        canvas_width=DOT_FAKE_CANVAS_SIZE,
-        canvas_height=DOT_FAKE_CANVAS_SIZE,
+        canvas_width=DOT_FAKE_CANVAS_WIDTH,
+        canvas_height=DOT_FAKE_CANVAS_HEIGHT,
         placements=placements,
     )
 
@@ -352,7 +353,7 @@ def _dot_frame_placement(crop_key: str, frame: dict[str, Any]) -> Optional[CropP
     y1 = int(bbox[1])
     x2 = x1 + int(bbox[2])
     y2 = y1 + int(bbox[3])
-    return _clipped_placement(crop_key, x1, y1, x2, y2, DOT_FAKE_CANVAS_SIZE, DOT_FAKE_CANVAS_SIZE)
+    return _clipped_placement(crop_key, x1, y1, x2, y2, DOT_FAKE_CANVAS_WIDTH, DOT_FAKE_CANVAS_HEIGHT)
 
 
 def _clipped_placement(
