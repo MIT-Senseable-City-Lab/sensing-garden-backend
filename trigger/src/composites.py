@@ -9,6 +9,9 @@ from PIL import Image, ImageDraw
 from pydantic import BaseModel, Field
 
 
+DOT_FAKE_CANVAS_SIZE = 1080
+
+
 class CompositeSource(str, Enum):
     FLICK = "flick"
     DOT = "dot"
@@ -104,10 +107,15 @@ def candidate_composite_keys(s3_prefix: str, track: dict[str, Any]) -> list[str]
     return CompositeSource.from_results_key(f"{s3_prefix}/results.json").composite_keys(s3_prefix, track)
 
 
-def ensure_results_composites(storage: CompositeStorage, bucket: str, results_key: str) -> list[CompositeResult]:
+def ensure_results_composites(
+    storage: CompositeStorage,
+    bucket: str,
+    results_key: str,
+    overwrite_existing: bool = False,
+) -> list[CompositeResult]:
     results = storage.read_json(bucket, results_key)
     return [
-        ensure_track_composite(storage, bucket, results_key, track)
+        ensure_track_composite(storage, bucket, results_key, track, overwrite_existing)
         for track in iter_result_tracks(results)
     ]
 
@@ -117,11 +125,12 @@ def ensure_track_composite(
     bucket: str,
     results_key: str,
     track: dict[str, Any],
+    overwrite_existing: bool = False,
 ) -> CompositeResult:
     source = CompositeSource.from_results_key(results_key)
     prefix = derive_s3_prefix(results_key)
     composite_key = source.composite_keys(prefix, track)[0]
-    if storage.exists(bucket, composite_key):
+    if storage.exists(bucket, composite_key) and not overwrite_existing:
         return _skipped(source, composite_key, CompositeSkipReason.EXISTS)
 
     plan = _build_plan(storage, bucket, prefix, source, track, composite_key)
@@ -263,14 +272,18 @@ def _dot_plan_from_frames(
     if len(crop_keys) != len(frames):
         return _skipped(source, composite_key, CompositeSkipReason.CROP_LABEL_MISMATCH)
 
-    placements = [_dot_frame_placement(crop_key, frame) for crop_key, frame in zip(crop_keys, _sorted_dot_frames(frames))]
-    width = max(placement.x2 for placement in placements)
-    height = max(placement.y2 for placement in placements)
+    placements = [
+        _dot_frame_placement(crop_key, frame)
+        for crop_key, frame in zip(crop_keys, _sorted_dot_frames(frames))
+    ]
+    placements = [placement for placement in placements if placement is not None]
+    if not placements:
+        return _skipped(source, composite_key, CompositeSkipReason.NO_BOXES)
     return CompositePlan(
         source=source,
         composite_key=composite_key,
-        canvas_width=width,
-        canvas_height=height,
+        canvas_width=DOT_FAKE_CANVAS_SIZE,
+        canvas_height=DOT_FAKE_CANVAS_SIZE,
         placements=placements,
     )
 
@@ -307,14 +320,12 @@ def _valid_dot_frame(frame: Any) -> bool:
         return False
     try:
         bbox = frame["bbox"]
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            return False
         int(frame["frame_number"])
-        return (
-            len(bbox) == 4
-            and int(bbox[0]) >= 0
-            and int(bbox[1]) >= 0
-            and int(bbox[2]) > 0
-            and int(bbox[3]) > 0
-        )
+        int(bbox[0])
+        int(bbox[1])
+        return int(bbox[2]) > 0 and int(bbox[3]) > 0
     except (KeyError, TypeError, ValueError):
         return False
 
@@ -335,13 +346,13 @@ def _dot_placement(crop_key: str, point: dict[str, Any], width: int, height: int
     return _clipped_placement(crop_key, x1, y1, x2, y2, width, height)
 
 
-def _dot_frame_placement(crop_key: str, frame: dict[str, Any]) -> CropPlacement:
+def _dot_frame_placement(crop_key: str, frame: dict[str, Any]) -> Optional[CropPlacement]:
     bbox = frame["bbox"]
     x1 = int(bbox[0])
     y1 = int(bbox[1])
     x2 = x1 + int(bbox[2])
     y2 = y1 + int(bbox[3])
-    return CropPlacement(crop_key=crop_key, x1=x1, y1=y1, x2=x2, y2=y2)
+    return _clipped_placement(crop_key, x1, y1, x2, y2, DOT_FAKE_CANVAS_SIZE, DOT_FAKE_CANVAS_SIZE)
 
 
 def _clipped_placement(

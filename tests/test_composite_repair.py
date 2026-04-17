@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from io import BytesIO
 import json
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 
 TRIGGER_SRC = Path(__file__).resolve().parents[1] / "trigger" / "src"
@@ -13,11 +16,13 @@ sys.path.insert(0, str(TRIGGER_SRC))
 
 from composite_repair import (  # noqa: E402
     ApplyStatus,
+    PrefixBackfillResult,
     RepairManifest,
     RepairManifestRow,
     RepairStatus,
     TrackSnapshot,
     apply_repair_manifest,
+    backfill_dynamo_prefix,
     build_repair_manifest,
 )
 
@@ -28,20 +33,41 @@ sys.modules.pop("trigger_handler", None)
 
 
 class FakeStorage:
-    def __init__(self, payloads: dict[str, dict[str, object]], existing_keys: set[str]) -> None:
+    def __init__(
+        self,
+        payloads: dict[str, dict[str, object]],
+        existing_keys: set[str],
+        bodies: dict[str, bytes] | None = None,
+    ) -> None:
         self.payloads = payloads
         self.existing_keys = existing_keys
+        self.bodies = bodies or {}
 
     def read_json(self, bucket: str, key: str) -> dict[str, object]:
         return self.payloads[key]
 
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        return self.bodies[key]
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        self.existing_keys.add(key)
+        self.bodies[key] = body
+
     def exists(self, bucket: str, key: str) -> bool:
-        return key in self.existing_keys
+        return key in self.existing_keys or key in self.bodies
+
+    def list_keys(self, bucket: str, prefix: str, suffix: str = "") -> list[str]:
+        return sorted(key for key in self.bodies if key.startswith(prefix) and key.endswith(suffix))
 
 
 class FakeTrackStore:
-    def __init__(self, tracks: dict[tuple[str, str], TrackSnapshot]) -> None:
+    def __init__(
+        self,
+        tracks: dict[tuple[str, str], TrackSnapshot],
+        prefix_tracks: dict[str, list[TrackSnapshot]] | None = None,
+    ) -> None:
         self.tracks = tracks
+        self.prefix_tracks = prefix_tracks or {}
         self.updates: list[tuple[str, str, str]] = []
 
     def get_track(self, device_id: str, track_id: str) -> TrackSnapshot | None:
@@ -49,6 +75,9 @@ class FakeTrackStore:
 
     def update_composite_key(self, device_id: str, track_id: str, composite_key: str) -> None:
         self.updates.append((device_id, track_id, composite_key))
+
+    def list_tracks_by_prefix(self, prefix: str) -> list[TrackSnapshot]:
+        return self.prefix_tracks[prefix]
 
 
 def _results_key() -> str:
@@ -66,6 +95,13 @@ def _payload() -> dict[str, object]:
             {"track_id": "99536", "timestamp": "154113"},
         ],
     }
+
+
+def _jpeg_bytes(color: str) -> bytes:
+    image = Image.new("RGB", (10, 10), color)
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG")
+    return buffer.getvalue()
 
 
 def test_repair_manifest_marks_update_correct_missing_composite_and_missing_track() -> None:
@@ -164,3 +200,34 @@ def test_repair_manifest_json_round_trips() -> None:
     restored = RepairManifest.model_validate_json(json.dumps(manifest.model_dump(mode="json")))
 
     assert restored == manifest
+
+
+def test_backfill_dynamo_prefix_repairs_tracks_missing_from_results() -> None:
+    prefix = "v1/FLIK2-dot01/20260413"
+    label_key = f"{prefix}/labels/151658.json"
+    crop_key = f"{prefix}/crops/151658_175338/frame_000005.jpg"
+    expected_key = f"{prefix}/composites/151658_175338.jpg"
+    track = TrackSnapshot(
+        device_id="FLIK2-dot01",
+        track_id="151658",
+        composite_key=f"{prefix}/composites/track_151658.jpg",
+    )
+    storage = FakeStorage(
+        {label_key: {"frames": [{"frame_number": 5, "bbox": [10, 10, 20, 20]}]}},
+        {label_key},
+        {crop_key: _jpeg_bytes("white")},
+    )
+    track_store = FakeTrackStore({}, {prefix: [track]})
+
+    results: list[PrefixBackfillResult] = backfill_dynamo_prefix(
+        storage,
+        track_store,
+        "bucket",
+        prefix,
+        True,
+    )
+
+    assert results[0].composite_key == expected_key
+    assert results[0].update_status is ApplyStatus.UPDATED
+    assert storage.exists("bucket", expected_key)
+    assert track_store.updates == [("FLIK2-dot01", "151658", expected_key)]
