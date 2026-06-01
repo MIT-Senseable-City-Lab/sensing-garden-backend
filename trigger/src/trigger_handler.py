@@ -1047,6 +1047,7 @@ def process_s3_object(
             )
         status = _processing_status(summary)
         log_s3_trigger(S3TriggerAction.PROCESSED, event.bucket, event.key, kind=kind.value, status=status, summary=summary)
+        activity.record_s3_processed(event.bucket, event.key, kind.value, status, summary)
     except Exception as exc:
         if claimed:
             try:
@@ -1066,17 +1067,6 @@ def process_s3_object(
 
     if claimed:
         _mark_idempotency_complete(event, kind, processed_store, claim)
-    try:
-        activity.record_s3_processed(event.bucket, event.key, kind.value, status, summary)
-    except Exception as exc:
-        log_s3_trigger(
-            S3TriggerAction.FAILED,
-            event.bucket,
-            event.key,
-            kind=kind.value,
-            reason="processed_activity_failed",
-            error=str(exc),
-        )
     return summary
 
 
