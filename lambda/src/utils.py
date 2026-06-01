@@ -1,6 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs
 
@@ -11,6 +12,73 @@ CORS_HEADERS = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
 }
+
+
+class TaxonomyLevel(str, Enum):
+    FAMILY = "family"
+    GENUS = "genus"
+    SPECIES = "species"
+
+    @classmethod
+    def parse_optional(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            return cls(value).value
+        except ValueError as exc:
+            raise ValueError("taxonomy_level must be one of: family, genus, species") from exc
+
+
+class IntervalUnit(str, Enum):
+    HOUR = "h"
+    DAY = "d"
+
+    @classmethod
+    def parse(cls, value: Optional[str]) -> str:
+        try:
+            return cls(str(value)).value
+        except ValueError as exc:
+            raise ValueError("interval_unit must be one of: h, d") from exc
+
+    def delta(self, length: int) -> timedelta:
+        if self is IntervalUnit.HOUR:
+            return timedelta(hours=length)
+        return timedelta(days=length)
+
+
+class HeatmapPeriod(str, Enum):
+    DAY = "d"
+    WEEK = "w"
+    MONTH = "m"
+    YEAR = "y"
+
+    @classmethod
+    def parse(cls, value: Optional[str]) -> "HeatmapPeriod":
+        try:
+            return cls(str(value))
+        except ValueError as exc:
+            raise ValueError("period must be one of: d, w, m, y") from exc
+
+    def start_for(self, value: datetime) -> datetime:
+        day_start = value.replace(hour=0, minute=0, second=0, microsecond=0)
+        if self is HeatmapPeriod.DAY:
+            return day_start
+        if self is HeatmapPeriod.WEEK:
+            return day_start - timedelta(days=day_start.weekday())
+        if self is HeatmapPeriod.MONTH:
+            return day_start.replace(day=1)
+        return day_start.replace(month=1, day=1)
+
+    def next_start(self, value: datetime) -> datetime:
+        if self is HeatmapPeriod.DAY:
+            return value + timedelta(days=1)
+        if self is HeatmapPeriod.WEEK:
+            return value + timedelta(weeks=1)
+        if self is HeatmapPeriod.MONTH:
+            year = value.year + (1 if value.month == 12 else 0)
+            month = 1 if value.month == 12 else value.month + 1
+            return value.replace(year=year, month=month)
+        return value.replace(year=value.year + 1)
 
 
 class DynamoDBEncoder(json.JSONEncoder):
@@ -96,12 +164,9 @@ def _resolve_device_filters(query_params: Dict[str, Any]) -> Optional[List[str]]
 
 def _validate_interval_params(params: Dict[str, Any]) -> Tuple[int, str]:
     interval_length = _get_int_param(params, "interval_length")
-    interval_unit = params.get("interval_unit")
     if interval_length in (None, 0) or interval_length < 0:
         raise ValueError("interval_length must be a positive integer")
-    if interval_unit not in {"h", "d"}:
-        raise ValueError("interval_unit must be one of: h, d")
-    return interval_length, str(interval_unit)
+    return interval_length, IntervalUnit.parse(params.get("interval_unit"))
 
 
 def _get_bool_param(params: Dict[str, Any], key: str, default: bool = False) -> bool:

@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+import math
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -10,7 +11,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 from schemas import DeviceApiKey
-from utils import json_response
+from utils import HeatmapPeriod, IntervalUnit, json_response
 
 
 dynamodb = boto3.resource("dynamodb")
@@ -319,11 +320,16 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
     try:
         parsed = datetime.fromisoformat(normalized_value.replace("Z", "+00:00"))
     except ValueError:
+        timestamp_without_suffix = normalized_value.split("_", 1)[0]
         for fmt in ("%Y%m%d_%H%M%S", "%Y-%m-%d %H:%M:%S"):
             try:
                 return datetime.strptime(normalized_value, fmt)
             except ValueError:
                 continue
+        try:
+            return datetime.strptime(timestamp_without_suffix, "%Y-%m-%dT%H-%M-%S-%f")
+        except ValueError:
+            pass
         raise ValueError(f"Unsupported timestamp format: {value}")
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
@@ -416,6 +422,11 @@ def device_exists(device_id: str) -> bool:
     return "Item" in response
 
 
+def get_device(device_id: str) -> Optional[Dict[str, Any]]:
+    response = dynamodb.Table(DEVICES_TABLE).get_item(Key={"device_id": device_id})
+    return response.get("Item")
+
+
 def get_deployment(deployment_id: str) -> Optional[Dict[str, Any]]:
     response = dynamodb.Table(DEPLOYMENTS_TABLE).get_item(Key={"deployment_id": deployment_id})
     return response.get("Item")
@@ -477,6 +488,35 @@ def list_deployment_devices(deployment_id: str) -> List[Dict[str, Any]]:
 
 def list_device_ids_for_deployment(deployment_id: str) -> List[str]:
     return [item["device_id"] for item in list_deployment_devices(deployment_id) if "device_id" in item]
+
+
+def _resolve_hub_id(device_id: str, device_cache: Dict[str, Dict[str, Any]]) -> str:
+    if device_id not in device_cache:
+        device = get_device(device_id)
+        if not device:
+            raise ValueError(f"device_id {device_id} was not found")
+        device_cache[device_id] = device
+    return str(device_cache[device_id].get("parent_device_id") or device_id)
+
+
+def get_deployment_hub_count(deployment_id: str, device_cache: Optional[Dict[str, Dict[str, Any]]] = None) -> int:
+    cache = device_cache if device_cache is not None else {}
+    hub_ids = {
+        _resolve_hub_id(connection["device_id"], cache)
+        for connection in list_deployment_devices(deployment_id)
+        if "device_id" in connection
+    }
+    return len(hub_ids)
+
+
+def attach_deployment_hub_counts(deployments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    device_cache: Dict[str, Dict[str, Any]] = {}
+    counted: List[Dict[str, Any]] = []
+    for deployment in deployments:
+        normalized = dict(deployment)
+        normalized["hub_count"] = get_deployment_hub_count(normalized["deployment_id"], device_cache)
+        counted.append(normalized)
+    return counted
 
 
 def _build_update_expression(updates: Dict[str, Any]) -> Dict[str, Any]:
@@ -609,6 +649,27 @@ def _classification_confidence(item: Dict[str, Any], taxonomy_level: Optional[st
     return _coerce_number(item.get(confidence_field))
 
 
+def _filter_taxonomy_items(
+    items: List[Dict[str, Any]],
+    model_id: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+) -> List[Dict[str, Any]]:
+    filtered: List[Dict[str, Any]] = []
+    for item in items:
+        if model_id and item.get("model_id") != model_id:
+            continue
+        if min_confidence is not None:
+            confidence = _classification_confidence(item, taxonomy_level)
+            if confidence is None or confidence < min_confidence:
+                continue
+        if taxonomy_level and selected_taxa and item.get(taxonomy_level) not in selected_taxa:
+            continue
+        filtered.append(item)
+    return filtered
+
+
 def _build_device_time_key_condition(
     device_id: str,
     start_time: Optional[str],
@@ -721,18 +782,7 @@ def _filter_classification_items(
     taxonomy_level: Optional[str],
     selected_taxa: List[str],
 ) -> List[Dict[str, Any]]:
-    filtered: List[Dict[str, Any]] = []
-    for item in items:
-        if model_id and item.get("model_id") != model_id:
-            continue
-        if min_confidence is not None:
-            confidence = _classification_confidence(item, taxonomy_level)
-            if confidence is None or confidence < min_confidence:
-                continue
-        if taxonomy_level and selected_taxa and item.get(taxonomy_level) not in selected_taxa:
-            continue
-        filtered.append(item)
-    return filtered
+    return _filter_taxonomy_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
 
 
 def list_classifications(
@@ -808,19 +858,105 @@ def _bucket_timestamps(
     start_dt = _parse_time(start_time)
     if start_dt is None:
         raise ValueError("Invalid start_time")
-    interval_delta = timedelta(hours=interval_length) if interval_unit == "h" else timedelta(days=interval_length)
+    interval_delta = IntervalUnit(interval_unit).delta(interval_length)
     end_dt = _parse_time(end_time)
     if end_dt is None:
         parsed_items = [_parse_time(item.get("timestamp")) for item in items if _parse_time(item.get("timestamp"))]
         end_dt = (max(parsed_items) + interval_delta) if parsed_items else (start_dt + interval_delta)
     if end_dt <= start_dt:
         end_dt = start_dt + interval_delta
-    bucket_count = max(int((end_dt - start_dt) / interval_delta), 1)
+    bucket_count = max(math.ceil((end_dt - start_dt) / interval_delta), 1)
     return {
         "start_dt": start_dt,
         "end_dt": end_dt,
         "interval_delta": interval_delta,
         "bucket_count": bucket_count,
+    }
+
+
+def _time_series_counts(
+    items: List[Dict[str, Any]],
+    start_time: str,
+    end_time: Optional[str],
+    interval_length: int,
+    interval_unit: str,
+) -> Dict[str, Any]:
+    bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
+    counts = [0] * bucket_config["bucket_count"]
+    for item in items:
+        item_time = _parse_time(item.get("timestamp"))
+        if not item_time or item_time < bucket_config["start_dt"] or item_time >= bucket_config["end_dt"]:
+            continue
+        bucket_index = int((item_time - bucket_config["start_dt"]) / bucket_config["interval_delta"])
+        if 0 <= bucket_index < len(counts):
+            counts[bucket_index] += 1
+    return {
+        "counts": counts,
+        "start_time": bucket_config["start_dt"].isoformat(),
+        "interval_length": interval_length,
+        "interval_unit": interval_unit,
+    }
+
+
+def _format_utc_datetime(value: datetime) -> str:
+    return value.replace(tzinfo=timezone.utc).isoformat()
+
+
+def _heatmap_bounds(
+    items: List[Dict[str, Any]],
+    start_time: str,
+    end_time: Optional[str],
+) -> Dict[str, datetime]:
+    start_dt = _parse_time(start_time)
+    if start_dt is None:
+        raise ValueError("Invalid start_time")
+    end_dt = _parse_time(end_time)
+    if end_dt is None:
+        parsed_items = [_parse_time(item.get("timestamp")) for item in items if _parse_time(item.get("timestamp"))]
+        end_dt = (max(parsed_items) + timedelta(hours=1)) if parsed_items else (start_dt + timedelta(hours=1))
+    if end_dt <= start_dt:
+        end_dt = start_dt + timedelta(hours=1)
+    return {"start_dt": start_dt, "end_dt": end_dt}
+
+
+def _heatmap_period_starts(period: HeatmapPeriod, start_dt: datetime, end_dt: datetime) -> List[datetime]:
+    starts: List[datetime] = []
+    cursor = period.start_for(start_dt)
+    while cursor < end_dt:
+        starts.append(cursor)
+        cursor = period.next_start(cursor)
+    return starts
+
+
+def _heatmap_counts(
+    items: List[Dict[str, Any]],
+    start_time: str,
+    end_time: Optional[str],
+    period: HeatmapPeriod,
+) -> Dict[str, Any]:
+    bucket_config = _heatmap_bounds(items, start_time, end_time)
+    period_starts = _heatmap_period_starts(period, bucket_config["start_dt"], bucket_config["end_dt"])
+    counts = {(period_start, hour): 0 for period_start in period_starts for hour in range(24)}
+
+    for item in items:
+        item_time = _parse_time(item.get("timestamp"))
+        if not item_time or item_time < bucket_config["start_dt"] or item_time >= bucket_config["end_dt"]:
+            continue
+        key = (period.start_for(item_time), item_time.hour)
+        if key in counts:
+            counts[key] += 1
+
+    return {
+        "period": period.value,
+        "cells": [
+            {
+                "period_start": _format_utc_datetime(period_start),
+                "hour": hour,
+                "count": counts[(period_start, hour)],
+            }
+            for period_start in period_starts
+            for hour in range(24)
+        ],
     }
 
 
@@ -837,21 +973,22 @@ def get_classification_time_series(
 ) -> Dict[str, Any]:
     items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
     items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
-    bucket_config = _bucket_timestamps(items, start_time, end_time, interval_length, interval_unit)
-    counts = [0] * bucket_config["bucket_count"]
-    for item in items:
-        item_time = _parse_time(item.get("timestamp"))
-        if not item_time or item_time < bucket_config["start_dt"] or item_time >= bucket_config["end_dt"]:
-            continue
-        bucket_index = int((item_time - bucket_config["start_dt"]) / bucket_config["interval_delta"])
-        if 0 <= bucket_index < len(counts):
-            counts[bucket_index] += 1
-    return {
-        "counts": counts,
-        "start_time": bucket_config["start_dt"].isoformat(),
-        "interval_length": interval_length,
-        "interval_unit": interval_unit,
-    }
+    return _time_series_counts(items, start_time, end_time, interval_length, interval_unit)
+
+
+def get_classification_heatmap(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: str,
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+    period: HeatmapPeriod,
+) -> Dict[str, Any]:
+    items = _load_table_items_for_devices(CLASSIFICATIONS_TABLE, device_ids, start_time, end_time)
+    items = _filter_classification_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    return _heatmap_counts(items, start_time, end_time, period)
 
 
 def get_environment_time_series(
@@ -929,6 +1066,37 @@ def count_tracks(
 ) -> Dict[str, Any]:
     items = _load_tracks_for_devices(device_ids, start_time, end_time)
     return {"count": len(items)}
+
+
+def get_track_time_series(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: str,
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+    interval_length: int,
+    interval_unit: str,
+) -> Dict[str, Any]:
+    items = _load_tracks_for_devices(device_ids, start_time, end_time)
+    items = _filter_taxonomy_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    return _time_series_counts(items, start_time, end_time, interval_length, interval_unit)
+
+
+def get_track_heatmap(
+    device_ids: Optional[List[str]],
+    model_id: Optional[str],
+    start_time: str,
+    end_time: Optional[str],
+    min_confidence: Optional[float],
+    taxonomy_level: Optional[str],
+    selected_taxa: List[str],
+    period: HeatmapPeriod,
+) -> Dict[str, Any]:
+    items = _load_tracks_for_devices(device_ids, start_time, end_time)
+    items = _filter_taxonomy_items(items, model_id, min_confidence, taxonomy_level, selected_taxa)
+    return _heatmap_counts(items, start_time, end_time, period)
 
 
 def get_track(track_id: str) -> Optional[Dict[str, Any]]:

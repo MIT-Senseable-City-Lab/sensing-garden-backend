@@ -29,6 +29,7 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/classifications/count"): classifications.handle_get_count,
     ("GET", "/classifications/taxa_count"): classifications.handle_get_taxa_count,
     ("GET", "/classifications/time_series"): classifications.handle_get_time_series,
+    ("GET", "/classifications/heatmap"): classifications.handle_get_heatmap,
     ("GET", "/detections"): detections.handle_get,
     ("GET", "/detections/count"): detections.handle_get_count,
     ("GET", "/devices"): devices.handle_get,
@@ -44,6 +45,8 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/environment/time_series"): environment.handle_get_time_series,
     ("GET", "/tracks"): tracks.handle_get,
     ("GET", "/tracks/count"): tracks.handle_get_count,
+    ("GET", "/tracks/time_series"): tracks.handle_get_time_series,
+    ("GET", "/tracks/heatmap"): tracks.handle_get_heatmap,
     ("GET", "/heartbeats"): heartbeats.handle_get,
     ("GET", "/export"): export.handle_export,
     ("GET", "/admin/orphaned-devices"): admin.handle_orphaned_devices,
@@ -54,6 +57,7 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
 
 PARAMETERIZED_ROUTES: Tuple[ParameterizedRoute, ...] = (
     ("GET", re.compile(r"^/tracks/(?P<track_id>[^/]+)$"), tracks.handle_get_single),
+    ("GET", re.compile(r"^/models/(?P<model_id>[^/]+)/taxonomy$"), models.handle_get_taxonomy),
     ("GET", re.compile(r"^/deployments/(?P<deployment_id>[^/]+)$"), deployments.handle_get),
     ("PATCH", re.compile(r"^/deployments/(?P<deployment_id>[^/]+)$"), deployments.handle_patch),
     ("DELETE", re.compile(r"^/deployments/(?P<deployment_id>[^/]+)$"), deployments.handle_delete),

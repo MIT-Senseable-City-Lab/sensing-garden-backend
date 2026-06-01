@@ -29,6 +29,7 @@ READ_ONLY_ALLOWED_GET_PATHS = (
     "/classifications/count",
     "/classifications/taxa_count",
     "/classifications/time_series",
+    "/classifications/heatmap",
     "/models",
     "/models/count",
     "/videos",
@@ -38,6 +39,8 @@ READ_ONLY_ALLOWED_GET_PATHS = (
     "/environment/time_series",
     "/tracks",
     "/tracks/count",
+    "/tracks/time_series",
+    "/tracks/heatmap",
     "/heartbeats",
     "/export",
     "/deployments",
@@ -47,6 +50,7 @@ READ_ONLY_ALLOWED_GET_PATHS = (
 
 READ_ONLY_ALLOWED_GET_PATTERNS = (
     re.compile(r"^/tracks/[^/]+$"),
+    re.compile(r"^/models/[^/]+/taxonomy$"),
     re.compile(r"^/deployments/[^/]+$"),
 )
 

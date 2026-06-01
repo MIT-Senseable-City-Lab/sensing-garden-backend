@@ -506,6 +506,13 @@ def _build_classification_records(
                 frame_number=frame.get("frame_number"),
                 error=str(exc),
             )
+            activity.record_classification_validation_failed(
+                bucket,
+                key,
+                str(track.get("track_id")) if track.get("track_id") is not None else None,
+                frame.get("frame_number"),
+                str(exc),
+            )
     return records, skipped_count
 
 
@@ -546,6 +553,7 @@ def _parse_and_build_records(
         results = storage.read_json(bucket, key)
     except Exception as exc:
         log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind="results", reason="malformed_json", error=str(exc))
+        activity.record_results_malformed(bucket, key, str(exc))
         return [], [], [], [], {
             "input_tracks": 0,
             "skipped_tracks": 0,
@@ -586,6 +594,12 @@ def _parse_and_build_records(
                 track_id=track.get("track_id"),
                 error=str(exc),
             )
+            activity.record_composite_generation_failed(
+                bucket,
+                key,
+                str(track.get("track_id")) if track.get("track_id") is not None else None,
+                str(exc),
+            )
             stats["composites_failed"] += 1
 
         try:
@@ -599,6 +613,12 @@ def _parse_and_build_records(
                 reason="validation_failed",
                 track_id=track.get("track_id"),
                 error=str(exc),
+            )
+            activity.record_track_validation_failed(
+                bucket,
+                key,
+                str(track.get("track_id")) if track.get("track_id") is not None else None,
+                str(exc),
             )
             stats["skipped_tracks"] += 1
             continue
@@ -700,11 +720,14 @@ def process_s3_object(storage: StorageAdapter, writer: WriterProtocol, bucket: s
     log_s3_trigger(S3TriggerAction.RECEIVED, bucket, key, kind=kind)
     if not key.startswith("v1/"):
         log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="outside_v1_prefix")
+        activity.record_object_ignored(bucket, key, activity.TriggerFailureReason.OUTSIDE_V1_PREFIX)
         return {}
     if kind == "ignored":
         log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="unsupported_key")
+        activity.record_object_ignored(bucket, key, activity.TriggerFailureReason.UNSUPPORTED_KEY)
         return {}
 
+    activity.record_s3_received(bucket, key, kind)
     log_s3_trigger(S3TriggerAction.PROCESSING, bucket, key, kind=kind)
     try:
         if kind == "results":
@@ -719,7 +742,7 @@ def process_s3_object(storage: StorageAdapter, writer: WriterProtocol, bucket: s
 
     status = _processing_status(summary)
     log_s3_trigger(S3TriggerAction.PROCESSED, bucket, key, kind=kind, status=status, summary=summary)
-    activity.record_s3_processed(bucket, key, status, summary)
+    activity.record_s3_processed(bucket, key, kind, status, summary)
     return summary
 
 

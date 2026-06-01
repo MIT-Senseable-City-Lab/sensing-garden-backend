@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 
 s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
@@ -78,3 +79,32 @@ def list_model_bundles() -> list[Dict[str, Any]]:
                 bundles[bundle_name]["size_bytes"] = obj.get("Size", 0)
                 bundles[bundle_name]["last_modified"] = obj["LastModified"].isoformat() if obj.get("LastModified") else ""
     return sorted(bundles.values(), key=lambda b: b.get("model_id", ""))
+
+
+def get_model_taxonomy(model_id: str) -> Dict[str, Any]:
+    if not model_id:
+        raise ValueError("model_id is required")
+    key = f"{model_id}/labels.txt"
+    try:
+        response = s3.get_object(Bucket=MODELS_BUCKET, Key=key)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code")
+        if error_code in {"NoSuchKey", "404", "NotFound"}:
+            raise FileNotFoundError(f"labels.txt not found for model {model_id}") from exc
+        raise
+
+    labels = [
+        line.strip()
+        for line in response["Body"].read().decode("utf-8").splitlines()
+        if line.strip()
+    ]
+    if not labels:
+        raise ValueError("labels.txt must contain at least one label")
+    return {
+        "model_id": model_id,
+        "source": f"s3://{MODELS_BUCKET}/{key}",
+        "labels": [
+            {"class_index": class_index, "name": name}
+            for class_index, name in enumerate(labels)
+        ],
+    }

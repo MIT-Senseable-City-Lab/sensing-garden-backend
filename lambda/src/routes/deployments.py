@@ -27,6 +27,10 @@ def _normalize_deployment_item(item: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
+def _normalize_deployment_items(items: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    return [_normalize_deployment_item(item) for item in items]
+
+
 def _upload_deployment_image(body_image: str, deployment_id: str, timestamp: str) -> str:
     s3_key = f"deployment/{deployment_id}/{timestamp}.jpg"
     s3.put_object(
@@ -112,7 +116,8 @@ def handle_get_list(event: Dict[str, Any]) -> Dict[str, Any]:
             sort_by=params.get("sort_by"),
             sort_desc=_get_bool_param(params, "sort_desc"),
         )
-        result["deployments"] = [_normalize_deployment_item(item) for item in result.pop("items", [])]
+        deployments = dynamodb.attach_deployment_hub_counts(result.pop("items", []))
+        result["deployments"] = _normalize_deployment_items(deployments)
         return json_response(200, result)
     except ValueError as exc:
         return json_response(400, {"error": str(exc)})
@@ -126,6 +131,8 @@ def handle_get(event: Dict[str, Any], deployment_id: str) -> Dict[str, Any]:
         if not deployment:
             return json_response(404, {"error": f"Deployment {deployment_id} not found"})
         devices = dynamodb.list_deployment_devices(deployment_id)
+        deployment = dict(deployment)
+        deployment["hub_count"] = dynamodb.get_deployment_hub_count(deployment_id)
         return json_response(
             200,
             {

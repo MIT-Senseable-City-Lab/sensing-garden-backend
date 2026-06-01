@@ -4,6 +4,7 @@ import dynamodb
 from s3 import _add_presigned_urls
 from utils import (
     DEFAULT_PAGE_LIMIT,
+    HeatmapPeriod,
     _clean_timestamps,
     _get_bool_param,
     _get_float_param,
@@ -11,14 +12,14 @@ from utils import (
     _get_query_list,
     _get_query_params,
     _resolve_device_filters,
+    TaxonomyLevel,
     _validate_interval_params,
     json_response,
 )
 
 
 def _validate_taxonomy_level(taxonomy_level: Optional[str]) -> None:
-    if taxonomy_level and taxonomy_level not in {"family", "genus", "species"}:
-        raise ValueError("taxonomy_level must be one of: family, genus, species")
+    TaxonomyLevel.parse_optional(taxonomy_level)
 
 
 def handle_get_count(event: Dict[str, Any]) -> Dict[str, Any]:
@@ -109,6 +110,29 @@ def handle_get_time_series(event: Dict[str, Any]) -> Dict[str, Any]:
             selected_taxa=_get_query_list(params, "selected_taxa"),
             interval_length=interval_length,
             interval_unit=interval_unit,
+        )
+        return json_response(200, result)
+    except ValueError as exc:
+        return json_response(400, {"error": str(exc)})
+    except Exception as exc:
+        return json_response(500, {"error": str(exc)})
+
+
+def handle_get_heatmap(event: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        params = _get_query_params(event)
+        taxonomy_level = params.get("taxonomy_level")
+        _validate_taxonomy_level(taxonomy_level)
+        period = HeatmapPeriod.parse(params.get("period"))
+        result = dynamodb.get_classification_heatmap(
+            device_ids=_resolve_device_filters(params),
+            model_id=params.get("model_id"),
+            start_time=params.get("start_time"),
+            end_time=params.get("end_time"),
+            min_confidence=_get_float_param(params, "min_confidence"),
+            taxonomy_level=taxonomy_level,
+            selected_taxa=_get_query_list(params, "selected_taxa"),
+            period=period,
         )
         return json_response(200, result)
     except ValueError as exc:

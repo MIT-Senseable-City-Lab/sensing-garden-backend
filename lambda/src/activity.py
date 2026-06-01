@@ -25,7 +25,13 @@ class ActivityEventType(str, Enum):
     API_REQUEST = "api_request"
     DEVICE_SETUP = "device_setup"
     UPLOAD_URL_REQUESTED = "upload_url_requested"
+    S3_OBJECT_RECEIVED = "s3_object_received"
     S3_OBJECT_PROCESSED = "s3_object_processed"
+    OBJECT_IGNORED = "object_ignored"
+    RESULTS_MALFORMED = "results_malformed"
+    TRACK_VALIDATION_FAILED = "track_validation_failed"
+    CLASSIFICATION_VALIDATION_FAILED = "classification_validation_failed"
+    COMPOSITE_GENERATION_FAILED = "composite_generation_failed"
 
 
 class ActivityEvent(BaseModel):
@@ -40,7 +46,9 @@ class ActivityEvent(BaseModel):
     status_code: int | None = None
     s3_bucket: str | None = None
     s3_key: str | None = None
+    track_id: str | None = None
     level: str | None = None
+    reason: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
@@ -71,7 +79,25 @@ def _query_day(day: datetime, limit: int) -> list[dict[str, Any]]:
 
 
 def _matches(item: dict[str, Any], source: str, device_id: str, query: str) -> bool:
-    text = f"{item.get('message', '')} {item.get('s3_key', '')} {item.get('path', '')}".lower()
+    metadata = item.get("metadata")
+    metadata_text = ""
+    if isinstance(metadata, dict):
+        metadata_text = " ".join(f"{name} {value}" for name, value in metadata.items())
+    text = " ".join(
+        str(value)
+        for value in (
+            item.get("message", ""),
+            item.get("s3_key", ""),
+            item.get("path", ""),
+            item.get("device_id", ""),
+            item.get("track_id", ""),
+            item.get("event_type", ""),
+            item.get("reason", ""),
+            item.get("level", ""),
+            metadata_text,
+        )
+        if value
+    ).lower()
     return (
         (not source or item.get("source") == source)
         and (not device_id or item.get("device_id") == device_id)

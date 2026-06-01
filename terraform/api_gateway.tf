@@ -149,9 +149,23 @@ resource "aws_apigatewayv2_route" "get_classifications_time_series" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "get_classifications_heatmap" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /classifications/heatmap"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 resource "aws_apigatewayv2_route" "get_models" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /models"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_model_taxonomy" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /models/{model_id}/taxonomy"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
@@ -222,6 +236,20 @@ resource "aws_apigatewayv2_route" "get_tracks" {
 resource "aws_apigatewayv2_route" "get_tracks_count" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /tracks/count"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_tracks_time_series" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /tracks/time_series"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "get_tracks_heatmap" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "GET /tracks/heatmap"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
