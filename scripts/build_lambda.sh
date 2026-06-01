@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build Lambda deployment packages with dependencies
-# Usage: ./scripts/build_lambda.sh
+# Usage: ./scripts/build_lambda.sh [lambda|trigger ...]
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -37,15 +37,24 @@ build_package() {
     find "$build_dir" -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
 
     # Create zip
-    cd "$build_dir"
-    zip -r "$zip_path" . --quiet
-    cd "$REPO_ROOT"
+    rm -f "$zip_path"
+    (cd "$build_dir" && python3 -m zipfile -c "$zip_path" .)
 
     rm -rf "$build_dir"
     echo "Built $zip_path"
 }
 
-build_package "lambda"
-build_package "trigger"
+packages=("$@")
+if [ ${#packages[@]} -eq 0 ]; then
+    packages=("lambda" "trigger")
+fi
+
+for package in "${packages[@]}"; do
+    if [ "$package" != "lambda" ] && [ "$package" != "trigger" ]; then
+        echo "Unknown package: $package" >&2
+        exit 1
+    fi
+    build_package "$package"
+done
 
 echo "Done."

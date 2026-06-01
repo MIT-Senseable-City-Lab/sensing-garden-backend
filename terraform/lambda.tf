@@ -113,6 +113,18 @@ resource "aws_iam_role_policy" "trigger_lambda_dynamodb_policy" {
           aws_dynamodb_table.environmental_readings.arn,
           aws_dynamodb_table.activity_events.arn,
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.processed_objects.arn
+        ]
       }
     ]
   })
@@ -163,17 +175,23 @@ resource "aws_lambda_function" "trigger_handler_function" {
 
   environment {
     variables = {
-      TRACKS_TABLE            = "sensing-garden-tracks"
-      CLASSIFICATIONS_TABLE   = "sensing-garden-classifications"
-      DEVICES_TABLE           = "sensing-garden-devices"
-      VIDEOS_TABLE            = "sensing-garden-videos"
-      HEARTBEATS_TABLE        = "sensing-garden-heartbeats"
-      ENVIRONMENTAL_TABLE     = "sensing-garden-environmental-readings"
-      ACTIVITY_EVENTS_TABLE   = "sensing-garden-activity-events"
-      ACTIVITY_RETENTION_DAYS = "30"
-      OUTPUT_BUCKET           = "scl-sensing-garden"
+      TRACKS_TABLE                    = "sensing-garden-tracks"
+      CLASSIFICATIONS_TABLE           = "sensing-garden-classifications"
+      DEVICES_TABLE                   = "sensing-garden-devices"
+      VIDEOS_TABLE                    = "sensing-garden-videos"
+      HEARTBEATS_TABLE                = "sensing-garden-heartbeats"
+      ENVIRONMENTAL_TABLE             = "sensing-garden-environmental-readings"
+      ACTIVITY_EVENTS_TABLE           = "sensing-garden-activity-events"
+      ACTIVITY_RETENTION_DAYS         = "30"
+      PROCESSED_OBJECTS_TABLE         = aws_dynamodb_table.processed_objects.name
+      PROCESSED_OBJECT_RETENTION_DAYS = "30"
+      OUTPUT_BUCKET                   = "scl-sensing-garden"
     }
   }
+
+  depends_on = [
+    aws_iam_role_policy.trigger_lambda_dynamodb_policy
+  ]
 }
 
 # Permission for S3 to invoke trigger Lambda

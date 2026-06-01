@@ -369,3 +369,25 @@ resource "aws_dynamodb_table" "activity_events" {
     prevent_destroy = true
   }
 }
+
+resource "aws_dynamodb_table" "processed_objects" {
+  name         = "sensing-garden-s3-processed-objects"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "object_id"
+
+  attribute {
+    name = "object_id"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  deletion_protection_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}

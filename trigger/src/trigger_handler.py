@@ -3,6 +3,8 @@ import logging
 import os
 import re
 import hashlib
+import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -30,6 +32,9 @@ DEVICES_TABLE = os.environ.get("DEVICES_TABLE", "sensing-garden-devices")
 VIDEOS_TABLE = os.environ.get("VIDEOS_TABLE", "sensing-garden-videos")
 HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats")
 ENVIRONMENTAL_TABLE = os.environ.get("ENVIRONMENTAL_TABLE", "sensing-garden-environmental-readings")
+PROCESSED_OBJECTS_TABLE = os.environ.get("PROCESSED_OBJECTS_TABLE", "")
+PROCESSED_OBJECT_RETENTION_DAYS = int(os.environ.get("PROCESSED_OBJECT_RETENTION_DAYS", "30"))
+PROCESSED_OBJECT_LEASE_SECONDS = 360
 OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "")
 MODEL_ID = os.environ.get("MODEL_ID", "")
 DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
@@ -45,6 +50,53 @@ class S3TriggerAction(str, Enum):
     PROCESSING = "processing"
     PROCESSED = "processed"
     FAILED = "failed"
+    DUPLICATE = "duplicate"
+    IDEMPOTENCY_UNAVAILABLE = "idempotency_unavailable"
+    IDEMPOTENCY_ERROR = "idempotency_error"
+
+
+class ProcessingKind(str, Enum):
+    RESULTS = "results"
+    HEARTBEAT = "heartbeat"
+    ENVIRONMENT = "environment"
+    IGNORED = "ignored"
+
+
+class ProcessedObjectStatus(str, Enum):
+    PROCESSING = "processing"
+    PROCESSED = "processed"
+
+
+class IdempotencyDecision(str, Enum):
+    PROCESS = "process"
+    SKIP_DUPLICATE = "skip_duplicate"
+    IN_FLIGHT = "in_flight"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass(frozen=True)
+class S3ObjectEvent:
+    bucket: str
+    key: str
+    etag: Optional[str]
+    version_id: Optional[str]
+
+    @property
+    def object_version(self) -> Optional[str]:
+        return self.version_id or self.etag
+
+    @property
+    def object_id(self) -> Optional[str]:
+        if self.object_version is None:
+            return None
+        identity = json.dumps([self.bucket, self.key, self.object_version], separators=(",", ":"))
+        return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class IdempotencyClaim:
+    decision: IdempotencyDecision
+    attempt_id: Optional[str] = None
 
 
 def log_s3_trigger(action: S3TriggerAction, bucket: str, key: str, **fields: Any) -> None:
@@ -64,11 +116,25 @@ def log_s3_trigger(action: S3TriggerAction, bucket: str, key: str, **fields: Any
 
 
 class StorageAdapter:
-    def read_text(self, bucket: str, key: str) -> str:
+    def read_text(
+        self,
+        bucket: str,
+        key: str,
+        *,
+        version_id: Optional[str] = None,
+        etag: Optional[str] = None,
+    ) -> str:
         raise NotImplementedError
 
-    def read_json(self, bucket: str, key: str) -> Dict[str, Any]:
-        return json.loads(self.read_text(bucket, key))
+    def read_json(
+        self,
+        bucket: str,
+        key: str,
+        *,
+        version_id: Optional[str] = None,
+        etag: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return json.loads(self.read_text(bucket, key, version_id=version_id, etag=etag))
 
     def read_bytes(self, bucket: str, key: str) -> bytes:
         raise NotImplementedError
@@ -87,8 +153,20 @@ class S3StorageAdapter(StorageAdapter):
     def __init__(self) -> None:
         self.client = boto3.client("s3")
 
-    def read_text(self, bucket: str, key: str) -> str:
-        response = self.client.get_object(Bucket=bucket, Key=key)
+    def read_text(
+        self,
+        bucket: str,
+        key: str,
+        *,
+        version_id: Optional[str] = None,
+        etag: Optional[str] = None,
+    ) -> str:
+        request: Dict[str, Any] = {"Bucket": bucket, "Key": key}
+        if version_id is not None:
+            request["VersionId"] = version_id
+        if etag is not None:
+            request["IfMatch"] = etag if etag.startswith('"') else f'"{etag}"'
+        response = self.client.get_object(**request)
         return response["Body"].read().decode("utf-8")
 
     def read_bytes(self, bucket: str, key: str) -> bytes:
@@ -123,7 +201,14 @@ class LocalStorageAdapter(StorageAdapter):
     def _path(self, key: str) -> Path:
         return self.root / key
 
-    def read_text(self, bucket: str, key: str) -> str:
+    def read_text(
+        self,
+        bucket: str,
+        key: str,
+        *,
+        version_id: Optional[str] = None,
+        etag: Optional[str] = None,
+    ) -> str:
         return self._path(key).read_text()
 
     def read_bytes(self, bucket: str, key: str) -> bytes:
@@ -206,6 +291,102 @@ class DynamoWriter:
                 batch.put_item(Item=item)
 
 
+class ProcessedObjectStore:
+    def __init__(self, table_name: str = PROCESSED_OBJECTS_TABLE):
+        self.table = boto3.resource("dynamodb").Table(table_name) if table_name else None
+
+    def begin(self, event: S3ObjectEvent, kind: ProcessingKind) -> IdempotencyClaim:
+        object_id = event.object_id
+        if object_id is None:
+            return IdempotencyClaim(IdempotencyDecision.UNAVAILABLE)
+        if self.table is None:
+            raise RuntimeError("PROCESSED_OBJECTS_TABLE is required")
+
+        now = _epoch_seconds()
+        attempt_id = uuid.uuid4().hex
+        item = {
+            "object_id": object_id,
+            "bucket": event.bucket,
+            "s3_key": event.key,
+            "etag": event.etag,
+            "version_id": event.version_id,
+            "kind": kind.value,
+            "status": ProcessedObjectStatus.PROCESSING.value,
+            "attempt_id": attempt_id,
+            "lease_until": now + PROCESSED_OBJECT_LEASE_SECONDS,
+            "ttl": now + PROCESSED_OBJECT_LEASE_SECONDS,
+            "updated_at": now,
+        }
+        try:
+            self.table.put_item(
+                Item={key: value for key, value in item.items() if value is not None},
+                ConditionExpression=(
+                    "attribute_not_exists(object_id) OR "
+                    "(#status = :processing AND lease_until < :now)"
+                ),
+                ExpressionAttributeNames={"#status": "status"},
+                ExpressionAttributeValues={
+                    ":processing": ProcessedObjectStatus.PROCESSING.value,
+                    ":now": now,
+                },
+            )
+            return IdempotencyClaim(IdempotencyDecision.PROCESS, attempt_id)
+        except ClientError as exc:
+            error_code = getattr(exc, "response", {}).get("Error", {}).get("Code")
+            if error_code == "ConditionalCheckFailedException":
+                item = self.table.get_item(Key={"object_id": object_id}, ConsistentRead=True).get("Item", {})
+                if item.get("status") == ProcessedObjectStatus.PROCESSED.value:
+                    return IdempotencyClaim(IdempotencyDecision.SKIP_DUPLICATE)
+                return IdempotencyClaim(IdempotencyDecision.IN_FLIGHT)
+            raise
+
+    def complete(self, event: S3ObjectEvent, claim: IdempotencyClaim) -> None:
+        object_id = event.object_id
+        if object_id is None or claim.attempt_id is None:
+            return
+        if self.table is None:
+            raise RuntimeError("PROCESSED_OBJECTS_TABLE is required")
+
+        now = _epoch_seconds()
+        self.table.update_item(
+            Key={"object_id": object_id},
+            UpdateExpression=(
+                "SET #status = :processed, ttl = :ttl, updated_at = :now "
+                "REMOVE lease_until, attempt_id"
+            ),
+            ConditionExpression="#status = :processing AND attempt_id = :attempt_id",
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={
+                ":processing": ProcessedObjectStatus.PROCESSING.value,
+                ":processed": ProcessedObjectStatus.PROCESSED.value,
+                ":attempt_id": claim.attempt_id,
+                ":ttl": now + PROCESSED_OBJECT_RETENTION_DAYS * 24 * 60 * 60,
+                ":now": now,
+            },
+        )
+
+    def fail(self, event: S3ObjectEvent, claim: IdempotencyClaim) -> None:
+        object_id = event.object_id
+        if object_id is None or claim.attempt_id is None:
+            return
+        if self.table is None:
+            raise RuntimeError("PROCESSED_OBJECTS_TABLE is required")
+        try:
+            self.table.delete_item(
+                Key={"object_id": object_id},
+                ConditionExpression="#status = :processing AND attempt_id = :attempt_id",
+                ExpressionAttributeNames={"#status": "status"},
+                ExpressionAttributeValues={
+                    ":processing": ProcessedObjectStatus.PROCESSING.value,
+                    ":attempt_id": claim.attempt_id,
+                },
+            )
+        except ClientError as exc:
+            error_code = getattr(exc, "response", {}).get("Error", {}).get("Code")
+            if error_code != "ConditionalCheckFailedException":
+                raise
+
+
 class CollectingWriter:
     def __init__(self):
         self.tracks: List[Dict[str, Any]] = []
@@ -273,6 +454,10 @@ def _convert_floats_to_decimal(obj: Any) -> Any:
 def _model_dump(model: Any) -> Dict[str, Any]:
     raw = model.model_dump() if hasattr(model, "model_dump") else dict(model.__dict__)
     return _convert_floats_to_decimal(raw)
+
+
+def _epoch_seconds() -> int:
+    return int(datetime.utcnow().timestamp())
 
 
 def derive_s3_prefix(results_json_key: str) -> str:
@@ -548,9 +733,15 @@ def _parse_and_build_records(
     storage: StorageAdapter,
     bucket: str,
     key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, int]]:
     try:
-        results = storage.read_json(bucket, key)
+        results = storage.read_json(bucket, key, version_id=version_id, etag=etag)
+    except ClientError:
+        log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind="results", reason="read_failed")
+        raise
     except Exception as exc:
         log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind="results", reason="malformed_json", error=str(exc))
         activity.record_results_malformed(bucket, key, str(exc))
@@ -644,11 +835,21 @@ def _write_records(
     writer.put_videos(video_records)
 
 
-def process_results_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+def process_results_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+) -> Dict[str, int]:
     track_records, classification_records, device_records, video_records, stats = _parse_and_build_records(
         storage,
         bucket,
         key,
+        version_id=version_id,
+        etag=etag,
     )
     _write_records(writer, track_records, classification_records, device_records, video_records)
     print(f"Processed {len(track_records)} tracks, {len(classification_records)} classifications from {key}")
@@ -661,10 +862,20 @@ def process_results_object(storage: StorageAdapter, writer: WriterProtocol, buck
     }
 
 
-def process_heartbeat_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+def process_heartbeat_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+) -> Dict[str, int]:
     try:
-        payload = storage.read_json(bucket, key)
+        payload = storage.read_json(bucket, key, version_id=version_id, etag=etag)
         heartbeat_record = _model_dump(Heartbeat(**payload))
+    except ClientError:
+        raise
     except Exception as exc:
         print(f"Heartbeat validation failed for {key}: {exc}")
         return {"heartbeats": 0}
@@ -673,10 +884,20 @@ def process_heartbeat_object(storage: StorageAdapter, writer: WriterProtocol, bu
     return {"heartbeats": 1}
 
 
-def process_environment_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
+def process_environment_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+) -> Dict[str, int]:
     try:
-        payload = storage.read_json(bucket, key)
+        payload = storage.read_json(bucket, key, version_id=version_id, etag=etag)
         environment_record = _model_dump(EnvironmentalReading(**payload))
+    except ClientError:
+        raise
     except Exception as exc:
         print(f"Environment validation failed for {key}: {exc}")
         return {"environmental_readings": 0}
@@ -685,16 +906,26 @@ def process_environment_object(storage: StorageAdapter, writer: WriterProtocol, 
     return {"environmental_readings": 1}
 
 
-def parse_s3_event(event: Dict[str, Any]) -> List[Tuple[str, str]]:
-    records: List[Tuple[str, str]] = []
+def parse_s3_event(event: Dict[str, Any]) -> List[S3ObjectEvent]:
+    records: List[S3ObjectEvent] = []
     for record in event.get("Records", []):
         bucket = record["s3"]["bucket"]["name"]
-        key = unquote_plus(record["s3"]["object"]["key"])
-        records.append((bucket, key))
+        s3_object = record["s3"]["object"]
+        key = unquote_plus(s3_object["key"])
+        records.append(
+            S3ObjectEvent(
+                bucket=bucket,
+                key=key,
+                etag=s3_object.get("eTag"),
+                version_id=s3_object.get("versionId"),
+            )
+        )
     return records
 
 
 def _processing_status(summary: Dict[str, int]) -> str:
+    if summary.get("skipped_duplicate", 0) > 0:
+        return "duplicate"
     row_keys = {"tracks", "classifications", "devices", "videos", "heartbeats", "environmental_readings"}
     if any(summary.get(key, 0) > 0 for key in row_keys):
         if summary.get("composites_failed", 0) > 0:
@@ -705,53 +936,157 @@ def _processing_status(summary: Dict[str, int]) -> str:
     return "empty"
 
 
-def _processing_kind(key: str) -> str:
+def _processing_kind(key: str) -> ProcessingKind:
     if key.endswith("/results.json"):
-        return "results"
+        return ProcessingKind.RESULTS
     if HEARTBEAT_KEY_PATTERN.match(key):
-        return "heartbeat"
+        return ProcessingKind.HEARTBEAT
     if ENVIRONMENT_KEY_PATTERN.match(key):
-        return "environment"
-    return "ignored"
+        return ProcessingKind.ENVIRONMENT
+    return ProcessingKind.IGNORED
 
 
-def process_s3_object(storage: StorageAdapter, writer: WriterProtocol, bucket: str, key: str) -> Dict[str, int]:
-    kind = _processing_kind(key)
-    log_s3_trigger(S3TriggerAction.RECEIVED, bucket, key, kind=kind)
-    if not key.startswith("v1/"):
-        log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="outside_v1_prefix")
-        activity.record_object_ignored(bucket, key, activity.TriggerFailureReason.OUTSIDE_V1_PREFIX)
-        return {}
-    if kind == "ignored":
-        log_s3_trigger(S3TriggerAction.IGNORED, bucket, key, reason="unsupported_key")
-        activity.record_object_ignored(bucket, key, activity.TriggerFailureReason.UNSUPPORTED_KEY)
-        return {}
-
-    activity.record_s3_received(bucket, key, kind)
-    log_s3_trigger(S3TriggerAction.PROCESSING, bucket, key, kind=kind)
+def _begin_idempotency(event: S3ObjectEvent, kind: ProcessingKind, store: ProcessedObjectStore) -> IdempotencyClaim:
     try:
-        if kind == "results":
-            summary = process_results_object(storage, writer, bucket, key)
-        elif kind == "heartbeat":
-            summary = process_heartbeat_object(storage, writer, bucket, key)
-        else:
-            summary = process_environment_object(storage, writer, bucket, key)
+        claim = store.begin(event, kind)
     except Exception as exc:
-        log_s3_trigger(S3TriggerAction.FAILED, bucket, key, kind=kind, error=str(exc))
+        log_s3_trigger(S3TriggerAction.IDEMPOTENCY_ERROR, event.bucket, event.key, kind=kind.value, error=str(exc))
+        raise
+    if claim.decision == IdempotencyDecision.UNAVAILABLE:
+        log_s3_trigger(
+            S3TriggerAction.IDEMPOTENCY_UNAVAILABLE,
+            event.bucket,
+            event.key,
+            kind=kind.value,
+            reason="missing_object_identity",
+        )
+    return claim
+
+
+def _mark_idempotency_complete(
+    event: S3ObjectEvent,
+    kind: ProcessingKind,
+    store: ProcessedObjectStore,
+    claim: IdempotencyClaim,
+) -> None:
+    try:
+        store.complete(event, claim)
+    except Exception as exc:
+        log_s3_trigger(S3TriggerAction.IDEMPOTENCY_ERROR, event.bucket, event.key, kind=kind.value, error=str(exc))
         raise
 
-    status = _processing_status(summary)
-    log_s3_trigger(S3TriggerAction.PROCESSED, bucket, key, kind=kind, status=status, summary=summary)
-    activity.record_s3_processed(bucket, key, kind, status, summary)
+
+def _mark_idempotency_failed(
+    event: S3ObjectEvent,
+    kind: ProcessingKind,
+    store: ProcessedObjectStore,
+    claim: IdempotencyClaim,
+) -> None:
+    try:
+        store.fail(event, claim)
+    except Exception as exc:
+        log_s3_trigger(S3TriggerAction.IDEMPOTENCY_ERROR, event.bucket, event.key, kind=kind.value, error=str(exc))
+        raise
+
+
+def process_s3_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    event: S3ObjectEvent,
+    processed_store: ProcessedObjectStore,
+) -> Dict[str, int]:
+    kind = _processing_kind(event.key)
+    log_s3_trigger(S3TriggerAction.RECEIVED, event.bucket, event.key, kind=kind.value)
+    if not event.key.startswith("v1/"):
+        log_s3_trigger(S3TriggerAction.IGNORED, event.bucket, event.key, reason="outside_v1_prefix")
+        activity.record_object_ignored(event.bucket, event.key, activity.TriggerFailureReason.OUTSIDE_V1_PREFIX)
+        return {}
+    if kind == ProcessingKind.IGNORED:
+        log_s3_trigger(S3TriggerAction.IGNORED, event.bucket, event.key, reason="unsupported_key")
+        activity.record_object_ignored(event.bucket, event.key, activity.TriggerFailureReason.UNSUPPORTED_KEY)
+        return {}
+    claim = _begin_idempotency(event, kind, processed_store)
+    if claim.decision == IdempotencyDecision.SKIP_DUPLICATE:
+        summary = {"skipped_duplicate": 1}
+        log_s3_trigger(S3TriggerAction.DUPLICATE, event.bucket, event.key, kind=kind.value, summary=summary)
+        return summary
+    if claim.decision == IdempotencyDecision.IN_FLIGHT:
+        log_s3_trigger(S3TriggerAction.DUPLICATE, event.bucket, event.key, kind=kind.value, status="in_flight")
+        raise RuntimeError(f"S3 object already processing: {event.key}")
+
+    claimed = claim.decision == IdempotencyDecision.PROCESS and claim.attempt_id is not None
+    try:
+        activity.record_s3_received(event.bucket, event.key, kind.value)
+        log_s3_trigger(S3TriggerAction.PROCESSING, event.bucket, event.key, kind=kind.value)
+        if kind == ProcessingKind.RESULTS:
+            summary = process_results_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+            )
+        elif kind == ProcessingKind.HEARTBEAT:
+            summary = process_heartbeat_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+            )
+        else:
+            summary = process_environment_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+            )
+        status = _processing_status(summary)
+        log_s3_trigger(S3TriggerAction.PROCESSED, event.bucket, event.key, kind=kind.value, status=status, summary=summary)
+    except Exception as exc:
+        if claimed:
+            try:
+                _mark_idempotency_failed(event, kind, processed_store, claim)
+            except Exception as cleanup_exc:
+                log_s3_trigger(
+                    S3TriggerAction.FAILED,
+                    event.bucket,
+                    event.key,
+                    kind=kind.value,
+                    error=str(exc),
+                    cleanup_error=str(cleanup_exc),
+                )
+                raise cleanup_exc from exc
+        log_s3_trigger(S3TriggerAction.FAILED, event.bucket, event.key, kind=kind.value, error=str(exc))
+        raise
+
+    if claimed:
+        _mark_idempotency_complete(event, kind, processed_store, claim)
+    try:
+        activity.record_s3_processed(event.bucket, event.key, kind.value, status, summary)
+    except Exception as exc:
+        log_s3_trigger(
+            S3TriggerAction.FAILED,
+            event.bucket,
+            event.key,
+            kind=kind.value,
+            reason="processed_activity_failed",
+            error=str(exc),
+        )
     return summary
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     storage = S3StorageAdapter()
     writer = DynamoWriter()
+    processed_store = ProcessedObjectStore()
     summaries = []
-    for bucket, key in parse_s3_event(event):
-        summary = process_s3_object(storage, writer, bucket, key)
+    for s3_event in parse_s3_event(event):
+        summary = process_s3_object(storage, writer, s3_event, processed_store)
         if summary:
             summaries.append(summary)
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}
