@@ -89,7 +89,7 @@ def _invoke_route(
     auth_context: AuthContext,
     **path_params: str,
 ) -> Dict[str, Any]:
-    if route_handler is uploads.handle_upload_url:
+    if route_handler in (uploads.handle_upload_url, uploads.handle_batch_upload_url):
         return route_handler(event, authenticated_device=auth_context.get("device_record"))
     if path_params:
         return route_handler(event, **path_params)
