@@ -351,11 +351,11 @@ class ProcessedObjectStore:
         self.table.update_item(
             Key={"object_id": object_id},
             UpdateExpression=(
-                "SET #status = :processed, ttl = :ttl, updated_at = :now "
+                "SET #status = :processed, #ttl = :ttl, updated_at = :now "
                 "REMOVE lease_until, attempt_id"
             ),
             ConditionExpression="#status = :processing AND attempt_id = :attempt_id",
-            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeNames={"#status": "status", "#ttl": "ttl"},
             ExpressionAttributeValues={
                 ":processing": ProcessedObjectStatus.PROCESSING.value,
                 ":processed": ProcessedObjectStatus.PROCESSED.value,
