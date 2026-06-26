@@ -20,6 +20,7 @@ variable "dashboard_secret_key" {
 
 resource "aws_s3_bucket" "web_deploy" {
   bucket = "scl-sensing-garden-web-deploy"
+  tags   = local.dashboard_deploy_tags
 }
 
 resource "aws_s3_bucket_public_access_block" "web_deploy" {
@@ -37,6 +38,7 @@ resource "aws_s3_bucket_public_access_block" "web_deploy" {
 
 resource "aws_iam_role" "eb_ec2_role" {
   name = "eb-sensing-garden-web-role"
+  tags = local.dashboard_web_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -140,6 +142,7 @@ resource "aws_iam_instance_profile" "eb_ec2_profile" {
 
 resource "aws_iam_role" "eb_service_role" {
   name = "eb-sensing-garden-web-service-role"
+  tags = local.dashboard_web_tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -171,6 +174,7 @@ resource "aws_iam_role_policy_attachment" "eb_managed_updates" {
 
 resource "aws_elastic_beanstalk_application" "web" {
   name = "sensing-garden-web"
+  tags = local.dashboard_web_tags
 }
 
 # =============================================================================
@@ -181,6 +185,7 @@ resource "aws_elastic_beanstalk_environment" "web" {
   name                = "sensing-garden-web-prod"
   application         = aws_elastic_beanstalk_application.web.name
   solution_stack_name = "64bit Amazon Linux 2023 v4.12.0 running Python 3.11"
+  tags                = local.dashboard_web_tags
 
   setting {
     namespace = "aws:elasticbeanstalk:environment"
@@ -265,6 +270,7 @@ resource "aws_cloudfront_distribution" "web" {
   comment         = "Sensing Garden Dashboard"
   price_class     = "PriceClass_100"
   is_ipv6_enabled = true
+  tags            = local.dashboard_web_tags
 
   origin {
     domain_name = aws_elastic_beanstalk_environment.web.cname

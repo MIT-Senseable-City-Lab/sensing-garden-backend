@@ -24,6 +24,7 @@ resource "aws_lambda_function" "api_handler_function" {
   source_code_hash = filebase64sha256("${path.module}/../lambda/deployment_package.zip")
   timeout          = 30  # Longer timeout for pagination and processing
   memory_size      = 256 # Increased memory for better performance
+  tags             = local.api_handler_tags
 
   environment {
     variables = {
@@ -61,6 +62,8 @@ resource "aws_lambda_permission" "api_gateway_api_handler" {
 # IAM role for trigger Lambda
 resource "aws_iam_role" "trigger_lambda_exec" {
   name = "trigger_lambda_exec_role"
+  tags = local.pipeline_processor_tags
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -172,6 +175,7 @@ resource "aws_lambda_function" "trigger_handler_function" {
   source_code_hash = filebase64sha256("${path.module}/../trigger/deployment_package.zip")
   timeout          = 300
   memory_size      = 512
+  tags             = local.pipeline_processor_tags
 
   environment {
     variables = {
