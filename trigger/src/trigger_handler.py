@@ -3,11 +3,14 @@ import logging
 import os
 import re
 import hashlib
+import posixpath
+import tarfile
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple
 from urllib.parse import unquote_plus
@@ -56,10 +59,37 @@ class S3TriggerAction(str, Enum):
 
 
 class ProcessingKind(str, Enum):
+    ARCHIVE = "archive"
     RESULTS = "results"
     HEARTBEAT = "heartbeat"
     ENVIRONMENT = "environment"
     IGNORED = "ignored"
+
+
+# Hourly batch archives live in the v2 namespace; their members are canonical
+# v1/ keys. In this (index) approach the media stays inside the tar and each
+# record is stamped with the tar's location plus the member's byte range, so a
+# range-reading serve path can fetch the bytes without re-exploding to S3.
+ARCHIVE_SUFFIXES = (".tar",)
+ARCHIVE_KEY_PREFIX = "v2/archives/"
+
+# Device-local sidecars that are never bundled / processed.
+ARCHIVE_SKIP_NAMES = frozenset(
+    {".done", ".detection.json", ".expected_tracks", ".completed_tracks", ".uploaded", ".archived", ".archived-aux"}
+)
+
+
+def _is_safe_archive_member(name: str) -> bool:
+    """Reject anything that is not a canonical v1/ key or that path-traverses."""
+    if not name or name.startswith("/"):
+        return False
+    if not name.startswith("v1/"):
+        return False
+    if posixpath.normpath(name) != name or ".." in name.split("/"):
+        return False
+    if Path(name).name in ARCHIVE_SKIP_NAMES:
+        return False
+    return True
 
 
 class ProcessedObjectStatus(str, Enum):
@@ -233,6 +263,57 @@ class LocalStorageAdapter(StorageAdapter):
                 if not suffix or rel.endswith(suffix):
                     keys.append(rel)
         return sorted(keys)
+
+
+class TarStorageAdapter(StorageAdapter):
+    """Reads from an in-memory (uncompressed) tar; falls back to S3 for non-members.
+
+    The archive is uncompressed, so each member's ``offset_data`` and ``size`` are
+    byte offsets into the raw archive bytes -- exposed via :meth:`member_range` so
+    records can carry a range a serve path can fetch with a single ranged GET.
+    Reads for keys not in the tar (notably ``v1/manifest.json``) defer to S3.
+    Generated artifacts (composites the device did not supply) are written through
+    to S3, since they cannot be added to the immutable archive.
+    """
+
+    def __init__(self, archive_bytes: bytes, fallback: StorageAdapter) -> None:
+        self._archive_bytes = archive_bytes
+        self._fallback = fallback
+        self._ranges: Dict[str, Tuple[int, int]] = {}
+        with tarfile.open(fileobj=BytesIO(archive_bytes), mode="r:") as tar:
+            for member in tar.getmembers():
+                if member.isfile() and _is_safe_archive_member(member.name):
+                    self._ranges[member.name] = (member.offset_data, member.size)
+
+    def member_names(self) -> List[str]:
+        return list(self._ranges)
+
+    def member_range(self, key: str) -> Optional[Tuple[int, int]]:
+        return self._ranges.get(key)
+
+    def _member_bytes(self, key: str) -> bytes:
+        offset, size = self._ranges[key]
+        return self._archive_bytes[offset:offset + size]
+
+    def read_text(self, bucket, key, *, version_id=None, etag=None) -> str:
+        if key in self._ranges:
+            return self._member_bytes(key).decode("utf-8")
+        return self._fallback.read_text(bucket, key, version_id=version_id, etag=etag)
+
+    def read_bytes(self, bucket: str, key: str) -> bytes:
+        if key in self._ranges:
+            return self._member_bytes(key)
+        return self._fallback.read_bytes(bucket, key)
+
+    def write_bytes(self, bucket: str, key: str, body: bytes, content_type: str) -> None:
+        self._fallback.write_bytes(bucket, key, body, content_type)
+
+    def exists(self, bucket: str, key: str) -> bool:
+        return key in self._ranges or self._fallback.exists(bucket, key)
+
+    def list_keys(self, bucket: str, prefix: str, suffix: str = "") -> List[str]:
+        members = [k for k in self._ranges if k.startswith(prefix) and (not suffix or k.endswith(suffix))]
+        return sorted(set(members) | set(self._fallback.list_keys(bucket, prefix, suffix)))
 
 
 class DynamoWriter:
@@ -419,6 +500,55 @@ class CollectingWriter:
 
     def put_environmental_readings(self, items: List[Dict[str, Any]]) -> None:
         self.environmental_readings.extend(items)
+
+
+class ArchiveIndexWriter:
+    """Wraps a writer and stamps each record with the archive + byte range of its
+    media, so serving can range-read the tar instead of fetching a standalone key.
+
+    A record whose media is not a tar member (e.g. a composite generated server
+    side and written to S3) is left unstamped and serves from its flat key.
+    """
+
+    def __init__(self, inner: "WriterProtocol", adapter: TarStorageAdapter, bucket: str, archive_key: str) -> None:
+        self._inner = inner
+        self._adapter = adapter
+        self._bucket = bucket
+        self._archive_key = archive_key
+
+    def _stamp(self, item: Dict[str, Any], key_field: str, prefix: str) -> None:
+        member_range = self._adapter.member_range(item.get(key_field))
+        if member_range is None:
+            return
+        offset, size = member_range
+        item["archive_bucket"] = self._bucket
+        item["archive_key"] = self._archive_key
+        item[f"{prefix}_offset"] = offset
+        item[f"{prefix}_size"] = size
+
+    def put_tracks(self, items: List[Dict[str, Any]]) -> None:
+        for item in items:
+            self._stamp(item, "composite_key", "composite")
+        self._inner.put_tracks(items)
+
+    def put_classifications(self, items: List[Dict[str, Any]]) -> None:
+        for item in items:
+            self._stamp(item, "image_key", "image")
+        self._inner.put_classifications(items)
+
+    def put_videos(self, items: List[Dict[str, Any]]) -> None:
+        for item in items:
+            self._stamp(item, "video_key", "video")
+        self._inner.put_videos(items)
+
+    def put_devices_if_missing(self, items: List[Dict[str, Any]]) -> None:
+        self._inner.put_devices_if_missing(items)
+
+    def put_heartbeats(self, items: List[Dict[str, Any]]) -> None:
+        self._inner.put_heartbeats(items)
+
+    def put_environmental_readings(self, items: List[Dict[str, Any]]) -> None:
+        self._inner.put_environmental_readings(items)
 
 
 class WriterProtocol(Protocol):
@@ -906,6 +1036,70 @@ def process_environment_object(
     return {"environmental_readings": 1}
 
 
+def _merge_summary(total: Dict[str, int], part: Dict[str, int]) -> None:
+    for key, value in part.items():
+        if isinstance(value, (int, float)):
+            total[key] = total.get(key, 0) + value
+
+
+def process_archive_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+) -> Dict[str, int]:
+    """Index an hourly batch tar in place: process its members without exploding.
+
+    The media stays inside the archive; a tar-backed StorageAdapter feeds the
+    existing per-object processors so the same DynamoDB rows are written, and an
+    ArchiveIndexWriter stamps each row with the archive location + the member's
+    byte range so serving can range-read. A single idempotency claim covers the
+    whole archive (see process_s3_object); inner writes are deterministic upserts.
+    """
+    archive_bytes = storage.read_bytes(bucket, key)
+    adapter = TarStorageAdapter(archive_bytes, storage)
+    index_writer = ArchiveIndexWriter(writer, adapter, bucket, key)
+
+    summary: Dict[str, int] = {"archives": 1, "result_objects": 0, "skipped_members": 0}
+    results_names: List[str] = []
+    json_object_names: List[str] = []
+    for name in adapter.member_names():
+        if name.endswith("/results.json"):
+            results_names.append(name)
+        elif _processing_kind(name) in (ProcessingKind.HEARTBEAT, ProcessingKind.ENVIRONMENT):
+            json_object_names.append(name)
+
+    for name in sorted(results_names):
+        try:
+            _merge_summary(summary, process_results_object(adapter, index_writer, bucket, name))
+            summary["result_objects"] += 1
+        except Exception as exc:
+            summary["skipped_members"] += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED, bucket, name, kind=ProcessingKind.RESULTS.value,
+                reason="archive_member_failed", archive_key=key, error=str(exc),
+            )
+
+    for name in sorted(json_object_names):
+        member_kind = _processing_kind(name)
+        try:
+            if member_kind == ProcessingKind.HEARTBEAT:
+                _merge_summary(summary, process_heartbeat_object(adapter, index_writer, bucket, name))
+            else:
+                _merge_summary(summary, process_environment_object(adapter, index_writer, bucket, name))
+        except Exception as exc:
+            summary["skipped_members"] += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED, bucket, name, kind=member_kind.value,
+                reason="archive_member_failed", archive_key=key, error=str(exc),
+            )
+
+    return summary
+
+
 def parse_s3_event(event: Dict[str, Any]) -> List[S3ObjectEvent]:
     records: List[S3ObjectEvent] = []
     for record in event.get("Records", []):
@@ -937,6 +1131,8 @@ def _processing_status(summary: Dict[str, int]) -> str:
 
 
 def _processing_kind(key: str) -> ProcessingKind:
+    if key.startswith(ARCHIVE_KEY_PREFIX) and key.endswith(ARCHIVE_SUFFIXES):
+        return ProcessingKind.ARCHIVE
     if key.endswith("/results.json"):
         return ProcessingKind.RESULTS
     if HEARTBEAT_KEY_PATTERN.match(key):
@@ -997,7 +1193,8 @@ def process_s3_object(
 ) -> Dict[str, int]:
     kind = _processing_kind(event.key)
     log_s3_trigger(S3TriggerAction.RECEIVED, event.bucket, event.key, kind=kind.value)
-    if not event.key.startswith("v1/"):
+    # Archives are the one supported object outside v1/: their members are v1 keys.
+    if kind != ProcessingKind.ARCHIVE and not event.key.startswith("v1/"):
         log_s3_trigger(S3TriggerAction.IGNORED, event.bucket, event.key, reason="outside_v1_prefix")
         activity.record_object_ignored(event.bucket, event.key, activity.TriggerFailureReason.OUTSIDE_V1_PREFIX)
         return {}
@@ -1018,7 +1215,16 @@ def process_s3_object(
     try:
         activity.record_s3_received(event.bucket, event.key, kind.value)
         log_s3_trigger(S3TriggerAction.PROCESSING, event.bucket, event.key, kind=kind.value)
-        if kind == ProcessingKind.RESULTS:
+        if kind == ProcessingKind.ARCHIVE:
+            summary = process_archive_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+            )
+        elif kind == ProcessingKind.RESULTS:
             summary = process_results_object(
                 storage,
                 writer,

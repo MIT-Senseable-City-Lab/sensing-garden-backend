@@ -13,6 +13,7 @@ from routes import (
     export,
     heartbeats,
     models,
+    multipart,
     registration,
     tracks,
     uploads,
@@ -38,6 +39,10 @@ ROUTES: Dict[Tuple[str, str], RouteHandler] = {
     ("GET", "/models"): models.handle_get,
     ("GET", "/models/count"): models.handle_get_count,
     ("POST", "/upload-url"): uploads.handle_upload_url,
+    ("POST", "/multipart/create"): multipart.handle_multipart_create,
+    ("POST", "/multipart/part-url"): multipart.handle_multipart_part_url,
+    ("POST", "/multipart/complete"): multipart.handle_multipart_complete,
+    ("POST", "/multipart/abort"): multipart.handle_multipart_abort,
     ("GET", "/videos"): videos.handle_get,
     ("GET", "/videos/count"): videos.handle_get_count,
     ("GET", "/environment"): environment.handle_get,
@@ -83,13 +88,23 @@ def _resolve_http_request(event: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
+# Handlers that act on behalf of an authenticated device (scoped to its keys).
+_DEVICE_SCOPED_HANDLERS = frozenset({
+    uploads.handle_upload_url,
+    multipart.handle_multipart_create,
+    multipart.handle_multipart_part_url,
+    multipart.handle_multipart_complete,
+    multipart.handle_multipart_abort,
+})
+
+
 def _invoke_route(
     route_handler: RouteHandler,
     event: Dict[str, Any],
     auth_context: AuthContext,
     **path_params: str,
 ) -> Dict[str, Any]:
-    if route_handler is uploads.handle_upload_url:
+    if route_handler in _DEVICE_SCOPED_HANDLERS:
         return route_handler(event, authenticated_device=auth_context.get("device_record"))
     if path_params:
         return route_handler(event, **path_params)

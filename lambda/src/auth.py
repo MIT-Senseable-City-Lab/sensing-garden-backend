@@ -66,6 +66,10 @@ DEPLOYMENTS_ALLOWED_WRITE_PATTERNS = (
 
 DEVICE_ALLOWED_ROUTES = (
     ("POST", "/upload-url"),
+    ("POST", "/multipart/create"),
+    ("POST", "/multipart/part-url"),
+    ("POST", "/multipart/complete"),
+    ("POST", "/multipart/abort"),
     ("GET", "/models"),
 )
 
