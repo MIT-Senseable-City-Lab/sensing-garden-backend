@@ -73,6 +73,11 @@ class ProcessingKind(str, Enum):
 ARCHIVE_SUFFIXES = (".tar",)
 ARCHIVE_KEY_PREFIX = "v2/archives/"
 
+# Video members are indexed on their own (not only via a co-located results.json),
+# so a video that lands in an archive without its results -- a sampled video with no
+# detections, a DOT video, or a capture split across archives -- is still mapped.
+VIDEO_MEMBER_SUFFIX = ".mp4"
+
 # Device-local sidecars that are never bundled / processed.
 ARCHIVE_SKIP_NAMES = frozenset(
     {".done", ".detection.json", ".expected_tracks", ".completed_tracks", ".uploaded", ".archived", ".archived-aux"}
@@ -515,6 +520,9 @@ class ArchiveIndexWriter:
         self._adapter = adapter
         self._bucket = bucket
         self._archive_key = archive_key
+        # video_keys already emitted (via a results.json), so the standalone-video
+        # pass can skip them and avoid writing a duplicate/less-complete row.
+        self.seen_video_keys: set = set()
 
     def _stamp(self, item: Dict[str, Any], key_field: str, prefix: str) -> None:
         member_range = self._adapter.member_range(item.get(key_field))
@@ -539,6 +547,9 @@ class ArchiveIndexWriter:
     def put_videos(self, items: List[Dict[str, Any]]) -> None:
         for item in items:
             self._stamp(item, "video_key", "video")
+            video_key = item.get("video_key")
+            if video_key is not None:
+                self.seen_video_keys.add(video_key)
         self._inner.put_videos(items)
 
     def put_devices_if_missing(self, items: List[Dict[str, Any]]) -> None:
@@ -859,6 +870,40 @@ def _build_video_records(
     return [_model_dump(record)]
 
 
+def _standalone_video_identity(video_key: str) -> Tuple[str, str, str]:
+    """(device_id, timestamp, s3_prefix) for a video member, from its key alone.
+
+    The capture directory is named after the video's stem; the device derives a
+    video's ``video_timestamp`` from that same stem's first two underscore groups
+    (``YYYYMMDD_HHMMSS``, microseconds dropped -- bugcam edge26 ``main.py``). We
+    reproduce that exactly so a co-located ``results.json`` (which serves its
+    ``video_timestamp``) enriches the same ``(device_id, timestamp)`` row instead
+    of creating a second one.
+    """
+    prefix = video_key.rsplit("/", 1)[0]
+    if prefix.rsplit("/", 1)[-1] == "videos":  # DOT layout: <capture>/videos/<file>.mp4
+        prefix = prefix.rsplit("/", 1)[0]
+    head, _, capture = prefix.rpartition("/")
+    device_id = head.rsplit("/", 1)[-1]
+    stem = capture.split("_")
+    if not device_id or len(stem) < 2:
+        raise ValueError(f"cannot derive video identity from key: {video_key!r}")
+    timestamp = datetime.strptime(f"{stem[0]}_{stem[1]}", "%Y%m%d_%H%M%S").isoformat()
+    return device_id, timestamp, prefix
+
+
+def _build_standalone_video_record(bucket: str, video_key: str) -> Dict[str, Any]:
+    device_id, timestamp, prefix = _standalone_video_identity(video_key)
+    record = Video(
+        device_id=device_id,
+        timestamp=timestamp,
+        video_key=video_key,
+        video_bucket=bucket,
+        s3_prefix=prefix,
+    )
+    return _model_dump(record)
+
+
 def _parse_and_build_records(
     storage: StorageAdapter,
     bucket: str,
@@ -1066,9 +1111,12 @@ def process_archive_object(
     summary: Dict[str, int] = {"archives": 1, "result_objects": 0, "skipped_members": 0}
     results_names: List[str] = []
     json_object_names: List[str] = []
+    video_names: List[str] = []
     for name in adapter.member_names():
         if name.endswith("/results.json"):
             results_names.append(name)
+        elif name.endswith(VIDEO_MEMBER_SUFFIX):
+            video_names.append(name)
         elif _processing_kind(name) in (ProcessingKind.HEARTBEAT, ProcessingKind.ENVIRONMENT):
             json_object_names.append(name)
 
@@ -1080,6 +1128,22 @@ def process_archive_object(
             summary["skipped_members"] += 1
             log_s3_trigger(
                 S3TriggerAction.FAILED, bucket, name, kind=ProcessingKind.RESULTS.value,
+                reason="archive_member_failed", archive_key=key, error=str(exc),
+            )
+
+    # Standalone videos: any .mp4 a results.json above did not already emit. results
+    # run first, so seen_video_keys covers co-located videos; the leftovers get a
+    # name-derived, byte-range-stamped row here so every archived video is served.
+    for name in sorted(video_names):
+        if name in index_writer.seen_video_keys:
+            continue
+        try:
+            index_writer.put_videos([_build_standalone_video_record(bucket, name)])
+            summary["videos"] = summary.get("videos", 0) + 1
+        except Exception as exc:
+            summary["skipped_members"] += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED, bucket, name, kind="video",
                 reason="archive_member_failed", archive_key=key, error=str(exc),
             )
 
