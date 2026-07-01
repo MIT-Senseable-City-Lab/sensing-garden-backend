@@ -143,6 +143,31 @@ def test_archive_colocated_results_video_is_single_enriched_row():
     assert archive_bytes[off:off + size] == video_bytes  # still byte-range mapped
 
 
+# --- results.json referencing a FLAT (un-archived) video: row served from flat key ---
+
+def test_archive_results_referencing_flat_video_stays_unstamped():
+    prefix = "v1/FLIK4/20260625_141636"
+    results = {
+        "source_device": "FLIK4",
+        "video_file": "orig.mp4",
+        "video_timestamp": "2026-06-25T14:16:36",
+        "video_info": {"fps": 30, "total_frames": 300, "duration_seconds": 10.0},
+        "tracks": [],
+    }
+    # results.json is in the tar; the video is NOT a member -- it lives flat in S3.
+    archive_bytes = _make_tar({f"{prefix}/results.json": json.dumps(results).encode("utf-8")})
+    storage = _ArchiveStorage(archive_bytes)
+    storage.objects[f"{prefix}/orig.mp4"] = b"FLAT-S3-VIDEO"  # flat fallback object
+    writer = trigger_handler.CollectingWriter()
+    summary = trigger_handler.process_archive_object(storage, writer, BUCKET, ARCHIVE_KEY)
+
+    assert len(writer.videos) == 1
+    row = writer.videos[0]
+    assert row["video_key"] == f"{prefix}/orig.mp4"
+    assert "archive_key" not in row and "video_offset" not in row  # unstamped -> serves flat
+    assert summary["videos"] == 1
+
+
 # --- an undecodable capture stem is skipped, not fatal ---
 
 def test_archive_video_with_underivable_timestamp_is_skipped():
