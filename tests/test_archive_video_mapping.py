@@ -176,3 +176,35 @@ def test_archive_video_with_underivable_timestamp_is_skipped():
     _archive, writer, summary = _process({key: b"x"})
     assert writer.videos == []
     assert summary["skipped_members"] == 1
+
+
+# --- a video uploaded flat (outside any archive) is still mapped, not ignored ---
+
+def test_flat_video_upload_is_classified_as_video_not_ignored():
+    key = "v1/FLIK4/20260625_141636/video.mp4"
+    assert trigger_handler._processing_kind(key) == trigger_handler.ProcessingKind.VIDEO
+
+
+def test_process_video_object_maps_flat_video_to_device_and_timestamp():
+    key = "v1/FLIK4/20260625_141636/video.mp4"
+    writer = trigger_handler.CollectingWriter()
+    summary = trigger_handler.process_video_object(_ArchiveStorage(b""), writer, BUCKET, key)
+
+    assert len(writer.videos) == 1
+    row = writer.videos[0]
+    assert row["device_id"] == "FLIK4"
+    assert row["timestamp"] == "2026-06-25T14:16:36"
+    assert row["video_key"] == key
+    assert row["video_bucket"] == BUCKET
+    assert "archive_key" not in row  # flat, not archived -- no byte-range stamp
+    assert row.get("fps") is None  # bare row: differentiable from a results-associated video
+    assert summary["videos"] == 1
+
+
+def test_process_video_object_underivable_timestamp_is_skipped_not_fatal():
+    key = "v1/DOTX/20260625/videos/clip.mp4"
+    writer = trigger_handler.CollectingWriter()
+    summary = trigger_handler.process_video_object(_ArchiveStorage(b""), writer, BUCKET, key)
+
+    assert writer.videos == []
+    assert summary["videos"] == 0

@@ -63,6 +63,7 @@ class ProcessingKind(str, Enum):
     RESULTS = "results"
     HEARTBEAT = "heartbeat"
     ENVIRONMENT = "environment"
+    VIDEO = "video"
     IGNORED = "ignored"
 
 
@@ -1081,6 +1082,28 @@ def process_environment_object(
     return {"environmental_readings": 1}
 
 
+def process_video_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+) -> Dict[str, int]:
+    """A video uploaded flat (outside any archive) still gets a name-derived row,
+    same identity derivation as an archived standalone video (_build_standalone_video_record)
+    -- it just has no archive_key/byte-range stamp, so it serves from its flat key."""
+    try:
+        video_record = _build_standalone_video_record(bucket, key)
+    except ValueError as exc:
+        print(f"Video identity derivation failed for {key}: {exc}")
+        return {"videos": 0}
+    writer.put_videos([video_record])
+    print(f"Processed 1 video from {key}")
+    return {"videos": 1}
+
+
 def _merge_summary(total: Dict[str, int], part: Dict[str, int]) -> None:
     for key, value in part.items():
         if isinstance(value, (int, float)):
@@ -1203,6 +1226,8 @@ def _processing_kind(key: str) -> ProcessingKind:
         return ProcessingKind.HEARTBEAT
     if ENVIRONMENT_KEY_PATTERN.match(key):
         return ProcessingKind.ENVIRONMENT
+    if key.endswith(VIDEO_MEMBER_SUFFIX):
+        return ProcessingKind.VIDEO
     return ProcessingKind.IGNORED
 
 
@@ -1299,6 +1324,15 @@ def process_s3_object(
             )
         elif kind == ProcessingKind.HEARTBEAT:
             summary = process_heartbeat_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+            )
+        elif kind == ProcessingKind.VIDEO:
+            summary = process_video_object(
                 storage,
                 writer,
                 event.bucket,
