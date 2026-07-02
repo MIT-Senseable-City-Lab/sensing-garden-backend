@@ -1,5 +1,6 @@
 import json
 
+import s3
 from auth import validate_api_key
 import handler
 
@@ -476,7 +477,7 @@ def test_handle_get_track_adds_composite_url(monkeypatch):
             "composite_key": "outputs/track-1.jpg",
         },
     )
-    monkeypatch.setattr(handler.tracks, "generate_presigned_url", lambda key, bucket: f"{bucket}/{key}")
+    monkeypatch.setattr(s3, "generate_presigned_url", lambda key, bucket=None, expiration=s3.PRESIGNED_URL_EXPIRY: f"{bucket}/{key}")
 
     response = handler.tracks.handle_get_single(_http_event("GET", "/tracks/track-1"), "track-1")
 

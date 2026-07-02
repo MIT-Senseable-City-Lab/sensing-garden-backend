@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 import dynamodb
-from s3 import OUTPUT_BUCKET, generate_presigned_url
+from s3 import OUTPUT_BUCKET, _presign_media
 from utils import (
     DEFAULT_PAGE_LIMIT,
     HeatmapPeriod,
@@ -22,7 +22,9 @@ def _add_composite_url(item: Dict[str, object]) -> Dict[str, object]:
     normalized = dict(item)
     composite_key = normalized.get("composite_key")
     if composite_key:
-        normalized["composite_url"] = generate_presigned_url(str(composite_key), OUTPUT_BUCKET)
+        normalized["composite_url"] = _presign_media(
+            normalized, "composite_key", "composite", default_bucket=OUTPUT_BUCKET
+        )
     return normalized
 
 
