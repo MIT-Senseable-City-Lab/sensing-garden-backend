@@ -208,3 +208,30 @@ def test_process_video_object_underivable_timestamp_is_skipped_not_fatal():
 
     assert writer.videos == []
     assert summary["videos"] == 0
+
+
+# --- a DOT camera's flat upload: the capture dir is a per-day folder (date only,
+# no HHMMSS), but the filename itself carries <device>_<date>_<time>_<track>. The
+# device stamped video_timestamp from the filename, so ingest must too. Real-world
+# key from the 2026-07-03 FLIK4-dot05 field test (SG classification-gap report). ---
+
+def test_standalone_video_identity_dot_flat_upload_falls_back_to_filename_timestamp():
+    dev, ts, prefix = trigger_handler._standalone_video_identity(
+        "v1/FLIK4-dot05/20260703/videos/FLIK4-dot05_20260703_011737_f78510c7.mp4"
+    )
+    assert dev == "FLIK4-dot05"
+    assert ts == "2026-07-03T01:17:37"
+    assert prefix == "v1/FLIK4-dot05/20260703"
+
+
+def test_process_video_object_dot_flat_upload_is_mapped_via_filename_fallback():
+    key = "v1/FLIK4-dot05/20260703/videos/FLIK4-dot05_20260703_011737_f78510c7.mp4"
+    writer = trigger_handler.CollectingWriter()
+    summary = trigger_handler.process_video_object(_ArchiveStorage(b""), writer, BUCKET, key)
+
+    assert len(writer.videos) == 1
+    row = writer.videos[0]
+    assert row["device_id"] == "FLIK4-dot05"
+    assert row["timestamp"] == "2026-07-03T01:17:37"
+    assert row["video_key"] == key
+    assert summary["videos"] == 1

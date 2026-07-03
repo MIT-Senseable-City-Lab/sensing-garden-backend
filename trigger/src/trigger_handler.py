@@ -880,6 +880,12 @@ def _standalone_video_identity(video_key: str) -> Tuple[str, str, str]:
     reproduce that exactly so a co-located ``results.json`` (which serves its
     ``video_timestamp``) enriches the same ``(device_id, timestamp)`` row instead
     of creating a second one.
+
+    A DOT camera's flat upload breaks that assumption: its capture dir is a
+    per-day folder (date only, no ``HHMMSS``), because ``videos/`` sits directly
+    under ``<device>/<date>/`` rather than under a per-clip capture dir. The
+    filename itself still carries ``<device>_<date>_<time>_...``, so fall back to
+    parsing that when the capture dir alone doesn't decode.
     """
     prefix = video_key.rsplit("/", 1)[0]
     if prefix.rsplit("/", 1)[-1] == "videos":  # DOT layout: <capture>/videos/<file>.mp4
@@ -887,7 +893,14 @@ def _standalone_video_identity(video_key: str) -> Tuple[str, str, str]:
     head, _, capture = prefix.rpartition("/")
     device_id = head.rsplit("/", 1)[-1]
     stem = capture.split("_")
-    if not device_id or len(stem) < 2:
+    if not device_id:
+        raise ValueError(f"cannot derive video identity from key: {video_key!r}")
+    if len(stem) < 2:
+        filename = video_key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        parts = filename.split("_")
+        if len(parts) >= 3 and parts[0] == device_id:
+            stem = parts[1:]
+    if len(stem) < 2:
         raise ValueError(f"cannot derive video identity from key: {video_key!r}")
     timestamp = datetime.strptime(f"{stem[0]}_{stem[1]}", "%Y%m%d_%H%M%S").isoformat()
     return device_id, timestamp, prefix
