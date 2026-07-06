@@ -4,6 +4,7 @@ resource "aws_dynamodb_table" "sensor_detections" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
   range_key    = "timestamp"
+  tags         = local.observation_detections_tags
 
   attribute {
     name = "device_id"
@@ -29,7 +30,11 @@ resource "aws_dynamodb_table" "sensor_detections" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      deletion_protection_enabled,
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -38,6 +43,7 @@ resource "aws_dynamodb_table" "devices" {
   name         = "sensing-garden-devices"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
+  tags         = local.device_registry_tags
 
   attribute {
     name = "device_id"
@@ -47,7 +53,11 @@ resource "aws_dynamodb_table" "devices" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      deletion_protection_enabled,
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -57,6 +67,7 @@ resource "aws_dynamodb_table" "sensor_classifications" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
   range_key    = "timestamp"
+  tags         = local.observation_classifications_tags
 
   attribute {
     name = "device_id"
@@ -112,7 +123,6 @@ resource "aws_dynamodb_table" "sensor_classifications" {
       billing_mode,
       read_capacity,
       write_capacity,
-      tags,
     ]
   }
 }
@@ -123,6 +133,7 @@ resource "aws_dynamodb_table" "models" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
   range_key    = "timestamp"
+  tags         = local.model_metadata_tags
 
   attribute {
     name = "id"
@@ -148,7 +159,11 @@ resource "aws_dynamodb_table" "models" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      deletion_protection_enabled,
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -158,6 +173,7 @@ resource "aws_dynamodb_table" "videos" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
   range_key    = "timestamp"
+  tags         = local.media_video_index_tags
 
   attribute {
     name = "device_id"
@@ -183,7 +199,11 @@ resource "aws_dynamodb_table" "videos" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      deletion_protection_enabled,
+      read_capacity,
+      write_capacity,
+    ]
     # This will prevent Terraform from trying to recreate the table if it already exists
     create_before_destroy = true
   }
@@ -195,6 +215,7 @@ resource "aws_dynamodb_table" "environmental_readings" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
   range_key    = "timestamp"
+  tags         = local.observation_environment_tags
 
   attribute {
     name = "device_id"
@@ -210,7 +231,10 @@ resource "aws_dynamodb_table" "environmental_readings" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -219,6 +243,7 @@ resource "aws_dynamodb_table" "deployments" {
   name         = "sensing-garden-deployments"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "deployment_id"
+  tags         = local.deployment_registry_tags
 
   attribute {
     name = "deployment_id"
@@ -227,7 +252,10 @@ resource "aws_dynamodb_table" "deployments" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -237,6 +265,7 @@ resource "aws_dynamodb_table" "deployment_device_connections" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "deployment_id"
   range_key    = "device_id"
+  tags         = local.deployment_registry_tags
 
   attribute {
     name = "deployment_id"
@@ -250,7 +279,10 @@ resource "aws_dynamodb_table" "deployment_device_connections" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes  = all
+    ignore_changes = [
+      read_capacity,
+      write_capacity,
+    ]
   }
 }
 
@@ -260,6 +292,7 @@ resource "aws_dynamodb_table" "tracks" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "track_id"
   range_key    = "device_id"
+  tags         = local.observation_tracks_tags
 
   attribute {
     name = "track_id"
@@ -296,6 +329,7 @@ resource "aws_dynamodb_table" "heartbeats" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
   range_key    = "timestamp"
+  tags         = local.device_heartbeats_tags
 
   attribute {
     name = "device_id"
@@ -318,6 +352,7 @@ resource "aws_dynamodb_table" "device_api_keys" {
   name         = "sensing-garden-device-api-keys"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_id"
+  tags         = local.device_auth_tags
 
   attribute {
     name = "device_id"
@@ -347,6 +382,7 @@ resource "aws_dynamodb_table" "activity_events" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "event_date"
   range_key    = "timestamp_event_id"
+  tags         = local.dashboard_audit_tags
 
   attribute {
     name = "event_date"
@@ -374,6 +410,7 @@ resource "aws_dynamodb_table" "processed_objects" {
   name         = "sensing-garden-s3-processed-objects"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "object_id"
+  tags         = local.pipeline_dedupe_tags
 
   attribute {
     name = "object_id"

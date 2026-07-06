@@ -4,6 +4,8 @@
 # Lambda execution role
 resource "aws_iam_role" "lambda_exec" {
   name = "lambda_exec_role"
+  tags = local.api_handler_tags
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

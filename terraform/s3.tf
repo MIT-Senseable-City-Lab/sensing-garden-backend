@@ -1,6 +1,7 @@
 # Create S3 bucket for images
 resource "aws_s3_bucket" "sensor_images" {
   bucket = "scl-sensing-garden-images"
+  tags   = local.media_images_tags
 
   lifecycle {
     prevent_destroy = true
@@ -32,6 +33,7 @@ resource "aws_s3_bucket_cors_configuration" "sensor_images" {
 # Create S3 bucket for videos
 resource "aws_s3_bucket" "sensor_videos" {
   bucket = "scl-sensing-garden-videos"
+  tags   = local.media_videos_tags
 
   lifecycle {
     prevent_destroy = true
@@ -67,6 +69,7 @@ resource "aws_s3_bucket_cors_configuration" "sensor_videos" {
 # Create S3 bucket for ML models (public read)
 resource "aws_s3_bucket" "models" {
   bucket = "scl-sensing-garden-models"
+  tags   = local.model_artifacts_tags
 
   lifecycle {
     prevent_destroy = true
@@ -130,6 +133,7 @@ resource "aws_s3_bucket_cors_configuration" "models" {
 # Create S3 bucket for pipeline output
 resource "aws_s3_bucket" "output" {
   bucket = "scl-sensing-garden"
+  tags   = local.pipeline_output_tags
 }
 
 # Configure public access settings for output bucket (private)
