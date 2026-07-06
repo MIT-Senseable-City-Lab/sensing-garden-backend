@@ -226,6 +226,34 @@ resource "aws_apigatewayv2_route" "post_upload_url" {
   authorization_type = "NONE"
 }
 
+resource "aws_apigatewayv2_route" "post_multipart_create" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/create"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_part_url" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/part-url"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_complete" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/complete"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_abort" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/abort"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
 resource "aws_apigatewayv2_route" "get_tracks" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "GET /tracks"
