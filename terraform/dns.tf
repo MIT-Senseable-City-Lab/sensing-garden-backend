@@ -4,6 +4,7 @@
 
 resource "aws_route53_zone" "main" {
   name = "sensinggarden.com"
+  tags = local.platform_dns_tags
 }
 
 resource "aws_route53_record" "api" {

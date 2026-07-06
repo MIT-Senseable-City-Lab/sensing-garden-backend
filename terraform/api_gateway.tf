@@ -1,6 +1,7 @@
 resource "aws_apigatewayv2_api" "http_api" {
   name          = "sensing-garden-api"
   protocol_type = "HTTP"
+  tags          = local.api_http_tags
 
   cors_configuration {
     allow_headers = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"]
@@ -22,6 +23,7 @@ resource "aws_api_gateway_api_key" "test_key" {
   name        = "sensing-garden-api-key-test"
   enabled     = true
   description = "API key for test environment"
+  tags        = local.api_key_test_tags
 }
 
 # Edge/production environment API key (existing: y90f3ne7m7)
@@ -29,6 +31,7 @@ resource "aws_api_gateway_api_key" "edge_key" {
   name        = "sensing-garden-api-key-edge"
   enabled     = true
   description = "API key for edge/production environment"
+  tags        = local.api_key_edge_tags
 }
 
 # Frontend API key (existing: 2xapcek3tc)
@@ -36,6 +39,7 @@ resource "aws_api_gateway_api_key" "frontend_key" {
   name        = "sensing-garden-api-key-frontend"
   enabled     = true
   description = "API key for frontend environment"
+  tags        = local.dashboard_api_auth_tags
 }
 
 # Deployments dashboard API key
@@ -44,12 +48,15 @@ resource "aws_api_gateway_api_key" "deployments_key" {
   enabled     = true
   description = "API key for deployments dashboard access"
   value       = var.deployments_api_key_value
+  tags        = local.dashboard_api_auth_tags
 }
 
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.http_api.id
   name        = "$default"
   auto_deploy = true
+  tags        = local.api_http_tags
+
   default_route_settings {
     throttling_rate_limit  = 100
     throttling_burst_limit = 100
@@ -71,6 +78,7 @@ resource "aws_apigatewayv2_integration" "api_lambda" {
 resource "aws_api_gateway_usage_plan" "usage_plan" {
   name        = "sensing-garden-usage-plan"
   description = "Standard usage plan for API"
+  tags        = local.api_http_tags
 
   # Note: HTTP APIs don't directly integrate with usage plans in the same way as REST APIs
   # This is a limitation of the current AWS API Gateway implementation
@@ -222,6 +230,34 @@ resource "aws_apigatewayv2_route" "post_devices_register" {
 resource "aws_apigatewayv2_route" "post_upload_url" {
   api_id             = aws_apigatewayv2_api.http_api.id
   route_key          = "POST /upload-url"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_create" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/create"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_part_url" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/part-url"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_complete" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/complete"
+  target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "post_multipart_abort" {
+  api_id             = aws_apigatewayv2_api.http_api.id
+  route_key          = "POST /multipart/abort"
   target             = "integrations/${aws_apigatewayv2_integration.api_lambda.id}"
   authorization_type = "NONE"
 }
