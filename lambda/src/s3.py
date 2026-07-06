@@ -48,12 +48,36 @@ def generate_presigned_put_url(
         return None
 
 
+def _presign_media(
+    item: Dict[str, Any],
+    key_field: str,
+    prefix: str,
+    default_bucket: Optional[str] = None,
+) -> Optional[str]:
+    """Presign a GET for an item's media, preferring its archive over its own key.
+
+    A row whose media was mapped into a batch tar carries archive_key/archive_bucket
+    (the intra-tar member path in `key_field` is not a real object at its own bucket)
+    -- presign the archive instead, so the caller can range-read the member out of it.
+    """
+    archive_key = item.get("archive_key")
+    archive_bucket = item.get("archive_bucket")
+    if archive_key and archive_bucket:
+        return generate_presigned_url(archive_key, archive_bucket)
+
+    key = item.get(key_field)
+    bucket = item.get(f"{prefix}_bucket", default_bucket)
+    if key and bucket:
+        return generate_presigned_url(key, bucket)
+    return None
+
+
 def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
     for item in result.get("items", []):
         if "image_key" in item and "image_bucket" in item:
-            item["image_url"] = generate_presigned_url(item["image_key"], item["image_bucket"])
+            item["image_url"] = _presign_media(item, "image_key", "image")
         if "video_key" in item and "video_bucket" in item:
-            item["video_url"] = generate_presigned_url(item["video_key"], item["video_bucket"])
+            item["video_url"] = _presign_media(item, "video_key", "video")
     return result
 
 

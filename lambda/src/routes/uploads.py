@@ -5,14 +5,19 @@ from s3 import OUTPUT_BUCKET, PRESIGNED_URL_EXPIRY, generate_presigned_put_url
 from utils import _parse_request, json_response
 
 
+# Hourly batch archives upload here; their members are v1 keys but the container
+# itself lives under v2/archives/<device>/<timestamp>.tar.
+ARCHIVE_PREFIX = "v2/archives/"
+
+
 def _validate_s3_key(s3_key: Any) -> str:
     if not isinstance(s3_key, str):
         raise ValueError("s3_key must be a string")
     normalized_key = s3_key.strip()
     if not normalized_key:
         raise ValueError("s3_key is required")
-    if not normalized_key.startswith("v1/"):
-        raise ValueError("s3_key must start with v1/")
+    if not (normalized_key.startswith("v1/") or normalized_key.startswith(ARCHIVE_PREFIX)):
+        raise ValueError("s3_key must start with v1/ or v2/archives/")
     if ".." in normalized_key:
         raise ValueError("s3_key cannot contain '..'")
     return normalized_key
@@ -20,6 +25,20 @@ def _validate_s3_key(s3_key: Any) -> str:
 
 def _is_manifest_key(s3_key: str) -> bool:
     return s3_key == "v1/manifest.json"
+
+
+def _key_device_id(s3_key: str) -> str:
+    """The device id is the segment after the namespace prefix:
+    v1/<device>/...  or  v2/archives/<device>/..."""
+    if s3_key.startswith(ARCHIVE_PREFIX):
+        rest = s3_key[len(ARCHIVE_PREFIX):].split("/", 1)
+        if len(rest) < 2 or not rest[0]:
+            raise PermissionError("archive s3_key must include a device prefix and object path")
+        return rest[0]
+    parts = s3_key.split("/", 2)
+    if len(parts) < 3:
+        raise PermissionError("s3_key must include a device prefix and object path")
+    return parts[1]
 
 
 def _validate_device_scope(s3_key: str, authenticated_device: Dict[str, Any]) -> None:
@@ -34,10 +53,7 @@ def _validate_device_scope(s3_key: str, authenticated_device: Dict[str, Any]) ->
     )
     allowed_devices.discard("")
 
-    if len(s3_key.split("/", 2)) < 3:
-        raise PermissionError("s3_key must include a device prefix and object path")
-
-    key_device_id = s3_key.split("/", 2)[1]
+    key_device_id = _key_device_id(s3_key)
     if key_device_id not in allowed_devices:
         raise PermissionError(f"s3_key is outside the authenticated device scope: {key_device_id}")
 
