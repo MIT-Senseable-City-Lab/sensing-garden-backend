@@ -43,6 +43,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "")
 DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
 HEARTBEAT_KEY_PATTERN = re.compile(r"^v1/[^/]+/heartbeats/[^/]+\.json$")
 ENVIRONMENT_KEY_PATTERN = re.compile(r"^v1/[^/]+/environment/[^/]+\.json$")
+LOG_KEY_PATTERN = re.compile(r"^v1/[^/]+/logs/[^/]+\.log$")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -64,6 +65,7 @@ class ProcessingKind(str, Enum):
     HEARTBEAT = "heartbeat"
     ENVIRONMENT = "environment"
     VIDEO = "video"
+    LOG = "log"
     IGNORED = "ignored"
 
 
@@ -1124,6 +1126,38 @@ def process_video_object(
     return {"videos": 1}
 
 
+def process_log_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+    monitor: Optional[Any] = None,
+) -> Dict[str, int]:
+    """Scan a shipped device log for error-tagged lines and hand the digest to
+    monitoring (SPEC-fleet-monitoring item 11). Cataloguing/CloudWatch forwarding
+    is SPEC-device-log-cataloguing's work and slots in here when it lands."""
+    from log_scan import parse_log_key, scan
+
+    parsed = parse_log_key(key)
+    if parsed is None:
+        print(f"Log key did not parse for {key}")
+        return {"logs": 0}
+    device_id, log_name = parsed
+    text = storage.read_text(bucket, key, version_id=version_id, etag=etag)
+    digest = scan(text.splitlines(), device_id=device_id, log_name=log_name)
+    if monitor is not None and digest.error_count:
+        # Digest delivery is best-effort; a notify failure must not fail ingest.
+        try:
+            monitor.on_log_digest(digest)
+        except Exception as exc:
+            print(f"Monitoring failed for log digest {key}: {exc}")
+    print(f"Processed log {key}: {digest.error_count} error line(s), {digest.traceback_count} traceback(s)")
+    return {"logs": 1, "log_error_lines": digest.error_count}
+
+
 def _merge_summary(total: Dict[str, int], part: Dict[str, int]) -> None:
     for key, value in part.items():
         if isinstance(value, (int, float)):
@@ -1138,6 +1172,7 @@ def process_archive_object(
     *,
     version_id: Optional[str] = None,
     etag: Optional[str] = None,
+    monitor: Optional[Any] = None,
 ) -> Dict[str, int]:
     """Index an hourly batch tar in place: process its members without exploding.
 
@@ -1155,6 +1190,7 @@ def process_archive_object(
     results_names: List[str] = []
     json_object_names: List[str] = []
     video_names: List[str] = []
+    log_names: List[str] = []
     for name in adapter.member_names():
         if name.endswith("/results.json"):
             results_names.append(name)
@@ -1162,6 +1198,8 @@ def process_archive_object(
             video_names.append(name)
         elif _processing_kind(name) in (ProcessingKind.HEARTBEAT, ProcessingKind.ENVIRONMENT):
             json_object_names.append(name)
+        elif _processing_kind(name) == ProcessingKind.LOG:
+            log_names.append(name)
 
     for name in sorted(results_names):
         try:
@@ -1187,6 +1225,18 @@ def process_archive_object(
             summary["skipped_members"] += 1
             log_s3_trigger(
                 S3TriggerAction.FAILED, bucket, name, kind="video",
+                reason="archive_member_failed", archive_key=key, error=str(exc),
+            )
+
+    # Log members ride the tars until flat log shipping lands (spec item 2);
+    # scan them here so error digests don't wait for that migration.
+    for name in sorted(log_names):
+        try:
+            _merge_summary(summary, process_log_object(adapter, index_writer, bucket, name, monitor=monitor))
+        except Exception as exc:
+            summary["skipped_members"] += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED, bucket, name, kind=ProcessingKind.LOG.value,
                 reason="archive_member_failed", archive_key=key, error=str(exc),
             )
 
@@ -1246,6 +1296,8 @@ def _processing_kind(key: str) -> ProcessingKind:
         return ProcessingKind.HEARTBEAT
     if ENVIRONMENT_KEY_PATTERN.match(key):
         return ProcessingKind.ENVIRONMENT
+    if LOG_KEY_PATTERN.match(key):
+        return ProcessingKind.LOG
     if key.endswith(VIDEO_MEMBER_SUFFIX):
         return ProcessingKind.VIDEO
     return ProcessingKind.IGNORED
@@ -1333,6 +1385,17 @@ def process_s3_object(
                 event.key,
                 version_id=event.version_id,
                 etag=event.etag,
+                monitor=monitor,
+            )
+        elif kind == ProcessingKind.LOG:
+            summary = process_log_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+                monitor=monitor,
             )
         elif kind == ProcessingKind.RESULTS:
             summary = process_results_object(

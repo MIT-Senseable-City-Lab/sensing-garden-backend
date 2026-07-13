@@ -42,6 +42,8 @@ class MonitorConfig:
     pending_bytes_growth_samples: int = 6
     # re-page cadence for criticals that stay bad
     critical_repage_seconds: float = 6 * 3600.0
+    # one log-error digest page per device per window
+    log_error_cooldown_seconds: float = 6 * 3600.0
     # channels / backstop
     ntfy_topic_url: str = ""
     healthchecks_ping_url: str = ""
@@ -69,6 +71,7 @@ class MonitorConfig:
                 _env_float("MONITOR_PENDING_BYTES_GROWTH_SAMPLES", cls.pending_bytes_growth_samples)
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
+            log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),
             ntfy_topic_url=os.environ.get("MONITOR_NTFY_TOPIC_URL", ""),
             healthchecks_ping_url=os.environ.get("MONITOR_HEALTHCHECKS_PING_URL", ""),
         )

@@ -141,6 +141,35 @@ class Monitoring:
         alarm = event.get("alarmData", {})
         print(f"Alarm event received (forwarding not yet implemented): {alarm.get('alarmName', '?')}")
 
+    def on_log_digest(self, digest: Any) -> None:
+        """One page per device per cooldown window for error-tagged log lines
+        (SPEC item 11). ``log_errors`` is a cooldown-only pseudo-check: shipped
+        logs describe finished periods, so there is no OK/BAD episode to track —
+        just "this device's logs contain errors, don't repeat it for a while"."""
+        device_id = str(digest.device_id)
+        if not device_id or not self._is_monitored(device_id):
+            return
+        now = self._now_fn()
+        state = self.state_store.get(device_id)
+        last = state.last_notified("log_errors")
+        if last is not None and (now - last).total_seconds() < self.cfg.log_error_cooldown_seconds:
+            return
+        body = f"First: {digest.first_error}"
+        if digest.last_error and digest.last_error != digest.first_error:
+            body += f"\nLast: {digest.last_error}"
+        if digest.traceback_count:
+            body += f"\n{digest.traceback_count} traceback(s)"
+        self.notifier.notify(
+            Notification(
+                severity="warning",
+                title=f"{device_id}: {digest.error_count} error line(s) in {digest.log_name}",
+                body=body,
+                key=f"{device_id}/log_errors/{digest.log_name}",
+            )
+        )
+        state.mark_notified("log_errors", now)
+        self.state_store.put(state, now)
+
     # -- notification policy -----------------------------------------------
 
     def _apply(self, findings: List[Finding], state: DeviceState, now: datetime) -> int:
