@@ -190,6 +190,9 @@ resource "aws_lambda_function" "trigger_handler_function" {
       PROCESSED_OBJECTS_TABLE         = aws_dynamodb_table.processed_objects.name
       PROCESSED_OBJECT_RETENTION_DAYS = "30"
       OUTPUT_BUCKET                   = "scl-sensing-garden"
+      MONITOR_STATE_TABLE             = aws_dynamodb_table.monitor_state.name
+      MONITOR_NTFY_TOPIC_URL          = var.monitor_ntfy_topic_url
+      MONITOR_HEALTHCHECKS_PING_URL   = var.monitor_healthchecks_ping_url
     }
   }
 

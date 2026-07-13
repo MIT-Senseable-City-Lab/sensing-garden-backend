@@ -1059,6 +1059,7 @@ def process_heartbeat_object(
     *,
     version_id: Optional[str] = None,
     etag: Optional[str] = None,
+    monitor: Optional[Any] = None,
 ) -> Dict[str, int]:
     try:
         payload = storage.read_json(bucket, key, version_id=version_id, etag=etag)
@@ -1069,6 +1070,12 @@ def process_heartbeat_object(
         print(f"Heartbeat validation failed for {key}: {exc}")
         return {"heartbeats": 0}
     writer.put_heartbeats([heartbeat_record])
+    if monitor is not None:
+        # Content checks on the fresh payload; monitoring must never fail ingest.
+        try:
+            monitor.on_heartbeat(heartbeat_record)
+        except Exception as exc:
+            print(f"Monitoring failed for heartbeat {key}: {exc}")
     print(f"Processed 1 heartbeat from {key}")
     return {"heartbeats": 1}
 
@@ -1292,6 +1299,7 @@ def process_s3_object(
     writer: WriterProtocol,
     event: S3ObjectEvent,
     processed_store: ProcessedObjectStore,
+    monitor: Optional[Any] = None,
 ) -> Dict[str, int]:
     kind = _processing_kind(event.key)
     log_s3_trigger(S3TriggerAction.RECEIVED, event.bucket, event.key, kind=kind.value)
@@ -1343,6 +1351,7 @@ def process_s3_object(
                 event.key,
                 version_id=event.version_id,
                 etag=event.etag,
+                monitor=monitor,
             )
         elif kind == ProcessingKind.VIDEO:
             summary = process_video_object(
@@ -1387,13 +1396,39 @@ def process_s3_object(
     return summary
 
 
+def _build_monitor() -> Optional[Any]:
+    """Monitoring is best-effort everywhere: if it cannot even be constructed
+    (bad config, missing table), ingest proceeds without it."""
+    try:
+        from monitoring import get_monitoring
+
+        return get_monitoring()
+    except Exception as exc:
+        print(f"Monitoring unavailable: {exc}")
+        return None
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    # One function, three triggers (SPEC-fleet-monitoring, item 5): S3 object
+    # events (ingest + content checks), the EventBridge schedule (liveness
+    # sweep), and CloudWatch alarm actions (forwarding; step-4 rollout).
+    if event.get("source") == "aws.events":
+        monitor = _build_monitor()
+        summary = monitor.sweep() if monitor is not None else {"error": "monitoring unavailable"}
+        return {"statusCode": 200, "body": json.dumps({"sweep": summary})}
+    if "alarmData" in event:
+        monitor = _build_monitor()
+        if monitor is not None:
+            monitor.on_alarm(event)
+        return {"statusCode": 200, "body": json.dumps({"alarm": "received"})}
+
     storage = S3StorageAdapter()
     writer = DynamoWriter()
     processed_store = ProcessedObjectStore()
+    monitor = _build_monitor()
     summaries = []
     for s3_event in parse_s3_event(event):
-        summary = process_s3_object(storage, writer, s3_event, processed_store)
+        summary = process_s3_object(storage, writer, s3_event, processed_store, monitor=monitor)
         if summary:
             summaries.append(summary)
     return {"statusCode": 200, "body": json.dumps({"processed": summaries})}

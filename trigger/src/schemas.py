@@ -71,6 +71,10 @@ class Heartbeat(BaseModel):
     storage_total_bytes: Optional[int] = None
     uptime_seconds: Optional[float] = None
     dot_status: Optional[list[dict]] = None
+    # Heartbeat v2 (SPEC-fleet-monitoring item 3): declared so pydantic doesn't
+    # strip them; devices that don't send them are unaffected.
+    results: Optional[dict] = None
+    upload: Optional[dict] = None
 
 
 class Deployment(BaseModel):
