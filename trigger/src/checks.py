@@ -24,6 +24,7 @@ WARNING = "warning"
 SAMPLE_FIELDS = (
     "storage_free_bytes",
     "cpu_temperature_celsius",
+    "uptime_seconds",
     "pending_bytes",
     "queue_depth",
     "last_flush_bytes_per_sec",
@@ -70,7 +71,7 @@ def extract_samples(heartbeat: Dict[str, Any]) -> Dict[str, float]:
     ts = parse_timestamp(heartbeat.get("timestamp"))
     if ts is not None:
         samples["ts"] = ts.timestamp()
-    for field in ("storage_free_bytes", "cpu_temperature_celsius"):
+    for field in ("storage_free_bytes", "cpu_temperature_celsius", "uptime_seconds"):
         value = _number(heartbeat.get(field))
         if value is not None:
             samples[field] = value
@@ -102,6 +103,18 @@ def _series(history: Sequence[Dict[str, float]], field: str) -> List[float]:
 
 def _strictly_increasing(values: Sequence[float]) -> bool:
     return len(values) >= 2 and all(b > a for a, b in zip(values, values[1:]))
+
+
+def _human_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.0f}s"
+    minutes = seconds / 60
+    if minutes < 60:
+        return f"{minutes:.0f}m"
+    hours = minutes / 60
+    if hours < 24:
+        return f"{hours:.1f}h"
+    return f"{hours / 24:.1f}d"
 
 
 def _human_bytes(value: float) -> str:
@@ -309,6 +322,38 @@ def check_bandwidth(
     return [Finding(device_id, "bandwidth", OK, WARNING, f"{device_id}: uploads OK", "queue draining normally")]
 
 
+def check_restart(
+    device_id: str,
+    heartbeat: Dict[str, Any],
+    history: Sequence[Dict[str, float]],
+    now: datetime,
+    cfg: MonitorConfig,
+) -> List[Finding]:
+    """Detects a process restart from process-lifetime uptime: the device derives
+    it from a monotonic clock within the running process (a systemd restart after
+    a crash is otherwise invisible -- host uptime keeps climbing), so it only ever
+    grows across one process's life. Any drop between consecutive heartbeats means
+    the pipeline restarted. An ordinary OK/BAD check (not a one-shot event) so a
+    crash-looping device re-fires the transition -- and therefore re-notifies --
+    on every restart, not just the first."""
+    uptimes = _series(history, "uptime_seconds")
+    if len(uptimes) < 2:
+        return []
+    previous, current = uptimes[-2], uptimes[-1]
+    if current < previous:
+        return [
+            Finding(
+                device_id,
+                "restart",
+                BAD,
+                WARNING,
+                f"{device_id}: restarted",
+                f"Process uptime dropped from {_human_duration(previous)} to {_human_duration(current)}",
+            )
+        ]
+    return [Finding(device_id, "restart", OK, WARNING, f"{device_id}: uptime nominal", f"up {_human_duration(current)}")]
+
+
 CONTENT_CHECKS = (
     check_disk_space,
     check_disk_trend,
@@ -316,6 +361,7 @@ CONTENT_CHECKS = (
     check_dot_freshness,
     check_results_backlog,
     check_bandwidth,
+    check_restart,
 )
 
 

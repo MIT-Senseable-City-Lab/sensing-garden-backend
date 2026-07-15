@@ -182,6 +182,34 @@ def test_bandwidth_fires_on_growing_pending_bytes():
     assert "pending bytes growing" in finding.body
 
 
+def test_restart_needs_a_prior_sample():
+    first = _heartbeat(uptime_seconds=3600.0)
+    history = [checks.extract_samples(first)]
+    assert checks.check_restart("FLIK1", first, history, NOW, CFG) == []
+
+
+def test_restart_fires_on_uptime_drop_and_clears_on_growth():
+    history = [checks.extract_samples(_heartbeat(uptime_seconds=3600.0))]
+
+    restarted = _heartbeat(uptime_seconds=45.0)
+    history.append(checks.extract_samples(restarted))
+    (finding,) = checks.check_restart("FLIK1", restarted, history, NOW, CFG)
+    assert finding.status == checks.BAD
+    assert "restart" in finding.title.lower()
+
+    recovered = _heartbeat(uptime_seconds=120.0)
+    history.append(checks.extract_samples(recovered))
+    (finding,) = checks.check_restart("FLIK1", recovered, history, NOW, CFG)
+    assert finding.status == checks.OK
+
+
+def test_restart_dormant_without_uptime_field():
+    beat = _heartbeat()
+    del beat["uptime_seconds"]
+    history = [checks.extract_samples(beat), checks.extract_samples(beat)]
+    assert checks.check_restart("FLIK1", beat, history, NOW, CFG) == []
+
+
 # ---------------------------------------------------------------------------
 # Monitoring: transitions, dedup, re-page, recovery
 # ---------------------------------------------------------------------------
@@ -227,6 +255,16 @@ def test_critical_repages_after_cooldown():
     mon.on_heartbeat(_heartbeat(storage_free_bytes=1 * 1024**3, age_seconds=-CFG.critical_repage_seconds - 60))
     still = [n for n in channel.sent if n.title.startswith("Still failing:")]
     assert len(still) == 1
+
+
+def test_on_heartbeat_notifies_every_restart_not_just_the_first():
+    mon, store, channel = _monitoring()
+    mon.on_heartbeat(_heartbeat(uptime_seconds=3600.0))
+    mon.on_heartbeat(_heartbeat(uptime_seconds=50.0))  # restart 1
+    mon.on_heartbeat(_heartbeat(uptime_seconds=200.0))  # stayed up
+    mon.on_heartbeat(_heartbeat(uptime_seconds=40.0))  # restart 2 (crash loop)
+    restarts = [n for n in channel.sent if "restarted" in n.title]
+    assert len(restarts) == 2
 
 
 def test_unmonitored_device_is_silent():
