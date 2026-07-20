@@ -51,6 +51,26 @@ class NtfyChannel:
         urllib.request.urlopen(request, timeout=SEND_TIMEOUT_SECONDS)
 
 
+class SlackChannel:
+    """POST to a Slack incoming webhook URL."""
+
+    _EMOJI = {"critical": ":rotating_light:", "warning": ":warning:", "info": ":white_check_mark:"}
+
+    def __init__(self, webhook_url: str) -> None:
+        self.webhook_url = webhook_url
+
+    def send(self, notification: Notification) -> None:
+        emoji = self._EMOJI.get(notification.severity, ":warning:")
+        text = f"{emoji} *{notification.title}*\n{notification.body}"
+        request = urllib.request.Request(
+            self.webhook_url,
+            data=json.dumps({"text": text}).encode("utf-8"),
+            method="POST",
+            headers={"Content-type": "application/json"},
+        )
+        urllib.request.urlopen(request, timeout=SEND_TIMEOUT_SECONDS)
+
+
 class Notifier:
     def __init__(self, channels: List[Any]) -> None:
         self.channels = channels
@@ -70,8 +90,13 @@ def build_notifier(cfg: MonitorConfig) -> Notifier:
     channels: List[Any] = []
     if cfg.ntfy_topic_url:
         channels.append(NtfyChannel(cfg.ntfy_topic_url))
+    if cfg.slack_webhook_url:
+        channels.append(SlackChannel(cfg.slack_webhook_url))
     if not channels:
-        print("Notifier: no channels configured (set MONITOR_NTFY_TOPIC_URL); notifications will be logged only")
+        print(
+            "Notifier: no channels configured (set MONITOR_NTFY_TOPIC_URL or "
+            "MONITOR_SLACK_WEBHOOK_URL); notifications will be logged only"
+        )
     return Notifier(channels)
 
 

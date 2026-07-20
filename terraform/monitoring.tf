@@ -9,6 +9,12 @@ variable "monitor_ntfy_topic_url" {
   default     = ""
 }
 
+variable "monitor_slack_webhook_url" {
+  description = "Slack incoming webhook URL for fleet notifications (empty = channel disabled)"
+  type        = string
+  default     = ""
+}
+
 variable "monitor_healthchecks_ping_url" {
   description = "Healthchecks.io ping URL, hit as the last action of each sweep (empty = disabled)"
   type        = string

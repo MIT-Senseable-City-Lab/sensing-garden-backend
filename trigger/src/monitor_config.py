@@ -46,6 +46,7 @@ class MonitorConfig:
     log_error_cooldown_seconds: float = 6 * 3600.0
     # channels / backstop
     ntfy_topic_url: str = ""
+    slack_webhook_url: str = ""
     healthchecks_ping_url: str = ""
 
     @classmethod
@@ -73,5 +74,6 @@ class MonitorConfig:
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
             log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),
             ntfy_topic_url=os.environ.get("MONITOR_NTFY_TOPIC_URL", ""),
+            slack_webhook_url=os.environ.get("MONITOR_SLACK_WEBHOOK_URL", ""),
             healthchecks_ping_url=os.environ.get("MONITOR_HEALTHCHECKS_PING_URL", ""),
         )
