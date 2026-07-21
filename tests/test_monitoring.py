@@ -55,7 +55,8 @@ class FakeStateStore:
         if state is None:
             return DeviceState(device_id)
         return DeviceState(device_id, checks=json.loads(json.dumps(state.checks)),
-                           samples=json.loads(json.dumps(state.samples)))
+                           samples=json.loads(json.dumps(state.samples)),
+                           bandwidth=json.loads(json.dumps(state.bandwidth)))
 
     def put(self, state: DeviceState, now: datetime) -> None:
         self.put_count += 1
@@ -165,6 +166,33 @@ def test_v2_checks_dormant_without_fields():
     history = [checks.extract_samples(v1_only)]
     assert checks.check_results_backlog("FLIK1", v1_only, history, NOW, CFG) == []
     assert checks.check_bandwidth("FLIK1", v1_only, history, NOW, CFG) == []
+    assert checks.check_video_backlog("FLIK1", v1_only, history, NOW, CFG) == []
+
+
+def test_video_backlog_fires_over_max():
+    beat = _heartbeat(videos={"captured_total": 50, "uploaded_total": 20})
+    history = [checks.extract_samples(beat)]
+    (finding,) = checks.check_video_backlog("FLIK1", beat, history, NOW, CFG)
+    assert finding.status == checks.BAD
+    assert "30 video(s) pending" in finding.body
+
+
+def test_video_backlog_fires_on_sustained_growth_under_max():
+    beats = [
+        _heartbeat(videos={"captured_total": 10 + i, "uploaded_total": 10})
+        for i in range(CFG.video_backlog_growth_samples)
+    ]
+    history = [checks.extract_samples(b) for b in beats]
+    (finding,) = checks.check_video_backlog("FLIK1", beats[-1], history, NOW, CFG)
+    assert finding.status == checks.BAD
+    assert "backlog growing" in finding.body
+
+
+def test_video_backlog_ok_when_draining():
+    beat = _heartbeat(videos={"captured_total": 12, "uploaded_total": 10})
+    history = [checks.extract_samples(beat)]
+    (finding,) = checks.check_video_backlog("FLIK1", beat, history, NOW, CFG)
+    assert finding.status == checks.OK
 
 
 def test_results_backlog_fires_on_sustained_unpublished():
@@ -310,6 +338,69 @@ def test_finding_route_is_by_check_not_severity():
     mon.on_heartbeat(_heartbeat("FLIK1", storage_free_bytes=0))
     disk = [n for n in channel.sent if "disk low" in n.title]
     assert disk and all(n.route == "emergency" for n in disk)
+
+
+def test_video_backlog_routes_general_bandwidth_cap_routes_emergency():
+    mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}])
+    mon.on_heartbeat(_heartbeat("FLIK1", videos={"captured_total": 50, "uploaded_total": 20}))
+    backlog = [n for n in channel.sent if "video backlog" in n.title]
+    assert backlog and all(n.route == "general" for n in backlog)
+
+    cfg = MonitorConfig(bandwidth_daily_cap_bytes=500_000)
+    mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}], cfg=cfg)
+    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 0}))  # baseline: first observation, no delta
+    channel.sent.clear()
+    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 1_000_000}))  # delta exceeds the cap
+    cap = [n for n in channel.sent if "data cap exceeded" in n.title]
+    assert cap and all(n.route == "emergency" for n in cap)
+
+
+# ---------------------------------------------------------------------------
+# cumulative bandwidth: DeviceState rollup + the on_heartbeat cap check
+# ---------------------------------------------------------------------------
+
+def test_record_bandwidth_delta_accumulates_within_a_day():
+    state = DeviceState("FLIK1")
+    daily, monthly = state.record_bandwidth_delta(1000.0, NOW)
+    assert (daily, monthly) == (0.0, 0.0)  # first observation: no prior counter, no delta
+    daily, monthly = state.record_bandwidth_delta(1500.0, NOW + timedelta(minutes=5))
+    assert (daily, monthly) == (500.0, 500.0)
+    daily, monthly = state.record_bandwidth_delta(2000.0, NOW + timedelta(minutes=10))
+    assert (daily, monthly) == (1000.0, 1000.0)
+
+
+def test_record_bandwidth_delta_resets_daily_but_not_monthly_on_day_rollover():
+    state = DeviceState("FLIK1")
+    state.record_bandwidth_delta(1000.0, NOW)  # baseline, no delta
+    state.record_bandwidth_delta(1500.0, NOW + timedelta(hours=1))  # day 1: +500
+    tomorrow = NOW + timedelta(days=1)
+    daily, monthly = state.record_bandwidth_delta(2000.0, tomorrow)  # day 2 starts: +500
+    assert daily == 500.0  # day 1's usage dropped off
+    assert monthly == 1000.0  # day 1's 500 + day 2's 500 so far
+    daily, monthly = state.record_bandwidth_delta(2500.0, tomorrow + timedelta(hours=1))  # day 2: +500 more
+    assert daily == 1000.0  # day 2 total only
+    assert monthly == 1500.0  # day 1 + day 2, same month
+
+
+def test_record_bandwidth_delta_treats_counter_drop_as_reboot_not_negative_usage():
+    state = DeviceState("FLIK1")
+    state.record_bandwidth_delta(5000.0, NOW)
+    daily, monthly = state.record_bandwidth_delta(100.0, NOW + timedelta(minutes=1))  # device rebooted, counter reset
+    assert (daily, monthly) == (0.0, 0.0)
+    daily, monthly = state.record_bandwidth_delta(300.0, NOW + timedelta(minutes=2))
+    assert (daily, monthly) == (200.0, 200.0)
+
+
+def test_bandwidth_cap_dormant_without_upload_counter():
+    mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}], cfg=MonitorConfig(bandwidth_daily_cap_bytes=1.0))
+    mon.on_heartbeat(_heartbeat("FLIK1"))
+    assert channel.sent == []
+
+
+def test_bandwidth_cap_disabled_by_default():
+    mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}])
+    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 10_000_000_000}))
+    assert not any("data cap" in n.title for n in channel.sent)
 
 
 def test_digest_reports_new_track_count_per_device_on_general_route():

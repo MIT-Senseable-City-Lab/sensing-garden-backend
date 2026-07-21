@@ -40,6 +40,14 @@ class MonitorConfig:
     results_unpublished_consecutive_samples: int = 3
     results_growth_samples: int = 6
     pending_bytes_growth_samples: int = 6
+    # video backlog: captured-but-not-yet-uploaded videos piling up on the device
+    # (dormant until devices send the videos.captured_total/uploaded_total fields)
+    video_backlog_max: int = 20
+    video_backlog_growth_samples: int = 6
+    # cumulative bandwidth: rolling daily/monthly totals against a cell data cap
+    # (dormant until devices send upload.bytes_uploaded_total; 0 = cap disabled)
+    bandwidth_daily_cap_bytes: float = 0.0
+    bandwidth_monthly_cap_bytes: float = 0.0
     # re-page cadence for criticals that stay bad
     critical_repage_seconds: float = 6 * 3600.0
     # one log-error digest page per device per window
@@ -74,6 +82,14 @@ class MonitorConfig:
             results_growth_samples=int(_env_float("MONITOR_RESULTS_GROWTH_SAMPLES", cls.results_growth_samples)),
             pending_bytes_growth_samples=int(
                 _env_float("MONITOR_PENDING_BYTES_GROWTH_SAMPLES", cls.pending_bytes_growth_samples)
+            ),
+            video_backlog_max=int(_env_float("MONITOR_VIDEO_BACKLOG_MAX", cls.video_backlog_max)),
+            video_backlog_growth_samples=int(
+                _env_float("MONITOR_VIDEO_BACKLOG_GROWTH_SAMPLES", cls.video_backlog_growth_samples)
+            ),
+            bandwidth_daily_cap_bytes=_env_float("MONITOR_BANDWIDTH_DAILY_CAP_BYTES", cls.bandwidth_daily_cap_bytes),
+            bandwidth_monthly_cap_bytes=_env_float(
+                "MONITOR_BANDWIDTH_MONTHLY_CAP_BYTES", cls.bandwidth_monthly_cap_bytes
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
             log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),

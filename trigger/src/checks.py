@@ -30,6 +30,8 @@ SAMPLE_FIELDS = (
     "last_flush_bytes_per_sec",
     "results_total",
     "results_finalized_unpublished",
+    "videos_captured_total",
+    "videos_uploaded_total",
 )
 
 
@@ -92,6 +94,15 @@ def extract_samples(heartbeat: Dict[str, Any]) -> Dict[str, float]:
             ("finalized_unpublished", "results_finalized_unpublished"),
         ):
             value = _number(results.get(src))
+            if value is not None:
+                samples[dst] = value
+    videos = heartbeat.get("videos")
+    if isinstance(videos, dict):
+        for src, dst in (
+            ("captured_total", "videos_captured_total"),
+            ("uploaded_total", "videos_uploaded_total"),
+        ):
+            value = _number(videos.get(src))
             if value is not None:
                 samples[dst] = value
     return samples
@@ -354,6 +365,36 @@ def check_restart(
     return [Finding(device_id, "restart", OK, WARNING, f"{device_id}: uptime nominal", f"up {_human_duration(current)}")]
 
 
+def check_video_backlog(
+    device_id: str,
+    heartbeat: Dict[str, Any],
+    history: Sequence[Dict[str, float]],
+    now: datetime,
+    cfg: MonitorConfig,
+) -> List[Finding]:
+    """Videos captured on-device but not yet uploaded/cleared -- distinct from
+    check_bandwidth's generic upload queue, this is video-specific so a false-
+    trigger storm or a stuck uploader shows up even if other artifact types are
+    draining fine. Dormant until devices send videos.captured_total/uploaded_total."""
+    captured = _series(history, "videos_captured_total")
+    uploaded = _series(history, "videos_uploaded_total")
+    if not captured or not uploaded:
+        return []
+    backlog = [c - u for c, u in zip(captured, uploaded)]
+    current = backlog[-1]
+    window = backlog[-cfg.video_backlog_growth_samples:]
+    growing = len(window) >= cfg.video_backlog_growth_samples and _strictly_increasing(window)
+    over_max = current > cfg.video_backlog_max
+    if growing or over_max:
+        parts = []
+        if over_max:
+            parts.append(f"{int(current)} video(s) pending (max {cfg.video_backlog_max})")
+        if growing:
+            parts.append(f"backlog growing ({int(current)} now)")
+        return [Finding(device_id, "video_backlog", BAD, WARNING, f"{device_id}: video backlog", "; ".join(parts))]
+    return [Finding(device_id, "video_backlog", OK, WARNING, f"{device_id}: videos OK", f"{int(current)} pending upload")]
+
+
 CONTENT_CHECKS = (
     check_disk_space,
     check_disk_trend,
@@ -362,6 +403,7 @@ CONTENT_CHECKS = (
     check_results_backlog,
     check_bandwidth,
     check_restart,
+    check_video_backlog,
 )
 
 

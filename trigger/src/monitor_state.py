@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 
@@ -21,10 +21,12 @@ MAX_SAMPLES = 8
 
 class DeviceState:
     def __init__(self, device_id: str, checks: Optional[Dict[str, Dict[str, Any]]] = None,
-                 samples: Optional[List[Dict[str, float]]] = None) -> None:
+                 samples: Optional[List[Dict[str, float]]] = None,
+                 bandwidth: Optional[Dict[str, Any]] = None) -> None:
         self.device_id = device_id
         self.checks: Dict[str, Dict[str, Any]] = checks or {}
         self.samples: List[Dict[str, float]] = samples or []
+        self.bandwidth: Dict[str, Any] = bandwidth or {}
 
     # -- check status ------------------------------------------------------
     def status(self, check: str) -> Optional[str]:
@@ -57,6 +59,30 @@ class DeviceState:
             self.samples.append(sample)
             self.samples = self.samples[-MAX_SAMPLES:]
 
+    # -- cumulative bandwidth (daily/monthly, unbounded by the sample window) --
+    def record_bandwidth_delta(self, counter: float, now: datetime) -> Tuple[float, float]:
+        """Rolls a device-reported monotonic lifetime byte counter into running
+        daily/monthly totals. A counter that doesn't increase (first observation,
+        or a drop from a device reboot resetting its counter) contributes no
+        delta -- we can't attribute it to usage, so it just rebases silently;
+        check_restart already pages on the reboot itself via uptime_seconds."""
+        last_counter = self.bandwidth.get("last_counter")
+        delta = counter - last_counter if last_counter is not None and counter >= last_counter else 0.0
+        today = now.date().isoformat()
+        month = now.strftime("%Y-%m")
+        daily_bytes = self.bandwidth.get("daily_bytes", 0.0) if self.bandwidth.get("daily_date") == today else 0.0
+        monthly_bytes = self.bandwidth.get("monthly_bytes", 0.0) if self.bandwidth.get("monthly_month") == month else 0.0
+        daily_bytes += delta
+        monthly_bytes += delta
+        self.bandwidth = {
+            "last_counter": counter,
+            "daily_date": today,
+            "daily_bytes": daily_bytes,
+            "monthly_month": month,
+            "monthly_bytes": monthly_bytes,
+        }
+        return daily_bytes, monthly_bytes
+
 
 class MonitorStateStore:
     """Thin persistence for DeviceState. Table resource injectable for tests."""
@@ -79,13 +105,17 @@ class MonitorStateStore:
             payload = json.loads(item.get("state_json", "{}"))
         except (TypeError, ValueError):
             payload = {}
-        return DeviceState(device_id, checks=payload.get("checks"), samples=payload.get("samples"))
+        return DeviceState(
+            device_id, checks=payload.get("checks"), samples=payload.get("samples"), bandwidth=payload.get("bandwidth")
+        )
 
     def put(self, state: DeviceState, now: datetime) -> None:
         self.table.put_item(
             Item={
                 "device_id": state.device_id,
-                "state_json": json.dumps({"checks": state.checks, "samples": state.samples}),
+                "state_json": json.dumps(
+                    {"checks": state.checks, "samples": state.samples, "bandwidth": state.bandwidth}
+                ),
                 "updated_at": now.isoformat(),
             }
         )

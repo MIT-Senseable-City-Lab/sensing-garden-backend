@@ -25,7 +25,7 @@ from typing import Any, Callable, Dict, List, Optional
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from checks import BAD, OK, Finding, check_liveness, extract_samples, run_content_checks
+from checks import BAD, CRITICAL, OK, Finding, _human_bytes, check_liveness, extract_samples, run_content_checks
 from monitor_config import MonitorConfig
 from monitor_state import DeviceState, MonitorStateStore
 from notify import Notification, Notifier, build_notifier, ping_healthchecks
@@ -186,8 +186,44 @@ class Monitoring:
         state = self.state_store.get(device_id)
         state.record_sample(extract_samples(record))
         findings = run_content_checks(device_id, record, state.samples, now, self.cfg)
+        bandwidth_cap = self._bandwidth_cap_finding(device_id, record, state, now)
+        if bandwidth_cap is not None:
+            findings.append(bandwidth_cap)
         self._apply(findings, state, now)
         self.state_store.put(state, now)
+
+    def _bandwidth_cap_finding(
+        self, device_id: str, record: Dict[str, Any], state: DeviceState, now: datetime
+    ) -> Optional[Finding]:
+        """Cumulative daily/monthly usage against a cell data cap. Not a
+        history-window check like the others -- rolls a monotonic lifetime
+        counter into running totals persisted on DeviceState, since day/month
+        spans far outsize the bounded sample window. Dormant until devices send
+        upload.bytes_uploaded_total; caps of 0 mean "disabled"."""
+        upload = record.get("upload")
+        counter = upload.get("bytes_uploaded_total") if isinstance(upload, dict) else None
+        if counter is None:
+            return None
+        try:
+            counter = float(counter)
+        except (TypeError, ValueError):
+            return None
+        daily_bytes, monthly_bytes = state.record_bandwidth_delta(counter, now)
+        daily_cap = self.cfg.bandwidth_daily_cap_bytes
+        monthly_cap = self.cfg.bandwidth_monthly_cap_bytes
+        over_daily = daily_cap > 0 and daily_bytes > daily_cap
+        over_monthly = monthly_cap > 0 and monthly_bytes > monthly_cap
+        if over_daily or over_monthly:
+            parts = []
+            if over_daily:
+                parts.append(f"{_human_bytes(daily_bytes)} today (cap {_human_bytes(daily_cap)})")
+            if over_monthly:
+                parts.append(f"{_human_bytes(monthly_bytes)} this month (cap {_human_bytes(monthly_cap)})")
+            return Finding(device_id, "bandwidth_cap", BAD, CRITICAL, f"{device_id}: data cap exceeded", "; ".join(parts))
+        return Finding(
+            device_id, "bandwidth_cap", OK, CRITICAL, f"{device_id}: data usage OK",
+            f"{_human_bytes(daily_bytes)} today, {_human_bytes(monthly_bytes)} this month",
+        )
 
     def sweep(self) -> Dict[str, int]:
         """Scheduled liveness pass. Returns a small summary for the Lambda response."""
