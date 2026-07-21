@@ -286,7 +286,26 @@ def test_sweep_liveness_and_healthchecks_ping_runs_last(monkeypatch):
     assert summary["devices"] == 2 and summary["liveness_findings"] == 1
     assert any("FLIK2" in n.title for n in channel.sent)
     assert not any("FLIK1" in n.title for n in channel.sent)  # healthy, no prior episode
+    assert all(n.route == "emergency" for n in channel.sent)  # liveness always emergency
     assert pings == ["https://hc.example/ping"]
+
+
+def test_finding_route_is_by_check_not_severity():
+    """thermal is a WARNING-severity check but routes to general; liveness/disk_space
+    are emergency regardless of severity label."""
+    mon, store, channel = _monitoring(
+        roster=[{"device_id": "FLIK1"}],
+        latest={"FLIK1": _heartbeat("FLIK1", cpu_temperature_celsius=95.0)},
+    )
+    mon.on_heartbeat(_heartbeat("FLIK1", cpu_temperature_celsius=95.0))
+    mon.on_heartbeat(_heartbeat("FLIK1", cpu_temperature_celsius=95.0))
+    thermal = [n for n in channel.sent if "hot" in n.title]
+    assert thermal and all(n.route == "general" for n in thermal)
+
+    channel.sent.clear()
+    mon.on_heartbeat(_heartbeat("FLIK1", storage_free_bytes=0))
+    disk = [n for n in channel.sent if "disk low" in n.title]
+    assert disk and all(n.route == "emergency" for n in disk)
 
 
 def test_roster_filters_monitored_false():

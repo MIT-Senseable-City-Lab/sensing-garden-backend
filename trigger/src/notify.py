@@ -1,15 +1,23 @@
 """Notification delivery: channel plug-ins behind one Notifier.
 
-Channels register only when configured (env var set), so adding Slack later is
-a new class plus one env var — no changes to callers. Send failures are logged
-and swallowed: notification delivery must never fail heartbeat ingest.
+Channels register only when configured (env var set), so adding a new transport
+is a new class plus one env var — no changes to callers. Send failures are
+logged and swallowed: notification delivery must never fail heartbeat ingest.
+
+Routing: each Notification carries a ``route`` ("emergency" | "general"),
+independent of severity — a warning-level check can still be an emergency
+(e.g. log errors), and a resolved/info notice for a critical check still
+belongs on the emergency route it originated from. Channels built with a
+``route`` only receive notifications on that route; a channel with no route
+(e.g. a bare test fake) receives everything, which keeps single-channel test
+fixtures working unchanged.
 """
 from __future__ import annotations
 
 import json
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, List, Protocol
+from typing import Any, List, Optional, Protocol
 
 from monitor_config import MonitorConfig
 
@@ -22,6 +30,7 @@ class Notification:
     title: str
     body: str
     key: str  # idempotency/context key, e.g. "FLIK4/liveness"
+    route: str = "general"  # emergency | general
 
 
 class Channel(Protocol):
@@ -34,8 +43,9 @@ class NtfyChannel:
     _PRIORITY = {"critical": "urgent", "warning": "default", "info": "low"}
     _TAGS = {"critical": "rotating_light", "warning": "warning", "info": "white_check_mark"}
 
-    def __init__(self, topic_url: str) -> None:
+    def __init__(self, topic_url: str, route: Optional[str] = None) -> None:
         self.topic_url = topic_url
+        self.route = route
 
     def send(self, notification: Notification) -> None:
         request = urllib.request.Request(
@@ -56,8 +66,9 @@ class SlackChannel:
 
     _EMOJI = {"critical": ":rotating_light:", "warning": ":warning:", "info": ":white_check_mark:"}
 
-    def __init__(self, webhook_url: str) -> None:
+    def __init__(self, webhook_url: str, route: Optional[str] = None) -> None:
         self.webhook_url = webhook_url
+        self.route = route
 
     def send(self, notification: Notification) -> None:
         emoji = self._EMOJI.get(notification.severity, ":warning:")
@@ -77,6 +88,9 @@ class Notifier:
 
     def notify(self, notification: Notification) -> None:
         for channel in self.channels:
+            channel_route = getattr(channel, "route", None)
+            if channel_route is not None and channel_route != notification.route:
+                continue
             try:
                 channel.send(notification)
             except Exception as exc:  # delivery must never break processing
@@ -88,14 +102,19 @@ class Notifier:
 
 def build_notifier(cfg: MonitorConfig) -> Notifier:
     channels: List[Any] = []
-    if cfg.ntfy_topic_url:
-        channels.append(NtfyChannel(cfg.ntfy_topic_url))
-    if cfg.slack_webhook_url:
-        channels.append(SlackChannel(cfg.slack_webhook_url))
+    if cfg.ntfy_emergency_url:
+        channels.append(NtfyChannel(cfg.ntfy_emergency_url, route="emergency"))
+    if cfg.ntfy_general_url:
+        channels.append(NtfyChannel(cfg.ntfy_general_url, route="general"))
+    if cfg.slack_emergency_url:
+        channels.append(SlackChannel(cfg.slack_emergency_url, route="emergency"))
+    if cfg.slack_general_url:
+        channels.append(SlackChannel(cfg.slack_general_url, route="general"))
     if not channels:
         print(
-            "Notifier: no channels configured (set MONITOR_NTFY_TOPIC_URL or "
-            "MONITOR_SLACK_WEBHOOK_URL); notifications will be logged only"
+            "Notifier: no channels configured (set MONITOR_NTFY_EMERGENCY_URL, "
+            "MONITOR_NTFY_GENERAL_URL, MONITOR_SLACK_EMERGENCY_URL, or "
+            "MONITOR_SLACK_GENERAL_URL); notifications will be logged only"
         )
     return Notifier(channels)
 

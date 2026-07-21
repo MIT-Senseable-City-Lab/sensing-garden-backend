@@ -3,14 +3,26 @@
 # EventBridge schedule (liveness sweep; a dead device emits no S3 event, so
 # absence is only detectable by a clock) and a per-device state table.
 
-variable "monitor_ntfy_topic_url" {
-  description = "ntfy topic URL for fleet notifications (empty = channel disabled)"
+variable "monitor_ntfy_emergency_url" {
+  description = "ntfy topic URL for emergency notifications: liveness, disk space, log errors, bandwidth cap (empty = channel disabled)"
   type        = string
   default     = ""
 }
 
-variable "monitor_slack_webhook_url" {
-  description = "Slack incoming webhook URL for fleet notifications (empty = channel disabled)"
+variable "monitor_ntfy_general_url" {
+  description = "ntfy topic URL for general notifications: warnings, digests, backdrop images (empty = channel disabled)"
+  type        = string
+  default     = ""
+}
+
+variable "monitor_slack_emergency_url" {
+  description = "Slack incoming webhook URL for emergency notifications (empty = channel disabled)"
+  type        = string
+  default     = ""
+}
+
+variable "monitor_slack_general_url" {
+  description = "Slack incoming webhook URL for general notifications (empty = channel disabled)"
   type        = string
   default     = ""
 }

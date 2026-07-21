@@ -190,6 +190,7 @@ class TestOnLogDigest:
         mon.on_log_digest(self._digest(log_name="edge26_20260714.log"))
         assert len(channel.sent) == 1
         assert "3 error line(s)" in channel.sent[0].title
+        assert channel.sent[0].route == "emergency"
 
         clock["now"] = NOW + timedelta(seconds=MonitorConfig().log_error_cooldown_seconds + 60)
         mon.on_log_digest(self._digest(log_name="edge26_20260715.log"))

@@ -45,8 +45,10 @@ class MonitorConfig:
     # one log-error digest page per device per window
     log_error_cooldown_seconds: float = 6 * 3600.0
     # channels / backstop
-    ntfy_topic_url: str = ""
-    slack_webhook_url: str = ""
+    ntfy_emergency_url: str = ""
+    ntfy_general_url: str = ""
+    slack_emergency_url: str = ""
+    slack_general_url: str = ""
     healthchecks_ping_url: str = ""
 
     @classmethod
@@ -73,7 +75,9 @@ class MonitorConfig:
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
             log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),
-            ntfy_topic_url=os.environ.get("MONITOR_NTFY_TOPIC_URL", ""),
-            slack_webhook_url=os.environ.get("MONITOR_SLACK_WEBHOOK_URL", ""),
+            ntfy_emergency_url=os.environ.get("MONITOR_NTFY_EMERGENCY_URL", ""),
+            ntfy_general_url=os.environ.get("MONITOR_NTFY_GENERAL_URL", ""),
+            slack_emergency_url=os.environ.get("MONITOR_SLACK_EMERGENCY_URL", ""),
+            slack_general_url=os.environ.get("MONITOR_SLACK_GENERAL_URL", ""),
             healthchecks_ping_url=os.environ.get("MONITOR_HEALTHCHECKS_PING_URL", ""),
         )

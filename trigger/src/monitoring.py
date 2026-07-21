@@ -35,6 +35,15 @@ HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats
 
 ROSTER_CACHE_SECONDS = 300
 
+# Route is a policy decision independent of severity: a warning-level check can
+# still be an emergency (log errors), and "still failing"/recovery notices for
+# a check always follow that check's route. Unlisted checks default to general.
+EMERGENCY_CHECKS = frozenset({"liveness", "disk_space", "log_errors", "bandwidth_cap"})
+
+
+def _route_for(check: str) -> str:
+    return "emergency" if check in EMERGENCY_CHECKS else "general"
+
 
 def _default_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -165,6 +174,7 @@ class Monitoring:
                 title=f"{device_id}: {digest.error_count} error line(s) in {digest.log_name}",
                 body=body,
                 key=f"{device_id}/log_errors/{digest.log_name}",
+                route=_route_for("log_errors"),
             )
         )
         state.mark_notified("log_errors", now)
@@ -211,6 +221,7 @@ class Monitoring:
                 title=title,
                 body=finding.body,
                 key=f"{finding.device_id}/{finding.check}/{state.since(finding.check)}",
+                route=_route_for(finding.check),
             )
         )
 
