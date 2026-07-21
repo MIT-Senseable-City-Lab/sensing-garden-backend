@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import boto3
@@ -32,6 +32,7 @@ from notify import Notification, Notifier, build_notifier, ping_healthchecks
 
 DEVICES_TABLE = os.environ.get("DEVICES_TABLE", "sensing-garden-devices")
 HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats")
+TRACKS_TABLE = os.environ.get("TRACKS_TABLE", "sensing-garden-tracks")
 
 ROSTER_CACHE_SECONDS = 300
 
@@ -57,6 +58,7 @@ class Monitoring:
         notifier: Optional[Notifier] = None,
         roster_fn: Optional[Callable[[], List[Dict[str, Any]]]] = None,
         latest_heartbeats_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+        track_count_fn: Optional[Callable[[str, datetime, datetime], int]] = None,
         now_fn: Callable[[], datetime] = _default_now,
     ) -> None:
         self.cfg = cfg or MonitorConfig.from_env()
@@ -64,6 +66,7 @@ class Monitoring:
         self.notifier = notifier or build_notifier(self.cfg)
         self._roster_fn = roster_fn or self._fetch_roster
         self._latest_heartbeats_fn = latest_heartbeats_fn or self._fetch_latest_heartbeats
+        self._track_count_fn = track_count_fn or self._count_tracks_since
         self._now_fn = now_fn
         self._roster_cache: Optional[List[Dict[str, Any]]] = None
         self._roster_cached_at = 0.0
@@ -105,6 +108,24 @@ class Monitoring:
                 latest[device_id] = items[0]
         return latest
 
+    def _count_tracks_since(self, device_id: str, window_start: datetime, now: datetime) -> int:
+        table = self.dynamodb.Table(TRACKS_TABLE)
+        kwargs: Dict[str, Any] = {
+            "IndexName": "device_id_index",
+            "KeyConditionExpression": Key("device_id").eq(device_id)
+            & Key("timestamp").between(window_start.isoformat(), now.isoformat()),
+            "Select": "COUNT",
+        }
+        count = 0
+        while True:
+            response = table.query(**kwargs)
+            count += response.get("Count", 0)
+            last_key = response.get("LastEvaluatedKey")
+            if not last_key:
+                break
+            kwargs["ExclusiveStartKey"] = last_key
+        return count
+
     def roster(self) -> List[Dict[str, Any]]:
         if self._roster_cache is None or time.monotonic() - self._roster_cached_at > ROSTER_CACHE_SECONDS:
             self._roster_cache = self._roster_fn()
@@ -144,6 +165,31 @@ class Monitoring:
         ping_healthchecks(self.cfg.healthchecks_ping_url)
         return {"devices": len(device_ids), "liveness_findings": sum(f.status == BAD for f in findings),
                 "notified": notified}
+
+    def digest(self) -> Dict[str, int]:
+        """Scheduled per-device stats report: new tracks in the trailing window.
+        Not a check — always sends, no OK/BAD episode, no cooldown; the window is
+        fixed (now - digest_window_hours) rather than since-last-run, so a missed
+        or delayed invocation just reports on a slightly different span."""
+        now = self._now_fn()
+        window_start = now - timedelta(hours=self.cfg.digest_window_hours)
+        sent = 0
+        for device in self.roster():
+            device_id = str(device.get("device_id", ""))
+            if not device_id:
+                continue
+            count = self._track_count_fn(device_id, window_start, now)
+            self.notifier.notify(
+                Notification(
+                    severity="info",
+                    title=f"{device_id}: {count} new track(s)",
+                    body=f"Last {self.cfg.digest_window_hours:.0f}h ({window_start.isoformat()} to {now.isoformat()})",
+                    key=f"{device_id}/digest/{now.isoformat()}",
+                    route="general",
+                )
+            )
+            sent += 1
+        return {"devices": sent}
 
     def on_alarm(self, event: Dict[str, Any]) -> None:
         """CloudWatch alarm forwarding — filled in by the step-4 rollout."""

@@ -44,6 +44,8 @@ class MonitorConfig:
     critical_repage_seconds: float = 6 * 3600.0
     # one log-error digest page per device per window
     log_error_cooldown_seconds: float = 6 * 3600.0
+    # periodic per-device stats report: new-track count over the trailing window
+    digest_window_hours: float = 8.0
     # channels / backstop
     ntfy_emergency_url: str = ""
     ntfy_general_url: str = ""
@@ -75,6 +77,7 @@ class MonitorConfig:
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
             log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),
+            digest_window_hours=_env_float("MONITOR_DIGEST_WINDOW_HOURS", cls.digest_window_hours),
             ntfy_emergency_url=os.environ.get("MONITOR_NTFY_EMERGENCY_URL", ""),
             ntfy_general_url=os.environ.get("MONITOR_NTFY_GENERAL_URL", ""),
             slack_emergency_url=os.environ.get("MONITOR_SLACK_EMERGENCY_URL", ""),

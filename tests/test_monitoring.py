@@ -70,7 +70,7 @@ class RecordingChannel:
         self.sent.append(notification)
 
 
-def _monitoring(roster=None, latest=None, cfg: MonitorConfig = CFG, now: datetime = NOW):
+def _monitoring(roster=None, latest=None, track_counts=None, cfg: MonitorConfig = CFG, now: datetime = NOW):
     store = FakeStateStore()
     channel = RecordingChannel()
     mon = Monitoring(
@@ -79,6 +79,7 @@ def _monitoring(roster=None, latest=None, cfg: MonitorConfig = CFG, now: datetim
         notifier=Notifier([channel]),
         roster_fn=lambda: roster if roster is not None else [{"device_id": "FLIK1"}],
         latest_heartbeats_fn=lambda ids: latest or {},
+        track_count_fn=lambda device_id, window_start, now: (track_counts or {}).get(device_id, 0),
         now_fn=lambda: now,
     )
     return mon, store, channel
@@ -308,6 +309,42 @@ def test_finding_route_is_by_check_not_severity():
     assert disk and all(n.route == "emergency" for n in disk)
 
 
+def test_digest_reports_new_track_count_per_device_on_general_route():
+    mon, _, channel = _monitoring(
+        roster=[{"device_id": "FLIK1"}, {"device_id": "FLIK2"}],
+        track_counts={"FLIK1": 7, "FLIK2": 0},
+    )
+    summary = mon.digest()
+    assert summary == {"devices": 2}
+    assert len(channel.sent) == 2
+    assert all(n.route == "general" and n.severity == "info" for n in channel.sent)
+    titles = {n.title for n in channel.sent}
+    assert titles == {"FLIK1: 7 new track(s)", "FLIK2: 0 new track(s)"}
+
+
+def test_digest_window_is_configurable():
+    seen_windows = []
+
+    def track_count_fn(device_id, window_start, now):
+        seen_windows.append((device_id, window_start, now))
+        return 0
+
+    mon = Monitoring(
+        cfg=MonitorConfig(digest_window_hours=4.0),
+        state_store=FakeStateStore(),
+        notifier=Notifier([RecordingChannel()]),
+        roster_fn=lambda: [{"device_id": "FLIK1"}],
+        latest_heartbeats_fn=lambda ids: {},
+        track_count_fn=track_count_fn,
+        now_fn=lambda: NOW,
+    )
+    mon.digest()
+    ((device_id, window_start, now),) = seen_windows
+    assert device_id == "FLIK1"
+    assert now == NOW
+    assert window_start == NOW - timedelta(hours=4)
+
+
 def test_roster_filters_monitored_false():
     mon, _, channel = _monitoring(
         roster=[{"device_id": "FLIK1"}],  # roster_fn output is already filtered upstream;
@@ -358,6 +395,20 @@ def test_lambda_handler_dispatches_scheduled_event(monkeypatch):
     result = trigger_handler.lambda_handler({"source": "aws.events", "detail-type": "Scheduled Event"}, None)
     assert swept.get("ran") is True
     assert json.loads(result["body"])["sweep"]["devices"] == 0
+
+
+def test_lambda_handler_dispatches_digest_task(monkeypatch):
+    digested = {}
+
+    class _FakeMonitor:
+        def digest(self):
+            digested["ran"] = True
+            return {"devices": 3}
+
+    monkeypatch.setattr(trigger_handler, "_build_monitor", lambda: _FakeMonitor())
+    result = trigger_handler.lambda_handler({"source": "aws.events", "task": "digest"}, None)
+    assert digested.get("ran") is True
+    assert json.loads(result["body"])["digest"]["devices"] == 3
 
 
 def test_heartbeat_schema_keeps_v2_fields(tmp_path):

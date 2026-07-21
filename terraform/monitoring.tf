@@ -67,6 +67,14 @@ resource "aws_iam_role_policy" "trigger_lambda_monitoring_policy" {
         Effect   = "Allow"
         Action   = ["dynamodb:Query"]
         Resource = "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/sensing-garden-heartbeats"
+      },
+      {
+        Effect = "Allow"
+        Action = ["dynamodb:Query"]
+        Resource = [
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/sensing-garden-tracks",
+          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/sensing-garden-tracks/index/device_id_index"
+        ]
       }
     ]
   })
@@ -89,4 +97,26 @@ resource "aws_lambda_permission" "eventbridge_invoke_trigger" {
   function_name = aws_lambda_function.trigger_handler_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.monitoring_sweep.arn
+}
+
+resource "aws_cloudwatch_event_rule" "monitoring_digest" {
+  name                = "sensing-garden-monitoring-digest"
+  description         = "Per-device new-track digest via the trigger Lambda (general route)"
+  schedule_expression = "rate(8 hours)"
+}
+
+resource "aws_cloudwatch_event_target" "monitoring_digest" {
+  rule = aws_cloudwatch_event_rule.monitoring_digest.name
+  arn  = aws_lambda_function.trigger_handler_function.arn
+  # Custom input replaces the default schedule event body, so "source" is set
+  # explicitly here to keep matching the same dispatch check as the sweep rule.
+  input = jsonencode({ source = "aws.events", task = "digest" })
+}
+
+resource "aws_lambda_permission" "eventbridge_invoke_trigger_digest" {
+  statement_id  = "AllowEventBridgeInvokeDigest"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.trigger_handler_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.monitoring_digest.arn
 }
