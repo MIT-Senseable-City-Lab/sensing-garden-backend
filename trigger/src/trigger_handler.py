@@ -1474,9 +1474,9 @@ def _build_monitor() -> Optional[Any]:
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # One function, three triggers (SPEC-fleet-monitoring, item 5): S3 object
     # events (ingest + content checks), EventBridge schedules (liveness sweep,
-    # per-device digest — each rule's ``input`` sets ``task``, defaulting to
-    # "sweep" for the original rule which sends no task), and CloudWatch alarm
-    # actions (forwarding; step-4 rollout).
+    # per-device digest, DOT backdrop post — each rule's ``input`` sets ``task``,
+    # defaulting to "sweep" for the original rule which sends no task), and
+    # CloudWatch alarm actions (forwarding; step-4 rollout).
     if event.get("source") == "aws.events":
         monitor = _build_monitor()
         if monitor is None:
@@ -1484,6 +1484,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         task = event.get("task", "sweep")
         if task == "digest":
             return {"statusCode": 200, "body": json.dumps({"digest": monitor.digest()})}
+        if task == "backdrop":
+            return {"statusCode": 200, "body": json.dumps({"backdrop": monitor.post_backdrops()})}
         return {"statusCode": 200, "body": json.dumps({"sweep": monitor.sweep()})}
     if "alarmData" in event:
         monitor = _build_monitor()

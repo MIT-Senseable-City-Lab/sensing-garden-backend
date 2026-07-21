@@ -33,8 +33,10 @@ from notify import Notification, Notifier, build_notifier, ping_healthchecks
 DEVICES_TABLE = os.environ.get("DEVICES_TABLE", "sensing-garden-devices")
 HEARTBEATS_TABLE = os.environ.get("HEARTBEATS_TABLE", "sensing-garden-heartbeats")
 TRACKS_TABLE = os.environ.get("TRACKS_TABLE", "sensing-garden-tracks")
+OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "")
 
 ROSTER_CACHE_SECONDS = 300
+BACKDROP_URL_TTL_SECONDS = 300
 
 # Route is a policy decision independent of severity: a warning-level check can
 # still be an emergency (log errors), and "still failing"/recovery notices for
@@ -59,6 +61,8 @@ class Monitoring:
         roster_fn: Optional[Callable[[], List[Dict[str, Any]]]] = None,
         latest_heartbeats_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
         track_count_fn: Optional[Callable[[str, datetime, datetime], int]] = None,
+        backdrop_key_fn: Optional[Callable[[str], Optional[str]]] = None,
+        presign_fn: Optional[Callable[[str], str]] = None,
         now_fn: Callable[[], datetime] = _default_now,
     ) -> None:
         self.cfg = cfg or MonitorConfig.from_env()
@@ -67,10 +71,13 @@ class Monitoring:
         self._roster_fn = roster_fn or self._fetch_roster
         self._latest_heartbeats_fn = latest_heartbeats_fn or self._fetch_latest_heartbeats
         self._track_count_fn = track_count_fn or self._count_tracks_since
+        self._backdrop_key_fn = backdrop_key_fn or self._latest_dot_background_key
+        self._presign_fn = presign_fn or self._presign_url
         self._now_fn = now_fn
         self._roster_cache: Optional[List[Dict[str, Any]]] = None
         self._roster_cached_at = 0.0
         self._dynamodb = None
+        self._s3 = None
 
     # -- data access -------------------------------------------------------
 
@@ -79,6 +86,12 @@ class Monitoring:
         if self._dynamodb is None:
             self._dynamodb = boto3.resource("dynamodb")
         return self._dynamodb
+
+    @property
+    def s3(self) -> Any:
+        if self._s3 is None:
+            self._s3 = boto3.client("s3")
+        return self._s3
 
     def _fetch_roster(self) -> List[Dict[str, Any]]:
         """All devices with monitoring on: ``monitored`` absent or truthy."""
@@ -125,6 +138,33 @@ class Monitoring:
                 break
             kwargs["ExclusiveStartKey"] = last_key
         return count
+
+    def _latest_dot_background_key(self, device_id: str) -> Optional[str]:
+        """Newest DOT background frame under the device's prefix, by S3
+        LastModified — robust to whatever batch/date sub-prefix a device uses,
+        since we don't track that structure elsewhere. Devices with no DOT (or
+        none yet uploaded) simply have no matching object; that's not an error."""
+        if not OUTPUT_BUCKET:
+            return None
+        paginator = self.s3.get_paginator("list_objects_v2")
+        latest_key: Optional[str] = None
+        latest_modified = None
+        for page in paginator.paginate(Bucket=OUTPUT_BUCKET, Prefix=f"v1/{device_id}/"):
+            for item in page.get("Contents", []):
+                key = item["Key"]
+                if not key.endswith("_background.jpg") and not key.endswith("current_background.jpg"):
+                    continue
+                if latest_modified is None or item["LastModified"] > latest_modified:
+                    latest_modified = item["LastModified"]
+                    latest_key = key
+        return latest_key
+
+    def _presign_url(self, key: str) -> str:
+        return self.s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": OUTPUT_BUCKET, "Key": key},
+            ExpiresIn=BACKDROP_URL_TTL_SECONDS,
+        )
 
     def roster(self) -> List[Dict[str, Any]]:
         if self._roster_cache is None or time.monotonic() - self._roster_cached_at > ROSTER_CACHE_SECONDS:
@@ -186,6 +226,32 @@ class Monitoring:
                     body=f"Last {self.cfg.digest_window_hours:.0f}h ({window_start.isoformat()} to {now.isoformat()})",
                     key=f"{device_id}/digest/{now.isoformat()}",
                     route="general",
+                )
+            )
+            sent += 1
+        return {"devices": sent}
+
+    def post_backdrops(self) -> Dict[str, int]:
+        """Scheduled DOT backdrop post: the most recent no-insects reference frame
+        per device, so a human can sanity-check camera framing/focus/lighting
+        without waiting for a track. Stateless — always posts whatever is newest;
+        devices with no DOT background yet are silently skipped, not an error."""
+        sent = 0
+        for device in self.roster():
+            device_id = str(device.get("device_id", ""))
+            if not device_id:
+                continue
+            key = self._backdrop_key_fn(device_id)
+            if key is None:
+                continue
+            self.notifier.notify(
+                Notification(
+                    severity="info",
+                    title=f"{device_id}: backdrop",
+                    body=key.rsplit("/", 1)[-1],
+                    key=f"{device_id}/backdrop/{key}",
+                    route="general",
+                    image_url=self._presign_fn(key),
                 )
             )
             sent += 1

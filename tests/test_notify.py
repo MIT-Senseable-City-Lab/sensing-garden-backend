@@ -13,9 +13,14 @@ from notify import Notification, NtfyChannel, Notifier, SlackChannel, build_noti
 sys.path.remove(str(TRIGGER_SRC))
 
 
-def _notification(severity: str = "critical", route: str = "general") -> Notification:
+def _notification(severity: str = "critical", route: str = "general", image_url: str | None = None) -> Notification:
     return Notification(
-        severity=severity, title="FLIK4/liveness", body="No heartbeat for 20m", key="FLIK4/liveness", route=route
+        severity=severity,
+        title="FLIK4/liveness",
+        body="No heartbeat for 20m",
+        key="FLIK4/liveness",
+        route=route,
+        image_url=image_url,
     )
 
 
@@ -83,6 +88,51 @@ def test_notifier_only_sends_to_channels_matching_route(monkeypatch):
     Notifier([emergency, general]).notify(_notification(route="emergency"))
 
     assert sent_urls == ["https://ntfy.sh/emergency"]
+
+
+def test_ntfy_channel_attaches_image_url_when_present(monkeypatch):
+    requests = []
+    monkeypatch.setattr("notify.urllib.request.urlopen", lambda request, timeout: requests.append(request))
+
+    NtfyChannel("https://ntfy.sh/general").send(_notification(image_url="https://s3.example/frame.jpg"))
+
+    assert requests[0].headers["Attach"] == "https://s3.example/frame.jpg"
+
+
+def test_ntfy_channel_omits_attach_header_without_image_url(monkeypatch):
+    requests = []
+    monkeypatch.setattr("notify.urllib.request.urlopen", lambda request, timeout: requests.append(request))
+
+    NtfyChannel("https://ntfy.sh/general").send(_notification())
+
+    assert "Attach" not in requests[0].headers
+
+
+def test_slack_channel_adds_image_block_when_image_url_present(monkeypatch):
+    sent = {}
+    monkeypatch.setattr(
+        "notify.urllib.request.urlopen",
+        lambda request, timeout: sent.update(json.loads(request.data.decode("utf-8"))),
+    )
+
+    SlackChannel("https://hooks.slack.com/services/T0/B0/xyz").send(
+        _notification(image_url="https://s3.example/frame.jpg")
+    )
+
+    image_block = next(b for b in sent["blocks"] if b["type"] == "image")
+    assert image_block["image_url"] == "https://s3.example/frame.jpg"
+
+
+def test_slack_channel_omits_blocks_without_image_url(monkeypatch):
+    sent = {}
+    monkeypatch.setattr(
+        "notify.urllib.request.urlopen",
+        lambda request, timeout: sent.update(json.loads(request.data.decode("utf-8"))),
+    )
+
+    SlackChannel("https://hooks.slack.com/services/T0/B0/xyz").send(_notification())
+
+    assert "blocks" not in sent
 
 
 def test_notifier_sends_to_routeless_channel_regardless_of_route():

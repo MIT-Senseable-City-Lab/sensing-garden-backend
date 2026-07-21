@@ -70,7 +70,8 @@ class RecordingChannel:
         self.sent.append(notification)
 
 
-def _monitoring(roster=None, latest=None, track_counts=None, cfg: MonitorConfig = CFG, now: datetime = NOW):
+def _monitoring(roster=None, latest=None, track_counts=None, backdrop_keys=None,
+                 cfg: MonitorConfig = CFG, now: datetime = NOW):
     store = FakeStateStore()
     channel = RecordingChannel()
     mon = Monitoring(
@@ -80,6 +81,8 @@ def _monitoring(roster=None, latest=None, track_counts=None, cfg: MonitorConfig 
         roster_fn=lambda: roster if roster is not None else [{"device_id": "FLIK1"}],
         latest_heartbeats_fn=lambda ids: latest or {},
         track_count_fn=lambda device_id, window_start, now: (track_counts or {}).get(device_id, 0),
+        backdrop_key_fn=lambda device_id: (backdrop_keys or {}).get(device_id),
+        presign_fn=lambda key: f"https://presigned.example/{key}",
         now_fn=lambda: now,
     )
     return mon, store, channel
@@ -345,6 +348,58 @@ def test_digest_window_is_configurable():
     assert window_start == NOW - timedelta(hours=4)
 
 
+def test_post_backdrops_sends_image_url_on_general_route_for_devices_with_one():
+    mon, _, channel = _monitoring(
+        roster=[{"device_id": "FLIK1"}, {"device_id": "FLIK2"}],
+        backdrop_keys={"FLIK1": "v1/FLIK1/dot/DOT1/143022_background.jpg"},
+    )
+    summary = mon.post_backdrops()
+    assert summary == {"devices": 1}  # FLIK2 has no background key -> skipped
+    (notification,) = channel.sent
+    assert notification.route == "general"
+    assert notification.image_url == "https://presigned.example/v1/FLIK1/dot/DOT1/143022_background.jpg"
+    assert notification.title == "FLIK1: backdrop"
+
+
+def test_post_backdrops_silent_when_no_device_has_a_background():
+    mon, _, channel = _monitoring(roster=[{"device_id": "FLIK1"}], backdrop_keys={})
+    summary = mon.post_backdrops()
+    assert summary == {"devices": 0}
+    assert channel.sent == []
+
+
+def test_latest_dot_background_key_picks_newest_by_last_modified(monkeypatch):
+    """Real S3 listing logic, not the injected fake: confirms LastModified (not
+    key name) decides "latest", and non-background objects are ignored."""
+    from datetime import datetime as dt
+
+    class _FakePaginator:
+        def paginate(self, Bucket, Prefix):
+            yield {
+                "Contents": [
+                    {"Key": f"{Prefix}results.json", "LastModified": dt(2026, 1, 1, tzinfo=timezone.utc)},
+                    {"Key": f"{Prefix}dot/DOT1/090000_background.jpg", "LastModified": dt(2026, 1, 1, 9, tzinfo=timezone.utc)},
+                    {"Key": f"{Prefix}dot/DOT1/153000_background.jpg", "LastModified": dt(2026, 1, 1, 15, 30, tzinfo=timezone.utc)},
+                ]
+            }
+
+    class _FakeS3:
+        def get_paginator(self, name):
+            assert name == "list_objects_v2"
+            return _FakePaginator()
+
+    monkeypatch.setattr(monitoring_module, "OUTPUT_BUCKET", "test-bucket")
+    mon = Monitoring(
+        cfg=CFG,
+        state_store=FakeStateStore(),
+        notifier=Notifier([RecordingChannel()]),
+        now_fn=lambda: NOW,
+    )
+    mon._s3 = _FakeS3()
+    key = mon._latest_dot_background_key("FLIK1")
+    assert key == "v1/FLIK1/dot/DOT1/153000_background.jpg"
+
+
 def test_roster_filters_monitored_false():
     mon, _, channel = _monitoring(
         roster=[{"device_id": "FLIK1"}],  # roster_fn output is already filtered upstream;
@@ -409,6 +464,20 @@ def test_lambda_handler_dispatches_digest_task(monkeypatch):
     result = trigger_handler.lambda_handler({"source": "aws.events", "task": "digest"}, None)
     assert digested.get("ran") is True
     assert json.loads(result["body"])["digest"]["devices"] == 3
+
+
+def test_lambda_handler_dispatches_backdrop_task(monkeypatch):
+    posted = {}
+
+    class _FakeMonitor:
+        def post_backdrops(self):
+            posted["ran"] = True
+            return {"devices": 2}
+
+    monkeypatch.setattr(trigger_handler, "_build_monitor", lambda: _FakeMonitor())
+    result = trigger_handler.lambda_handler({"source": "aws.events", "task": "backdrop"}, None)
+    assert posted.get("ran") is True
+    assert json.loads(result["body"])["backdrop"]["devices"] == 2
 
 
 def test_heartbeat_schema_keeps_v2_fields(tmp_path):

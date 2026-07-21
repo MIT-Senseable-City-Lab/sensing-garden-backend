@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, List, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol
 
 from monitor_config import MonitorConfig
 
@@ -31,6 +31,7 @@ class Notification:
     body: str
     key: str  # idempotency/context key, e.g. "FLIK4/liveness"
     route: str = "general"  # emergency | general
+    image_url: Optional[str] = None  # short-lived presigned URL; channels fetch/reference, never receive bytes
 
 
 class Channel(Protocol):
@@ -48,15 +49,19 @@ class NtfyChannel:
         self.route = route
 
     def send(self, notification: Notification) -> None:
+        headers = {
+            "Title": notification.title,
+            "Priority": self._PRIORITY.get(notification.severity, "default"),
+            "Tags": self._TAGS.get(notification.severity, "warning"),
+        }
+        if notification.image_url:
+            # ntfy fetches and attaches the file itself; body becomes the caption.
+            headers["Attach"] = notification.image_url
         request = urllib.request.Request(
             self.topic_url,
             data=notification.body.encode("utf-8"),
             method="POST",
-            headers={
-                "Title": notification.title,
-                "Priority": self._PRIORITY.get(notification.severity, "default"),
-                "Tags": self._TAGS.get(notification.severity, "warning"),
-            },
+            headers=headers,
         )
         urllib.request.urlopen(request, timeout=SEND_TIMEOUT_SECONDS)
 
@@ -73,9 +78,15 @@ class SlackChannel:
     def send(self, notification: Notification) -> None:
         emoji = self._EMOJI.get(notification.severity, ":warning:")
         text = f"{emoji} *{notification.title}*\n{notification.body}"
+        payload: Dict[str, Any] = {"text": text}
+        if notification.image_url:
+            payload["blocks"] = [
+                {"type": "section", "text": {"type": "mrkdwn", "text": text}},
+                {"type": "image", "image_url": notification.image_url, "alt_text": notification.title},
+            ]
         request = urllib.request.Request(
             self.webhook_url,
-            data=json.dumps({"text": text}).encode("utf-8"),
+            data=json.dumps(payload).encode("utf-8"),
             method="POST",
             headers={"Content-type": "application/json"},
         )
