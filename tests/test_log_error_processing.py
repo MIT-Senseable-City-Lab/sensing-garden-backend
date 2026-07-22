@@ -77,9 +77,13 @@ class TestLogScan:
 class RecordingMonitor:
     def __init__(self):
         self.digests = []
+        self.heartbeats = []
 
     def on_log_digest(self, digest):
         self.digests.append(digest)
+
+    def on_heartbeat(self, record):
+        self.heartbeats.append(record)
 
 
 class TestProcessLogObject:
@@ -160,6 +164,40 @@ class TestProcessLogObject:
         assert summary["logs"] == 1
         (digest,) = monitor.digests
         assert digest.error_count == 2
+
+    def test_archive_member_heartbeat_reaches_monitor(self, tmp_path):
+        """A heartbeat shipped bundled in an archive (not the device's primary
+        path -- heartbeats are a priority kind that ship individually -- but a
+        real fallback) must still run content checks, same as a standalone
+        heartbeat upload. process_archive_object's json-member loop was calling
+        process_heartbeat_object without monitor=, so this silently never fired."""
+        member_key = "v1/FLIK1/heartbeats/20260713_120000.json"
+        archive_key = "v2/archives/FLIK1/20260713_120000.tar"
+        payload = json.dumps({
+            "device_id": "FLIK1", "timestamp": NOW.isoformat(),
+            "cpu_temperature_celsius": 40.0, "storage_free_bytes": 50 * 1024**3,
+            "storage_total_bytes": 100 * 1024**3, "uptime_seconds": 3600.0,
+        }).encode("utf-8")
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            info = tarfile.TarInfo(name=member_key)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+        target = tmp_path / archive_key
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(buffer.getvalue())
+
+        monitor = RecordingMonitor()
+        summary = trigger_handler.process_archive_object(
+            trigger_handler.LocalStorageAdapter(tmp_path),
+            trigger_handler.CollectingWriter(),
+            "bucket",
+            archive_key,
+            monitor=monitor,
+        )
+        assert summary["heartbeats"] == 1
+        (record,) = monitor.heartbeats
+        assert record["device_id"] == "FLIK1"
 
 
 class TestOnLogDigest:

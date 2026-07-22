@@ -1244,7 +1244,7 @@ def process_archive_object(
         member_kind = _processing_kind(name)
         try:
             if member_kind == ProcessingKind.HEARTBEAT:
-                _merge_summary(summary, process_heartbeat_object(adapter, index_writer, bucket, name))
+                _merge_summary(summary, process_heartbeat_object(adapter, index_writer, bucket, name, monitor=monitor))
             else:
                 _merge_summary(summary, process_environment_object(adapter, index_writer, bucket, name))
         except Exception as exc:
