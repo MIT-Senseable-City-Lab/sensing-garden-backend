@@ -78,6 +78,9 @@ class Heartbeat(BaseModel):
     results: Optional[dict] = None
     upload: Optional[dict] = None
     videos: Optional[dict] = None
+    network_interfaces: Optional[list[dict]] = None
+    incoming: Optional[dict] = None
+    pipeline: Optional[dict] = None
 
 
 class Deployment(BaseModel):

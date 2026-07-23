@@ -79,6 +79,10 @@ class Heartbeat(BaseModel):
     storage_total_bytes: Optional[int] = None
     uptime_seconds: Optional[float] = None
     dot_status: Optional[list[dict]] = None
+    network_interfaces: Optional[list[dict]] = None
+    incoming: Optional[dict] = None
+    pipeline: Optional[dict] = None
+    upload: Optional[dict] = None
 
 
 class Deployment(BaseModel):

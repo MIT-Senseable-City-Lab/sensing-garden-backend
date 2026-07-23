@@ -727,6 +727,71 @@ def test_heartbeat_malformed_json_read_returns_zero_rows() -> None:
     assert summary == {"heartbeats": 0}
 
 
+def test_heartbeat_passes_through_pipeline_upload_network_and_incoming_fields() -> None:
+    """The device (bugcam run) ships network_interfaces/pipeline/upload/incoming
+    sections beyond the original cpu_temp/storage/dot_status fields. Without a
+    declared field, Pydantic's default extra="ignore" drops them silently at
+    Heartbeat(**payload) -- no error, nothing in the stored record -- which is
+    exactly what let this go unnoticed against a real device for a while."""
+    payload = {
+        "device_id": "flik5",
+        "timestamp": "2026-07-23T10:00:00Z",
+        "cpu_temperature_celsius": 42.0,
+        "storage_free_bytes": 123,
+        "storage_total_bytes": 456,
+        "uptime_seconds": 100.0,
+        "dot_status": [{"dot_id": "dot01", "last_modified": None}],
+        "network_interfaces": [{"interface": "wlan0", "rx_bytes": 111, "tx_bytes": 222}],
+        "incoming": {"flick_videos": 2, "flick_video_bytes": 8, "dot_dirs": 0, "ready_dot_tracks": 0},
+        "pipeline": {
+            "workers": {"Detection": True, "Classification": True},
+            "video_queue": 2923,
+            "classification_queue": 0,
+            "detection": {"count": 4, "avg_seconds": 41.2, "max_seconds": 60.0},
+        },
+        "upload": {"pending": 7, "bytes_uploaded_total": 999},
+    }
+    storage = MemoryStorage({"v1/flik5/heartbeats/heartbeat.json": json.dumps(payload).encode("utf-8")})
+    writer = trigger_handler.CollectingWriter()
+
+    summary = trigger_handler.process_heartbeat_object(
+        storage, writer, "bucket-1", "v1/flik5/heartbeats/heartbeat.json"
+    )
+
+    assert summary == {"heartbeats": 1}
+    (stored,) = writer.heartbeats
+    assert stored["network_interfaces"] == payload["network_interfaces"]
+    assert stored["incoming"] == payload["incoming"]
+    assert stored["pipeline"]["video_queue"] == 2923
+    assert float(stored["pipeline"]["detection"]["avg_seconds"]) == pytest.approx(41.2)
+    assert stored["upload"] == payload["upload"]
+
+
+def test_heartbeat_without_new_fields_still_processes_cleanly() -> None:
+    """Older device firmware that only ever sent cpu_temp/storage/dot_status
+    must keep working unchanged -- the new fields are optional."""
+    payload = {
+        "device_id": "flik4",
+        "timestamp": "2026-07-23T10:00:00Z",
+        "cpu_temperature_celsius": 40.0,
+        "storage_free_bytes": 1,
+        "storage_total_bytes": 2,
+    }
+    storage = MemoryStorage({"v1/flik4/heartbeats/heartbeat.json": json.dumps(payload).encode("utf-8")})
+    writer = trigger_handler.CollectingWriter()
+
+    summary = trigger_handler.process_heartbeat_object(
+        storage, writer, "bucket-1", "v1/flik4/heartbeats/heartbeat.json"
+    )
+
+    assert summary == {"heartbeats": 1}
+    (stored,) = writer.heartbeats
+    assert stored["network_interfaces"] is None
+    assert stored["pipeline"] is None
+    assert stored["upload"] is None
+    assert stored["incoming"] is None
+
+
 def test_environment_malformed_json_read_returns_zero_rows() -> None:
     class MalformedJsonStorage(MemoryStorage):
         def read_json(
