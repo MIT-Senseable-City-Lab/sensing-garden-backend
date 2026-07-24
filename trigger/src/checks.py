@@ -26,8 +26,8 @@ SAMPLE_FIELDS = (
     "cpu_temperature_celsius",
     "uptime_seconds",
     "pending_bytes",
-    "queue_depth",
-    "last_flush_bytes_per_sec",
+    "pending",
+    "avg_bytes_per_sec",
     "results_total",
     "results_finalized_unpublished",
     "videos_captured_total",
@@ -81,12 +81,17 @@ def extract_samples(heartbeat: Dict[str, Any]) -> Dict[str, float]:
     if isinstance(upload, dict):
         for src, dst in (
             ("pending_bytes", "pending_bytes"),
-            ("queue_depth", "queue_depth"),
-            ("last_flush_bytes_per_sec", "last_flush_bytes_per_sec"),
+            ("pending", "pending"),
         ):
             value = _number(upload.get(src))
             if value is not None:
                 samples[dst] = value
+        # Device reports throughput as decimal Mbytes/sec (pollen.py:
+        # nbytes / 1e6 / seconds); convert to bytes/sec to compare against
+        # upload_min_bytes_per_sec.
+        avg_mbps = _number(upload.get("avg_mbps"))
+        if avg_mbps is not None:
+            samples["avg_bytes_per_sec"] = avg_mbps * 1_000_000
     results = heartbeat.get("results")
     if isinstance(results, dict):
         for src, dst in (
@@ -110,6 +115,17 @@ def extract_samples(heartbeat: Dict[str, Any]) -> Dict[str, float]:
 
 def _series(history: Sequence[Dict[str, float]], field: str) -> List[float]:
     return [entry[field] for entry in history if field in entry]
+
+
+def _series_within_window(
+    history: Sequence[Dict[str, float]], field: str, now: datetime, window_hours: float
+) -> List[float]:
+    """Like _series, but only samples from the last window_hours -- anchored to
+    each sample's own timestamp, not position in the list. A trend over "the
+    last N samples" silently means different things as heartbeat frequency
+    changes; this always means the same elapsed time."""
+    cutoff = now.timestamp() - window_hours * 3600
+    return [entry[field] for entry in history if field in entry and entry.get("ts", 0) >= cutoff]
 
 
 def _strictly_increasing(values: Sequence[float]) -> bool:
@@ -307,28 +323,37 @@ def check_bandwidth(
     now: datetime,
     cfg: MonitorConfig,
 ) -> List[Finding]:
+    """Upload health: live queue depth plus two trends over the last
+    bandwidth_trend_window_hours (default 2h) of history, by elapsed time --
+    not just "the last N samples," which silently means a different span
+    whenever heartbeat frequency changes.
+
+    Field names match what the device actually sends (pollen.py's Pollen.stats()):
+    `pending` (live queue count) and `avg_mbps` (decimal MB/s, converted to
+    bytes/sec in extract_samples) -- not the older `queue_depth`/
+    `last_flush_bytes_per_sec` names the device has never sent."""
     upload = heartbeat.get("upload")
     if not isinstance(upload, dict):
         return []
     problems: List[str] = []
-    depth = _number(upload.get("queue_depth"))
+    depth = _number(upload.get("pending"))
     if depth is not None and depth > cfg.upload_queue_depth_max:
         problems.append(f"queue depth {int(depth)} (max {cfg.upload_queue_depth_max})")
-    pending = _series(history, "pending_bytes")
-    window = pending[-cfg.pending_bytes_growth_samples:]
-    if len(window) >= cfg.pending_bytes_growth_samples and _strictly_increasing(window):
-        problems.append(f"pending bytes growing ({_human_bytes(window[-1])} queued)")
-    speeds = _series(history, "last_flush_bytes_per_sec")
-    speed_window = speeds[-cfg.upload_slow_consecutive_samples:]
+    window_hours = cfg.bandwidth_trend_window_hours
+    pending_window = _series_within_window(history, "pending_bytes", now, window_hours)
+    if len(pending_window) >= cfg.pending_bytes_growth_samples and _strictly_increasing(pending_window):
+        problems.append(f"pending bytes growing over the last {window_hours:.0f}h ({_human_bytes(pending_window[-1])} queued)")
+    speed_window = _series_within_window(history, "avg_bytes_per_sec", now, window_hours)
     if len(speed_window) >= cfg.upload_slow_consecutive_samples and all(
         s < cfg.upload_min_bytes_per_sec for s in speed_window
     ):
         problems.append(
-            f"upload speed {_human_bytes(speed_window[-1])}/s (floor {_human_bytes(cfg.upload_min_bytes_per_sec)}/s)"
+            f"upload speed under {_human_bytes(cfg.upload_min_bytes_per_sec)}/s for the last {window_hours:.0f}h "
+            f"({_human_bytes(speed_window[-1])}/s)"
         )
     if problems:
         return [Finding(device_id, "bandwidth", BAD, WARNING, f"{device_id}: upload struggling", "; ".join(problems))]
-    if depth is None and not pending and not speeds:
+    if depth is None and "pending_bytes" not in upload and "avg_mbps" not in upload:
         return []
     return [Finding(device_id, "bandwidth", OK, WARNING, f"{device_id}: uploads OK", "queue draining normally")]
 

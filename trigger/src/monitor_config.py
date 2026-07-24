@@ -40,6 +40,11 @@ class MonitorConfig:
     results_unpublished_consecutive_samples: int = 3
     results_growth_samples: int = 6
     pending_bytes_growth_samples: int = 6
+    # bandwidth trend checks (growing pending_bytes, slow throughput) look at
+    # samples from the last N hours, anchored to each sample's own timestamp --
+    # not just "the last N samples" regardless of how far apart they landed,
+    # so the check's meaning doesn't drift if heartbeat frequency changes
+    bandwidth_trend_window_hours: float = 2.0
     # video backlog: captured-but-not-yet-uploaded videos piling up on the device
     # (dormant until devices send the videos.captured_total/uploaded_total fields)
     video_backlog_max: int = 20
@@ -85,6 +90,9 @@ class MonitorConfig:
             results_growth_samples=int(_env_float("MONITOR_RESULTS_GROWTH_SAMPLES", cls.results_growth_samples)),
             pending_bytes_growth_samples=int(
                 _env_float("MONITOR_PENDING_BYTES_GROWTH_SAMPLES", cls.pending_bytes_growth_samples)
+            ),
+            bandwidth_trend_window_hours=_env_float(
+                "MONITOR_BANDWIDTH_TREND_WINDOW_HOURS", cls.bandwidth_trend_window_hours
             ),
             video_backlog_max=int(_env_float("MONITOR_VIDEO_BACKLOG_MAX", cls.video_backlog_max)),
             video_backlog_growth_samples=int(

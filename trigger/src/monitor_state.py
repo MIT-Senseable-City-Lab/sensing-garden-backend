@@ -16,7 +16,13 @@ import boto3
 
 MONITOR_STATE_TABLE = os.environ.get("MONITOR_STATE_TABLE", "sensing-garden-monitor-state")
 
-MAX_SAMPLES = 8
+# Bandwidth trend checks look back bandwidth_trend_window_hours (default 2h) by
+# elapsed time, anchored to each sample's own timestamp -- at the real ~5min
+# heartbeat interval, the old cap of 8 held well under an hour of history,
+# so a multi-hour window could never have enough data to evaluate. Generous
+# headroom here (60 samples ~= 5h at 5min intervals) covers the default window
+# with room to spare if it's later widened.
+MAX_SAMPLES = 60
 
 
 class DeviceState:

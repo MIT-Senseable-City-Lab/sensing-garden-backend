@@ -211,14 +211,80 @@ def test_results_backlog_fires_on_sustained_unpublished():
 
 
 def test_bandwidth_fires_on_growing_pending_bytes():
+    """Spread across the actual bandwidth_trend_window_hours, oldest first --
+    growth over real elapsed time, not just N samples in a row regardless of
+    when they landed."""
+    n = CFG.pending_bytes_growth_samples
+    step_seconds = (CFG.bandwidth_trend_window_hours * 3600) / n
     beats = [
-        _heartbeat(upload={"queue_depth": 3, "pending_bytes": (i + 1) * 10_000_000, "last_flush_bytes_per_sec": 500_000})
-        for i in range(CFG.pending_bytes_growth_samples)
+        _heartbeat(
+            age_seconds=(n - 1 - i) * step_seconds,
+            upload={"pending": 3, "pending_bytes": (i + 1) * 10_000_000, "avg_mbps": 5.0},
+        )
+        for i in range(n)
     ]
     history = [checks.extract_samples(b) for b in beats]
     (finding,) = checks.check_bandwidth("FLIK1", beats[-1], history, NOW, CFG)
     assert finding.status == checks.BAD
     assert "pending bytes growing" in finding.body
+
+
+def test_bandwidth_queue_depth_reads_the_real_device_field():
+    """The device sends `pending` (a live count), not `queue_depth` -- the
+    old field name the check used to read, which the device has never sent,
+    so that leg silently never fired."""
+    over_max = _heartbeat(upload={"pending": CFG.upload_queue_depth_max + 10})
+    (finding,) = checks.check_bandwidth("FLIK1", over_max, [checks.extract_samples(over_max)], NOW, CFG)
+    assert finding.status == checks.BAD
+    assert "queue depth" in finding.body
+
+
+def test_bandwidth_throughput_reads_avg_mbps_converted_to_bytes():
+    """The device sends `avg_mbps` (decimal megabits... actually megabytes,
+    per pollen.py's own math), not `last_flush_bytes_per_sec` -- another
+    field the device never sent. avg_mbps must be converted (*1e6) before
+    comparing against the bytes/sec floor."""
+    n = CFG.upload_slow_consecutive_samples
+    step_seconds = (CFG.bandwidth_trend_window_hours * 3600) / n
+    floor_mbps = CFG.upload_min_bytes_per_sec / 1_000_000
+    slow_mbps = floor_mbps / 2  # half the floor
+    beats = [
+        _heartbeat(age_seconds=(n - 1 - i) * step_seconds, upload={"pending": 1, "avg_mbps": slow_mbps})
+        for i in range(n)
+    ]
+    history = [checks.extract_samples(b) for b in beats]
+    (finding,) = checks.check_bandwidth("FLIK1", beats[-1], history, NOW, CFG)
+    assert finding.status == checks.BAD
+    assert "upload speed" in finding.body
+
+
+def test_bandwidth_growth_ignores_samples_outside_the_time_window():
+    """Old growth from outside the window must not count -- only what's
+    happened in the last bandwidth_trend_window_hours matters. Without this,
+    a device that grew its backlog hours ago and has been flat since would
+    still page forever, because "last N samples" doesn't know how old they
+    are."""
+    n = CFG.pending_bytes_growth_samples
+    window_seconds = CFG.bandwidth_trend_window_hours * 3600
+    old_growth = [
+        _heartbeat(age_seconds=window_seconds + (n - i) * 60, upload={"pending": 1, "pending_bytes": (i + 1) * 10_000_000})
+        for i in range(n)
+    ]  # all outside the window, growing
+    recent_flat = [
+        _heartbeat(age_seconds=(n - 1 - i) * (window_seconds / n / 2), upload={"pending": 1, "pending_bytes": 5_000_000})
+        for i in range(n)
+    ]  # inside the window, flat
+    history = [checks.extract_samples(b) for b in old_growth + recent_flat]
+    (finding,) = checks.check_bandwidth("FLIK1", recent_flat[-1], history, NOW, CFG)
+    assert finding.status == checks.OK
+
+
+def test_bandwidth_requires_minimum_points_within_window():
+    """A single sample inside the window isn't enough to call it a trend."""
+    beat = _heartbeat(age_seconds=60, upload={"pending": 1, "pending_bytes": 10_000_000})
+    history = [checks.extract_samples(beat)]
+    (finding,) = checks.check_bandwidth("FLIK1", beat, history, NOW, CFG)
+    assert finding.status == checks.OK
 
 
 def test_restart_needs_a_prior_sample():
