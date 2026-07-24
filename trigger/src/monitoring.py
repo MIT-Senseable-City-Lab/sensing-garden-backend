@@ -226,9 +226,17 @@ class Monitoring:
         )
 
     def sweep(self) -> Dict[str, int]:
-        """Scheduled liveness pass. Returns a small summary for the Lambda response."""
+        """Scheduled liveness pass. Returns a small summary for the Lambda response.
+
+        Excludes DOT children (parent_device_id set): DOTs never send their own
+        heartbeat, so checking their device_id against the heartbeats table would
+        always find nothing -- a permanent false "never seen" regardless of real
+        health. Their freshness is already covered by check_dot_freshness, which
+        reads the parent FLIK's dot_status at heartbeat-ingest time. digest()/
+        post_backdrops() still iterate the full roster including DOTs, since
+        tracks and backdrops are correctly attributed per-DOT (source_device)."""
         now = self._now_fn()
-        roster = self.roster()
+        roster = [d for d in self.roster() if not d.get("parent_device_id")]
         device_ids = [str(d.get("device_id")) for d in roster if d.get("device_id")]
         latest = self._latest_heartbeats_fn(device_ids)
         findings = check_liveness(roster, latest, now, self.cfg)
@@ -340,9 +348,13 @@ class Monitoring:
                     self._send(finding, state, resolved=False)
                     state.mark_notified(finding.check, now)
                     notified += 1
-                elif finding.severity == "critical":
+                else:
+                    repage_seconds = (
+                        self.cfg.critical_repage_seconds if finding.severity == "critical"
+                        else self.cfg.warning_repage_seconds
+                    )
                     last = state.last_notified(finding.check)
-                    if last is None or (now - last).total_seconds() >= self.cfg.critical_repage_seconds:
+                    if last is None or (now - last).total_seconds() >= repage_seconds:
                         self._send(finding, state, resolved=False, still=True)
                         state.mark_notified(finding.check, now)
                         notified += 1

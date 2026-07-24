@@ -106,15 +106,19 @@ def test_liveness_flags_stale_and_never_seen():
     assert "never" in findings["FLIK3"].title
 
 
-def test_disk_floor_absolute_and_fractional():
+def test_disk_floor_is_absolute_bytes_only():
+    """disk_space is the hard CRITICAL floor -- absolute bytes only. The
+    fractional leg moved to disk_trend (WARNING tier), so a device with a
+    huge disk sitting at 5% free but still comfortably above the absolute
+    floor should NOT page as critical."""
     low_abs = _heartbeat(storage_free_bytes=1 * 1024**3)
     history = [checks.extract_samples(low_abs)]
     (finding,) = checks.check_disk_space("FLIK1", low_abs, history, NOW, CFG)
     assert finding.status == checks.BAD and finding.severity == checks.CRITICAL
 
-    low_frac = _heartbeat(storage_free_bytes=int(0.05 * 1000 * 1024**3), storage_total_bytes=1000 * 1024**3)
-    (finding,) = checks.check_disk_space("FLIK1", low_frac, [checks.extract_samples(low_frac)], NOW, CFG)
-    assert finding.status == checks.BAD
+    low_frac_high_abs = _heartbeat(storage_free_bytes=50 * 1024**3, storage_total_bytes=1000 * 1024**3)  # 5%, 50GB free
+    (finding,) = checks.check_disk_space("FLIK1", low_frac_high_abs, [checks.extract_samples(low_frac_high_abs)], NOW, CFG)
+    assert finding.status == checks.OK
 
     healthy = _heartbeat()
     (finding,) = checks.check_disk_space("FLIK1", healthy, [checks.extract_samples(healthy)], NOW, CFG)
@@ -134,21 +138,24 @@ def test_thermal_requires_consecutive_samples():
     assert finding.status == checks.OK
 
 
-def test_disk_trend_projects_time_to_full():
-    day = 86400
-    beats = [
-        _heartbeat(age_seconds=(3 - i) * day, storage_free_bytes=(8 - 2 * i) * 1024**3)
-        for i in range(4)
-    ]  # losing 2 GB/day, 2 GB left -> ~1 day to full
-    history = [checks.extract_samples(b) for b in beats]
-    (finding,) = checks.check_disk_trend("FLIK1", beats[-1], history, NOW, CFG)
+def test_disk_trend_fires_at_last_10_percent():
+    """Replaced the old slope/days-to-full projection (noisy: a brief capture
+    burst could swing the linear estimate from two history points and false-
+    trigger even at 80% free). Now a stable fraction-of-total threshold,
+    matching disk_min_free_fraction -- flips only when free space actually
+    crosses the line, not on every sweep's re-estimated slope."""
+    low = _heartbeat(storage_free_bytes=int(0.05 * 1000 * 1024**3), storage_total_bytes=1000 * 1024**3)  # 5%
+    (finding,) = checks.check_disk_trend("FLIK1", low, [checks.extract_samples(low)], NOW, CFG)
     assert finding.status == checks.BAD
-    assert "days to full" in finding.body
+    assert finding.severity == checks.WARNING
 
-    stable = [_heartbeat(age_seconds=(3 - i) * day) for i in range(4)]
-    history = [checks.extract_samples(b) for b in stable]
-    (finding,) = checks.check_disk_trend("FLIK1", stable[-1], history, NOW, CFG)
+    healthy = _heartbeat(storage_free_bytes=int(0.50 * 1000 * 1024**3), storage_total_bytes=1000 * 1024**3)  # 50%
+    (finding,) = checks.check_disk_trend("FLIK1", healthy, [checks.extract_samples(healthy)], NOW, CFG)
     assert finding.status == checks.OK
+
+    at_floor = _heartbeat(storage_free_bytes=int(0.10 * 1000 * 1024**3), storage_total_bytes=1000 * 1024**3)  # exactly 10%
+    (finding,) = checks.check_disk_trend("FLIK1", at_floor, [checks.extract_samples(at_floor)], NOW, CFG)
+    assert finding.status == checks.BAD  # "last 10%" is inclusive of the line itself
 
 
 def test_dot_freshness_stale_dot_with_fresh_flik():
@@ -289,6 +296,39 @@ def test_critical_repages_after_cooldown():
     assert len(still) == 1
 
 
+def test_warning_repages_after_cooldown_but_not_before():
+    """Before this fix, a BAD warning-severity check only ever notified once
+    (on the initial OK->BAD transition) and then stayed silent forever until
+    it resolved -- no reminder, no matter how long a device sat at low disk.
+    Warnings should still repeat, just far less often than criticals."""
+    cfg = MonitorConfig(warning_repage_seconds=CFG.warning_repage_seconds)
+    late = NOW + timedelta(seconds=cfg.warning_repage_seconds + 60)
+    too_soon = NOW + timedelta(seconds=cfg.warning_repage_seconds - 60)
+    clock = {"now": NOW}
+    store = FakeStateStore()
+    channel = RecordingChannel()
+    mon = Monitoring(
+        cfg=cfg,
+        state_store=store,
+        notifier=Notifier([channel]),
+        roster_fn=lambda: [{"device_id": "FLIK1"}],
+        latest_heartbeats_fn=lambda ids: {},
+        now_fn=lambda: clock["now"],
+    )
+    low = _heartbeat(storage_free_bytes=int(0.05 * 1000 * 1024**3), storage_total_bytes=1000 * 1024**3)
+    mon.on_heartbeat(low)
+    assert len([n for n in channel.sent if "disk trending full" in n.title]) == 1
+
+    clock["now"] = too_soon
+    mon.on_heartbeat(low)
+    assert len([n for n in channel.sent if "disk trending full" in n.title]) == 1  # still within cooldown
+
+    clock["now"] = late
+    mon.on_heartbeat(low)
+    still = [n for n in channel.sent if n.title.startswith("Still failing:") and "disk trending full" in n.title]
+    assert len(still) == 1
+
+
 def test_on_heartbeat_notifies_every_restart_not_just_the_first():
     mon, store, channel = _monitoring()
     mon.on_heartbeat(_heartbeat(uptime_seconds=3600.0))
@@ -320,6 +360,27 @@ def test_sweep_liveness_and_healthchecks_ping_runs_last(monkeypatch):
     assert not any("FLIK1" in n.title for n in channel.sent)  # healthy, no prior episode
     assert all(n.route == "emergency" for n in channel.sent)  # liveness always emergency
     assert pings == ["https://hc.example/ping"]
+
+
+def test_sweep_excludes_dot_children_from_liveness():
+    """DOT devices never send their own heartbeat -- they're logical children
+    of a FLIK, and their freshness is already covered by check_dot_freshness
+    reading the parent's dot_status at heartbeat-ingest time. Including them
+    in the plain liveness sweep (which checks "does this exact device_id have
+    a heartbeat on record") guarantees a permanent false "never seen" for
+    every DOT, forever, regardless of real health."""
+    mon, store, channel = _monitoring(
+        roster=[
+            {"device_id": "FLIK1"},
+            {"device_id": "FLIK1-dot01", "parent_device_id": "FLIK1"},
+            {"device_id": "FLIK1-dot02", "parent_device_id": "FLIK1"},
+        ],
+        latest={"FLIK1": _heartbeat("FLIK1", age_seconds=30)},
+    )
+    summary = mon.sweep()
+    assert summary["devices"] == 1
+    assert summary["liveness_findings"] == 0
+    assert channel.sent == []
 
 
 def test_finding_route_is_by_check_not_severity():

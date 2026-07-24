@@ -152,9 +152,10 @@ def check_disk_space(
     total = _number(heartbeat.get("storage_total_bytes"))
     if free is None:
         return []
-    floor_breached = free < cfg.disk_min_free_bytes or (
-        total is not None and total > 0 and free / total < cfg.disk_min_free_fraction
-    )
+    # Absolute-bytes floor only -- the fractional threshold lives in
+    # check_disk_trend (WARNING tier) so the two checks don't both fire off
+    # the same underlying condition at different severities.
+    floor_breached = free < cfg.disk_min_free_bytes
     if floor_breached:
         detail = f"{_human_bytes(free)} free"
         if total:
@@ -170,22 +171,21 @@ def check_disk_trend(
     now: datetime,
     cfg: MonitorConfig,
 ) -> List[Finding]:
-    """Time-to-full projection from the free-bytes slope over state history.
-    Separate check key from the floor (which is critical): a full disk in a week
-    is a warning you act on, not a page."""
-    points = [(entry["ts"], entry["storage_free_bytes"]) for entry in history
-              if "ts" in entry and "storage_free_bytes" in entry]
-    if len(points) < 4:
+    """Early heads-up at the last disk_min_free_fraction of free space -- WARNING
+    tier, distinct from check_disk_space's absolute-bytes CRITICAL floor.
+
+    Previously projected days-to-full from the free-bytes slope over just the
+    first/last history points; a brief capture burst could swing that linear
+    estimate enough to false-trigger at 80% free, and re-estimating it fresh
+    every sweep made the finding flap between BAD/OK, notifying repeatedly.
+    A plain fraction-of-total threshold only flips when free space actually
+    crosses the line."""
+    free = _number(heartbeat.get("storage_free_bytes"))
+    total = _number(heartbeat.get("storage_total_bytes"))
+    if free is None or not total:
         return []
-    (t0, free0), (t1, free1) = points[0], points[-1]
-    elapsed = t1 - t0
-    if elapsed <= 0:
-        return []
-    drain_per_second = (free0 - free1) / elapsed
-    if drain_per_second <= 0:
-        return [Finding(device_id, "disk_trend", OK, WARNING, f"{device_id}: disk trend OK", "free space not shrinking")]
-    days_to_full = free1 / drain_per_second / 86400
-    if days_to_full < cfg.disk_time_to_full_days:
+    fraction_free = free / total
+    if fraction_free <= cfg.disk_min_free_fraction:
         return [
             Finding(
                 device_id,
@@ -193,10 +193,10 @@ def check_disk_trend(
                 BAD,
                 WARNING,
                 f"{device_id}: disk trending full",
-                f"~{days_to_full:.1f} days to full at current rate ({_human_bytes(free1)} free)",
+                f"{_human_bytes(free)} free of {_human_bytes(total)} ({fraction_free:.0%})",
             )
         ]
-    return [Finding(device_id, "disk_trend", OK, WARNING, f"{device_id}: disk trend OK", f"~{days_to_full:.0f} days headroom")]
+    return [Finding(device_id, "disk_trend", OK, WARNING, f"{device_id}: disk trend OK", f"{fraction_free:.0%} free")]
 
 
 def check_thermal(

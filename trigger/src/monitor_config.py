@@ -50,6 +50,9 @@ class MonitorConfig:
     bandwidth_monthly_cap_bytes: float = 0.0
     # re-page cadence for criticals that stay bad
     critical_repage_seconds: float = 6 * 3600.0
+    # re-page cadence for warnings that stay bad (longer than critical -- a
+    # reminder, not a page)
+    warning_repage_seconds: float = 24 * 3600.0
     # one log-error digest page per device per window
     log_error_cooldown_seconds: float = 6 * 3600.0
     # periodic per-device stats report: new-track count over the trailing window
@@ -92,6 +95,7 @@ class MonitorConfig:
                 "MONITOR_BANDWIDTH_MONTHLY_CAP_BYTES", cls.bandwidth_monthly_cap_bytes
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
+            warning_repage_seconds=_env_float("MONITOR_WARNING_REPAGE_SECONDS", cls.warning_repage_seconds),
             log_error_cooldown_seconds=_env_float("MONITOR_LOG_ERROR_COOLDOWN_SECONDS", cls.log_error_cooldown_seconds),
             digest_window_hours=_env_float("MONITOR_DIGEST_WINDOW_HOURS", cls.digest_window_hours),
             ntfy_emergency_url=os.environ.get("MONITOR_NTFY_EMERGENCY_URL", ""),
