@@ -44,6 +44,7 @@ DEPLOYMENT_ID = os.environ.get("DEPLOYMENT_ID")
 HEARTBEAT_KEY_PATTERN = re.compile(r"^v1/[^/]+/heartbeats/[^/]+\.json$")
 ENVIRONMENT_KEY_PATTERN = re.compile(r"^v1/[^/]+/environment/[^/]+\.json$")
 LOG_KEY_PATTERN = re.compile(r"^v1/[^/]+/logs/[^/]+\.log$")
+CAPTURE_KEY_PATTERN = re.compile(r"^v1/[^/]+/captures/[^/]+\.json$")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -66,6 +67,7 @@ class ProcessingKind(str, Enum):
     ENVIRONMENT = "environment"
     VIDEO = "video"
     LOG = "log"
+    CAPTURE = "capture"
     IGNORED = "ignored"
 
 
@@ -1158,6 +1160,35 @@ def process_log_object(
     return {"logs": 1, "log_error_lines": digest.error_count}
 
 
+def process_capture_object(
+    storage: StorageAdapter,
+    writer: WriterProtocol,
+    bucket: str,
+    key: str,
+    *,
+    version_id: Optional[str] = None,
+    etag: Optional[str] = None,
+    monitor: Optional[Any] = None,
+) -> Dict[str, int]:
+    """Sampling-effort report (CaptureLog.rotate(), device-side capture_report.py):
+    hand it to monitoring for an informational ntfy/Slack post. Read-only --
+    no DynamoDB write, and the file itself is left exactly where it already is
+    in S3."""
+    try:
+        payload = storage.read_json(bucket, key, version_id=version_id, etag=etag)
+    except Exception as exc:
+        print(f"Capture report read failed for {key}: {exc}")
+        return {"capture_reports": 0}
+    if monitor is not None:
+        # Notify delivery is best-effort; a notify failure must not fail ingest.
+        try:
+            monitor.on_capture_report(payload)
+        except Exception as exc:
+            print(f"Monitoring failed for capture report {key}: {exc}")
+    print(f"Processed capture report {key}")
+    return {"capture_reports": 1}
+
+
 def _merge_summary(total: Dict[str, int], part: Dict[str, int]) -> None:
     for key, value in part.items():
         if isinstance(value, (int, float)):
@@ -1298,6 +1329,8 @@ def _processing_kind(key: str) -> ProcessingKind:
         return ProcessingKind.ENVIRONMENT
     if LOG_KEY_PATTERN.match(key):
         return ProcessingKind.LOG
+    if CAPTURE_KEY_PATTERN.match(key):
+        return ProcessingKind.CAPTURE
     if key.endswith(VIDEO_MEMBER_SUFFIX):
         return ProcessingKind.VIDEO
     return ProcessingKind.IGNORED
@@ -1424,6 +1457,16 @@ def process_s3_object(
                 event.key,
                 version_id=event.version_id,
                 etag=event.etag,
+            )
+        elif kind == ProcessingKind.CAPTURE:
+            summary = process_capture_object(
+                storage,
+                writer,
+                event.bucket,
+                event.key,
+                version_id=event.version_id,
+                etag=event.etag,
+                monitor=monitor,
             )
         else:
             summary = process_environment_object(

@@ -25,7 +25,7 @@ from typing import Any, Callable, Dict, List, Optional
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from checks import BAD, CRITICAL, OK, Finding, _human_bytes, check_liveness, extract_samples, run_content_checks
+from checks import BAD, CRITICAL, OK, Finding, _human_bytes, _human_duration, check_liveness, extract_samples, run_content_checks
 from monitor_config import MonitorConfig
 from monitor_state import DeviceState, MonitorStateStore
 from notify import Notification, Notifier, build_notifier, ping_healthchecks
@@ -349,6 +349,26 @@ class Monitoring:
         )
         state.mark_notified("log_errors", now)
         self.state_store.put(state, now)
+
+    def on_capture_report(self, record: Dict[str, Any]) -> None:
+        """Sampling-effort report (CaptureLog.rotate(), capture_report.py):
+        informational, always sends -- no OK/BAD episode, no cooldown, same
+        as digest(). The file itself is left exactly where Pollen already
+        put it in S3; this only notifies."""
+        device_id = str(record.get("device_id", ""))
+        if not device_id or not self._is_monitored(device_id):
+            return
+        duration = record.get("total_duration_seconds") or 0.0
+        samples = record.get("sample_count") or 0
+        self.notifier.notify(
+            Notification(
+                severity="info",
+                title=f"{device_id}: {_human_duration(duration)} recorded ({samples} chunk(s))",
+                body=f"{record.get('period_start')} to {record.get('period_end')}",
+                key=f"{device_id}/capture_report/{record.get('period_end')}",
+                route="general",
+            )
+        )
 
     # -- notification policy -----------------------------------------------
 
