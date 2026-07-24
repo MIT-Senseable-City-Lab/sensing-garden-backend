@@ -350,7 +350,10 @@ def test_sweep_liveness_and_healthchecks_ping_runs_last(monkeypatch):
     monkeypatch.setattr(monitoring_module, "ping_healthchecks", lambda url: pings.append(url))
     cfg = MonitorConfig(healthchecks_ping_url="https://hc.example/ping")
     mon, store, channel = _monitoring(
-        roster=[{"device_id": "FLIK1"}, {"device_id": "FLIK2"}],
+        roster=[
+            {"device_id": "FLIK1", "liveness_enabled": True},
+            {"device_id": "FLIK2", "liveness_enabled": True},
+        ],
         latest={"FLIK1": _heartbeat("FLIK1", age_seconds=30)},
         cfg=cfg,
     )
@@ -371,9 +374,9 @@ def test_sweep_excludes_dot_children_from_liveness():
     every DOT, forever, regardless of real health."""
     mon, store, channel = _monitoring(
         roster=[
-            {"device_id": "FLIK1"},
-            {"device_id": "FLIK1-dot01", "parent_device_id": "FLIK1"},
-            {"device_id": "FLIK1-dot02", "parent_device_id": "FLIK1"},
+            {"device_id": "FLIK1", "liveness_enabled": True},
+            {"device_id": "FLIK1-dot01", "parent_device_id": "FLIK1", "liveness_enabled": True},
+            {"device_id": "FLIK1-dot02", "parent_device_id": "FLIK1", "liveness_enabled": True},
         ],
         latest={"FLIK1": _heartbeat("FLIK1", age_seconds=30)},
     )
@@ -381,6 +384,27 @@ def test_sweep_excludes_dot_children_from_liveness():
     assert summary["devices"] == 1
     assert summary["liveness_findings"] == 0
     assert channel.sent == []
+
+
+def test_sweep_liveness_is_opt_in_not_opt_out():
+    """Liveness alerting is disabled by default -- a device only gets checked
+    once liveness_enabled is explicitly set True (via the devices CLI). This
+    is deliberately a stricter gate than the roster's own monitored flag
+    (which still governs digest/backdrop): the roster accumulates every
+    device ever registered, including years of test/scratch entries, and
+    liveness alerting shouldn't have to be opted OUT of one by one."""
+    mon, store, channel = _monitoring(
+        roster=[
+            {"device_id": "FLIK1"},  # liveness_enabled absent
+            {"device_id": "FLIK2", "liveness_enabled": False},
+            {"device_id": "FLIK3", "liveness_enabled": True},
+        ],
+        latest={},
+    )
+    summary = mon.sweep()
+    assert summary["devices"] == 1
+    assert [n for n in channel.sent if "FLIK1" in n.title or "FLIK2" in n.title] == []
+    assert any("FLIK3" in n.title for n in channel.sent)
 
 
 def test_finding_route_is_by_check_not_severity():

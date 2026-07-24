@@ -228,15 +228,27 @@ class Monitoring:
     def sweep(self) -> Dict[str, int]:
         """Scheduled liveness pass. Returns a small summary for the Lambda response.
 
-        Excludes DOT children (parent_device_id set): DOTs never send their own
-        heartbeat, so checking their device_id against the heartbeats table would
-        always find nothing -- a permanent false "never seen" regardless of real
-        health. Their freshness is already covered by check_dot_freshness, which
-        reads the parent FLIK's dot_status at heartbeat-ingest time. digest()/
-        post_backdrops() still iterate the full roster including DOTs, since
-        tracks and backdrops are correctly attributed per-DOT (source_device)."""
+        Opt-in, not opt-out: only devices with liveness_enabled explicitly True
+        get checked (toggle via devices_cli.py). The roster accumulates every
+        device ever registered -- years of test/scratch entries alongside real
+        fleet devices -- so alerting-by-default means opting OUT of every junk
+        entry one at a time; opt-in means the alert list only ever contains
+        devices someone deliberately turned on.
+
+        Also excludes DOT children (parent_device_id set) regardless of the
+        flag: DOTs never send their own heartbeat, so checking their device_id
+        against the heartbeats table would always find nothing -- a permanent
+        false "never seen" regardless of real health. Their freshness is
+        already covered by check_dot_freshness, which reads the parent FLIK's
+        dot_status at heartbeat-ingest time. digest()/post_backdrops() still
+        iterate the full roster (monitored flag only, no liveness_enabled
+        requirement) including DOTs, since tracks and backdrops are correctly
+        attributed per-DOT (source_device)."""
         now = self._now_fn()
-        roster = [d for d in self.roster() if not d.get("parent_device_id")]
+        roster = [
+            d for d in self.roster()
+            if d.get("liveness_enabled") is True and not d.get("parent_device_id")
+        ]
         device_ids = [str(d.get("device_id")) for d in roster if d.get("device_id")]
         latest = self._latest_heartbeats_fn(device_ids)
         findings = check_liveness(roster, latest, now, self.cfg)
