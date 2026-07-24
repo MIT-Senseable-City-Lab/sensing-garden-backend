@@ -73,7 +73,7 @@ class Heartbeat(BaseModel):
     dot_status: Optional[list[dict]] = None
     # Heartbeat v2 (SPEC-fleet-monitoring item 3): declared so pydantic doesn't
     # strip them; devices that don't send them are unaffected. upload gains
-    # bytes_uploaded_total (monotonic lifetime counter, for cumulative bandwidth
+    # bytes_uploaded (delta since the last heartbeat, for cumulative bandwidth
     # tracking) without a schema change since it's an untyped dict.
     results: Optional[dict] = None
     upload: Optional[dict] = None

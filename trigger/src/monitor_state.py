@@ -66,22 +66,22 @@ class DeviceState:
             self.samples = self.samples[-MAX_SAMPLES:]
 
     # -- cumulative bandwidth (daily/monthly, unbounded by the sample window) --
-    def record_bandwidth_delta(self, counter: float, now: datetime) -> Tuple[float, float]:
-        """Rolls a device-reported monotonic lifetime byte counter into running
-        daily/monthly totals. A counter that doesn't increase (first observation,
-        or a drop from a device reboot resetting its counter) contributes no
-        delta -- we can't attribute it to usage, so it just rebases silently;
-        check_restart already pages on the reboot itself via uptime_seconds."""
-        last_counter = self.bandwidth.get("last_counter")
-        delta = counter - last_counter if last_counter is not None and counter >= last_counter else 0.0
+    def record_bandwidth_usage(self, delta_bytes: float, now: datetime) -> Tuple[float, float]:
+        """Rolls the device's own already-windowed delta (bytes transferred
+        since its last heartbeat -- Pollen.stats()'s TransferStats.drain()
+        resets on every call, so bytes_uploaded is never a lifetime total to
+        diff ourselves) into running daily/monthly totals. A negative delta
+        (shouldn't happen; the device's own accumulator can't go backwards)
+        is floored at zero rather than subtracted, so a bad sample can't
+        silently erase real recorded usage."""
+        delta_bytes = max(delta_bytes, 0.0)
         today = now.date().isoformat()
         month = now.strftime("%Y-%m")
         daily_bytes = self.bandwidth.get("daily_bytes", 0.0) if self.bandwidth.get("daily_date") == today else 0.0
         monthly_bytes = self.bandwidth.get("monthly_bytes", 0.0) if self.bandwidth.get("monthly_month") == month else 0.0
-        daily_bytes += delta
-        monthly_bytes += delta
+        daily_bytes += delta_bytes
+        monthly_bytes += delta_bytes
         self.bandwidth = {
-            "last_counter": counter,
             "daily_date": today,
             "daily_bytes": daily_bytes,
             "monthly_month": month,

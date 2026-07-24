@@ -50,7 +50,7 @@ class MonitorConfig:
     video_backlog_max: int = 20
     video_backlog_growth_samples: int = 6
     # cumulative bandwidth: rolling daily/monthly totals against a cell data cap
-    # (dormant until devices send upload.bytes_uploaded_total; 0 = cap disabled)
+    # (dormant until devices send upload.bytes_uploaded; 0 = cap disabled)
     bandwidth_daily_cap_bytes: float = 0.0
     bandwidth_monthly_cap_bytes: float = 0.0
     # re-page cadence for criticals that stay bad

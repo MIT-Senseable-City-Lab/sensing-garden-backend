@@ -196,19 +196,21 @@ class Monitoring:
         self, device_id: str, record: Dict[str, Any], state: DeviceState, now: datetime
     ) -> Optional[Finding]:
         """Cumulative daily/monthly usage against a cell data cap. Not a
-        history-window check like the others -- rolls a monotonic lifetime
-        counter into running totals persisted on DeviceState, since day/month
-        spans far outsize the bounded sample window. Dormant until devices send
-        upload.bytes_uploaded_total; caps of 0 mean "disabled"."""
+        history-window check like the others -- rolls the device's own delta
+        (bytes_uploaded, already windowed since its last heartbeat -- see
+        Pollen.stats()/TransferStats.drain()) into running totals persisted
+        on DeviceState, since day/month spans far outsize the bounded sample
+        window. Dormant until devices send upload.bytes_uploaded; caps of 0
+        mean "disabled"."""
         upload = record.get("upload")
-        counter = upload.get("bytes_uploaded_total") if isinstance(upload, dict) else None
-        if counter is None:
+        delta = upload.get("bytes_uploaded") if isinstance(upload, dict) else None
+        if delta is None:
             return None
         try:
-            counter = float(counter)
+            delta = float(delta)
         except (TypeError, ValueError):
             return None
-        daily_bytes, monthly_bytes = state.record_bandwidth_delta(counter, now)
+        daily_bytes, monthly_bytes = state.record_bandwidth_usage(delta, now)
         daily_cap = self.cfg.bandwidth_daily_cap_bytes
         monthly_cap = self.cfg.bandwidth_monthly_cap_bytes
         over_daily = daily_cap > 0 and daily_bytes > daily_cap

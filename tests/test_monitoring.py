@@ -499,9 +499,7 @@ def test_video_backlog_routes_general_bandwidth_cap_routes_emergency():
 
     cfg = MonitorConfig(bandwidth_daily_cap_bytes=500_000)
     mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}], cfg=cfg)
-    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 0}))  # baseline: first observation, no delta
-    channel.sent.clear()
-    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 1_000_000}))  # delta exceeds the cap
+    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded": 1_000_000}))  # delta exceeds the cap
     cap = [n for n in channel.sent if "data cap exceeded" in n.title]
     assert cap and all(n.route == "emergency" for n in cap)
 
@@ -510,39 +508,41 @@ def test_video_backlog_routes_general_bandwidth_cap_routes_emergency():
 # cumulative bandwidth: DeviceState rollup + the on_heartbeat cap check
 # ---------------------------------------------------------------------------
 
-def test_record_bandwidth_delta_accumulates_within_a_day():
+def test_record_bandwidth_usage_accumulates_within_a_day():
+    """The device sends bytes_uploaded already windowed -- bytes transferred
+    since its last heartbeat's drain (TransferStats.drain() resets on every
+    call) -- not a lifetime counter for us to diff ourselves. Each call's
+    delta is added directly, no "first observation" baseline needed."""
     state = DeviceState("FLIK1")
-    daily, monthly = state.record_bandwidth_delta(1000.0, NOW)
-    assert (daily, monthly) == (0.0, 0.0)  # first observation: no prior counter, no delta
-    daily, monthly = state.record_bandwidth_delta(1500.0, NOW + timedelta(minutes=5))
+    daily, monthly = state.record_bandwidth_usage(500.0, NOW)
     assert (daily, monthly) == (500.0, 500.0)
-    daily, monthly = state.record_bandwidth_delta(2000.0, NOW + timedelta(minutes=10))
+    daily, monthly = state.record_bandwidth_usage(500.0, NOW + timedelta(minutes=5))
     assert (daily, monthly) == (1000.0, 1000.0)
 
 
-def test_record_bandwidth_delta_resets_daily_but_not_monthly_on_day_rollover():
+def test_record_bandwidth_usage_resets_daily_but_not_monthly_on_day_rollover():
     state = DeviceState("FLIK1")
-    state.record_bandwidth_delta(1000.0, NOW)  # baseline, no delta
-    state.record_bandwidth_delta(1500.0, NOW + timedelta(hours=1))  # day 1: +500
+    state.record_bandwidth_usage(500.0, NOW)  # day 1: 500
     tomorrow = NOW + timedelta(days=1)
-    daily, monthly = state.record_bandwidth_delta(2000.0, tomorrow)  # day 2 starts: +500
+    daily, monthly = state.record_bandwidth_usage(500.0, tomorrow)  # day 2 starts: +500
     assert daily == 500.0  # day 1's usage dropped off
-    assert monthly == 1000.0  # day 1's 500 + day 2's 500 so far
-    daily, monthly = state.record_bandwidth_delta(2500.0, tomorrow + timedelta(hours=1))  # day 2: +500 more
+    assert monthly == 1000.0  # day 1 + day 2 so far
+    daily, monthly = state.record_bandwidth_usage(500.0, tomorrow + timedelta(hours=1))  # day 2: +500 more
     assert daily == 1000.0  # day 2 total only
     assert monthly == 1500.0  # day 1 + day 2, same month
 
 
-def test_record_bandwidth_delta_treats_counter_drop_as_reboot_not_negative_usage():
+def test_record_bandwidth_usage_ignores_negative_delta():
+    """The device's own accumulator can't go backwards (drain() always resets
+    to 0, never negative), but guard anyway: a bad sample must not silently
+    erase real recorded usage by subtracting from the running total."""
     state = DeviceState("FLIK1")
-    state.record_bandwidth_delta(5000.0, NOW)
-    daily, monthly = state.record_bandwidth_delta(100.0, NOW + timedelta(minutes=1))  # device rebooted, counter reset
-    assert (daily, monthly) == (0.0, 0.0)
-    daily, monthly = state.record_bandwidth_delta(300.0, NOW + timedelta(minutes=2))
-    assert (daily, monthly) == (200.0, 200.0)
+    state.record_bandwidth_usage(500.0, NOW)
+    daily, monthly = state.record_bandwidth_usage(-100.0, NOW + timedelta(minutes=1))
+    assert (daily, monthly) == (500.0, 500.0)
 
 
-def test_bandwidth_cap_dormant_without_upload_counter():
+def test_bandwidth_cap_dormant_without_upload_bytes():
     mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}], cfg=MonitorConfig(bandwidth_daily_cap_bytes=1.0))
     mon.on_heartbeat(_heartbeat("FLIK1"))
     assert channel.sent == []
@@ -550,7 +550,7 @@ def test_bandwidth_cap_dormant_without_upload_counter():
 
 def test_bandwidth_cap_disabled_by_default():
     mon, store, channel = _monitoring(roster=[{"device_id": "FLIK1"}])
-    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded_total": 10_000_000_000}))
+    mon.on_heartbeat(_heartbeat("FLIK1", upload={"bytes_uploaded": 10_000_000_000}))
     assert not any("data cap" in n.title for n in channel.sent)
 
 

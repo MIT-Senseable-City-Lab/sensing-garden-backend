@@ -749,7 +749,7 @@ def test_heartbeat_passes_through_pipeline_upload_network_and_incoming_fields() 
             "classification_queue": 0,
             "detection": {"count": 4, "avg_seconds": 41.2, "max_seconds": 60.0},
         },
-        "upload": {"pending": 7, "bytes_uploaded_total": 999},
+        "upload": {"pending": 7, "bytes_uploaded": 999},
     }
     storage = MemoryStorage({"v1/flik5/heartbeats/heartbeat.json": json.dumps(payload).encode("utf-8")})
     writer = trigger_handler.CollectingWriter()
