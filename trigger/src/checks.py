@@ -323,10 +323,13 @@ def check_bandwidth(
     now: datetime,
     cfg: MonitorConfig,
 ) -> List[Finding]:
-    """Upload health: live queue depth plus two trends over the last
-    bandwidth_trend_window_hours (default 2h) of history, by elapsed time --
-    not just "the last N samples," which silently means a different span
-    whenever heartbeat frequency changes.
+    """Upload health: three trends over the last bandwidth_trend_window_hours
+    (default 2h) of history, by elapsed time -- not just "the last N
+    samples," which silently means a different span whenever heartbeat
+    frequency changes, and not a single instantaneous reading either: a
+    momentarily noisy queue depth crossing the threshold on one heartbeat
+    must not flap BAD/OK (observed live: one device flipped 15+ times in a
+    few hours before this fix).
 
     Field names match what the device actually sends (pollen.py's Pollen.stats()):
     `pending` (live queue count) and `avg_mbps` (decimal MB/s, converted to
@@ -337,9 +340,15 @@ def check_bandwidth(
         return []
     problems: List[str] = []
     depth = _number(upload.get("pending"))
-    if depth is not None and depth > cfg.upload_queue_depth_max:
-        problems.append(f"queue depth {int(depth)} (max {cfg.upload_queue_depth_max})")
     window_hours = cfg.bandwidth_trend_window_hours
+    depth_window = _series_within_window(history, "pending", now, window_hours)
+    if len(depth_window) >= cfg.upload_queue_depth_min_samples and all(
+        d > cfg.upload_queue_depth_max for d in depth_window
+    ):
+        problems.append(
+            f"queue depth over {cfg.upload_queue_depth_max} for the last {window_hours:.0f}h "
+            f"(currently {int(depth_window[-1])})"
+        )
     pending_window = _series_within_window(history, "pending_bytes", now, window_hours)
     if len(pending_window) >= cfg.pending_bytes_growth_samples and _strictly_increasing(pending_window):
         problems.append(f"pending bytes growing over the last {window_hours:.0f}h ({_human_bytes(pending_window[-1])} queued)")
@@ -368,15 +377,18 @@ def check_restart(
     """Detects a process restart from process-lifetime uptime: the device derives
     it from a monotonic clock within the running process (a systemd restart after
     a crash is otherwise invisible -- host uptime keeps climbing), so it only ever
-    grows across one process's life. Any drop between consecutive heartbeats means
-    the pipeline restarted. An ordinary OK/BAD check (not a one-shot event) so a
+    grows across one process's life. A drop between consecutive heartbeats means
+    the pipeline restarted -- but only if the new value is actually small
+    (restart_min_uptime_seconds): a genuine reboot resets uptime near zero, so a
+    drop that lands anywhere else (e.g. "10.8d" to "10.8d") is measurement noise,
+    not a restart. An ordinary OK/BAD check (not a one-shot event) so a
     crash-looping device re-fires the transition -- and therefore re-notifies --
     on every restart, not just the first."""
     uptimes = _series(history, "uptime_seconds")
     if len(uptimes) < 2:
         return []
     previous, current = uptimes[-2], uptimes[-1]
-    if current < previous:
+    if current < previous and current < cfg.restart_min_uptime_seconds:
         return [
             Finding(
                 device_id,

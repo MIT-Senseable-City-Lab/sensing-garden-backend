@@ -33,8 +33,15 @@ class MonitorConfig:
     thermal_consecutive_samples: int = 2
     # DOT freshness: a DOT this stale while its FLIK is alive means camera death
     dot_max_age_seconds: float = 1800.0
+    # a drop in uptime only counts as a real restart if the new value is this
+    # small -- a genuine reboot resets uptime near zero; a drop that lands
+    # anywhere else is measurement noise, not a restart
+    restart_min_uptime_seconds: float = 3600.0
     # bandwidth / results (dormant until heartbeat v2 fields arrive)
     upload_queue_depth_max: int = 50
+    # minimum samples within bandwidth_trend_window_hours over the depth max
+    # before paging -- a single noisy heartbeat must not flap the check
+    upload_queue_depth_min_samples: int = 3
     upload_min_bytes_per_sec: float = 100 * 1024
     upload_slow_consecutive_samples: int = 3
     results_unpublished_consecutive_samples: int = 3
@@ -79,7 +86,13 @@ class MonitorConfig:
             thermal_max_celsius=_env_float("MONITOR_THERMAL_MAX_CELSIUS", cls.thermal_max_celsius),
             thermal_consecutive_samples=int(_env_float("MONITOR_THERMAL_CONSECUTIVE_SAMPLES", cls.thermal_consecutive_samples)),
             dot_max_age_seconds=_env_float("MONITOR_DOT_MAX_AGE_SECONDS", cls.dot_max_age_seconds),
+            restart_min_uptime_seconds=_env_float(
+                "MONITOR_RESTART_MIN_UPTIME_SECONDS", cls.restart_min_uptime_seconds
+            ),
             upload_queue_depth_max=int(_env_float("MONITOR_UPLOAD_QUEUE_DEPTH_MAX", cls.upload_queue_depth_max)),
+            upload_queue_depth_min_samples=int(
+                _env_float("MONITOR_UPLOAD_QUEUE_DEPTH_MIN_SAMPLES", cls.upload_queue_depth_min_samples)
+            ),
             upload_min_bytes_per_sec=_env_float("MONITOR_UPLOAD_MIN_BYTES_PER_SEC", cls.upload_min_bytes_per_sec),
             upload_slow_consecutive_samples=int(
                 _env_float("MONITOR_UPLOAD_SLOW_CONSECUTIVE_SAMPLES", cls.upload_slow_consecutive_samples)

@@ -173,7 +173,35 @@ class Monitoring:
         return self._roster_cache
 
     def _is_monitored(self, device_id: str) -> bool:
-        return any(str(d.get("device_id")) == device_id for d in self.roster())
+        """The single gate shared by every notification path (content checks,
+        log digests, capture reports, digest(), post_backdrops()) -- requires
+        liveness_enabled specifically (the flag devices_cli.py toggles), not
+        just roster membership. The roster accumulates every device ever
+        registered, including years of test/scratch entries; without this,
+        each of those paths independently reverts to notifying for all of
+        them. sweep() applies this same flag directly (plus its own
+        DOT-child exclusion) rather than through this method, since it also
+        needs the excluded roster subset for other bookkeeping.
+
+        A DOT child with no liveness_enabled of its own inherits its parent
+        FLIK's setting: DOT rows never get individually enabled in practice
+        (the CLI is used per-FLIK), and tracks/backdrops are correctly
+        attributed per-DOT, so without inheritance enabling a FLIK would
+        silently leave every one of its DOTs unmonitored for digest/backdrop.
+        An explicit liveness_enabled=False on the DOT itself overrides the
+        parent, so one problem DOT can still be silenced on its own."""
+        roster = self.roster()
+        device = next((d for d in roster if str(d.get("device_id")) == device_id), None)
+        if device is None:
+            return False
+        own = device.get("liveness_enabled")
+        if own is not None:
+            return own is True
+        parent_id = device.get("parent_device_id")
+        if not parent_id:
+            return False
+        parent = next((d for d in roster if str(d.get("device_id")) == str(parent_id)), None)
+        return parent is not None and parent.get("liveness_enabled") is True
 
     # -- entry points ------------------------------------------------------
 
@@ -274,7 +302,7 @@ class Monitoring:
         sent = 0
         for device in self.roster():
             device_id = str(device.get("device_id", ""))
-            if not device_id:
+            if not device_id or not self._is_monitored(device_id):
                 continue
             count = self._track_count_fn(device_id, window_start, now)
             self.notifier.notify(
@@ -297,7 +325,7 @@ class Monitoring:
         sent = 0
         for device in self.roster():
             device_id = str(device.get("device_id", ""))
-            if not device_id:
+            if not device_id or not self._is_monitored(device_id):
                 continue
             key = self._backdrop_key_fn(device_id)
             if key is None:

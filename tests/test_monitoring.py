@@ -75,11 +75,18 @@ def _monitoring(roster=None, latest=None, track_counts=None, backdrop_keys=None,
                  cfg: MonitorConfig = CFG, now: datetime = NOW):
     store = FakeStateStore()
     channel = RecordingChannel()
+    base_roster = roster if roster is not None else [{"device_id": "FLIK1"}]
+    # liveness_enabled defaults True here (test convenience only -- the real
+    # roster has no such default): most tests are exercising a specific check's
+    # behavior, not the enable/disable gate itself, so they shouldn't all have
+    # to spell out "this device is enabled" by hand. Tests that ARE about the
+    # gate pass liveness_enabled explicitly, which overrides this default.
+    resolved_roster = [{"liveness_enabled": True, **d} for d in base_roster]
     mon = Monitoring(
         cfg=cfg,
         state_store=store,
         notifier=Notifier([channel]),
-        roster_fn=lambda: roster if roster is not None else [{"device_id": "FLIK1"}],
+        roster_fn=lambda: resolved_roster,
         latest_heartbeats_fn=lambda ids: latest or {},
         track_count_fn=lambda device_id, window_start, now: (track_counts or {}).get(device_id, 0),
         backdrop_key_fn=lambda device_id: (backdrop_keys or {}).get(device_id),
@@ -232,11 +239,28 @@ def test_bandwidth_fires_on_growing_pending_bytes():
 def test_bandwidth_queue_depth_reads_the_real_device_field():
     """The device sends `pending` (a live count), not `queue_depth` -- the
     old field name the check used to read, which the device has never sent,
-    so that leg silently never fired."""
-    over_max = _heartbeat(upload={"pending": CFG.upload_queue_depth_max + 10})
-    (finding,) = checks.check_bandwidth("FLIK1", over_max, [checks.extract_samples(over_max)], NOW, CFG)
+    so that leg silently never fired. Sustained over the window, matching
+    the other two legs -- not a single instantaneous reading (see
+    test_bandwidth_queue_depth_ignores_a_single_spike for why)."""
+    n = CFG.upload_queue_depth_min_samples
+    step_seconds = (CFG.bandwidth_trend_window_hours * 3600) / n
+    beats = [
+        _heartbeat(age_seconds=(n - 1 - i) * step_seconds, upload={"pending": CFG.upload_queue_depth_max + 10})
+        for i in range(n)
+    ]
+    history = [checks.extract_samples(b) for b in beats]
+    (finding,) = checks.check_bandwidth("FLIK1", beats[-1], history, NOW, CFG)
     assert finding.status == checks.BAD
     assert "queue depth" in finding.body
+
+
+def test_bandwidth_queue_depth_ignores_a_single_spike():
+    """A momentarily noisy queue crossing the threshold on one heartbeat must
+    not page -- this is exactly the flapping observed live (FLIK3 flipping
+    BAD/OK 15+ times in a few hours as its queue bounced around 50)."""
+    spike = _heartbeat(upload={"pending": CFG.upload_queue_depth_max + 10})
+    (finding,) = checks.check_bandwidth("FLIK1", spike, [checks.extract_samples(spike)], NOW, CFG)
+    assert finding.status == checks.OK
 
 
 def test_bandwidth_throughput_reads_avg_mbps_converted_to_bytes():
@@ -308,6 +332,18 @@ def test_restart_fires_on_uptime_drop_and_clears_on_growth():
     assert finding.status == checks.OK
 
 
+def test_restart_ignores_a_tiny_drop_that_is_not_a_real_reboot():
+    """A genuine restart resets uptime near zero -- a drop that's still deep
+    into "days" territory isn't a reboot, it's measurement noise (observed
+    live: "Process uptime dropped from 10.8d to 10.8d", which is not a real
+    10.8-day uptime reappearing within one heartbeat interval)."""
+    history = [checks.extract_samples(_heartbeat(uptime_seconds=933120.0))]  # 10.8d
+    jittered = _heartbeat(uptime_seconds=933119.0)  # 10.8d, 1s "lower"
+    history.append(checks.extract_samples(jittered))
+    (finding,) = checks.check_restart("FLIK1", jittered, history, NOW, CFG)
+    assert finding.status == checks.OK
+
+
 def test_restart_dormant_without_uptime_field():
     beat = _heartbeat()
     del beat["uptime_seconds"]
@@ -348,7 +384,7 @@ def test_critical_repages_after_cooldown():
         cfg=CFG,
         state_store=store,
         notifier=Notifier([channel]),
-        roster_fn=lambda: [{"device_id": "FLIK1"}],
+        roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
         latest_heartbeats_fn=lambda ids: {},
         now_fn=lambda: clock["now"],
     )
@@ -377,7 +413,7 @@ def test_warning_repages_after_cooldown_but_not_before():
         cfg=cfg,
         state_store=store,
         notifier=Notifier([channel]),
-        roster_fn=lambda: [{"device_id": "FLIK1"}],
+        roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
         latest_heartbeats_fn=lambda ids: {},
         now_fn=lambda: clock["now"],
     )
@@ -453,20 +489,26 @@ def test_sweep_excludes_dot_children_from_liveness():
 
 
 def test_sweep_liveness_is_opt_in_not_opt_out():
-    """Liveness alerting is disabled by default -- a device only gets checked
-    once liveness_enabled is explicitly set True (via the devices CLI). This
-    is deliberately a stricter gate than the roster's own monitored flag
-    (which still governs digest/backdrop): the roster accumulates every
-    device ever registered, including years of test/scratch entries, and
-    liveness alerting shouldn't have to be opted OUT of one by one."""
-    mon, store, channel = _monitoring(
-        roster=[
+    """Every notification path is opt-in via liveness_enabled (devices_cli.py) --
+    a device only gets checked once it's explicitly set True. The roster
+    accumulates every device ever registered, including years of test/scratch
+    entries, and monitoring shouldn't have to be opted OUT of one by one.
+    Constructs Monitoring directly (not the _monitoring() helper, which
+    defaults liveness_enabled True for convenience elsewhere) so FLIK1's
+    absent flag is genuinely absent, not defaulted."""
+    mon = Monitoring(
+        cfg=CFG,
+        state_store=FakeStateStore(),
+        notifier=Notifier([RecordingChannel()]),
+        roster_fn=lambda: [
             {"device_id": "FLIK1"},  # liveness_enabled absent
             {"device_id": "FLIK2", "liveness_enabled": False},
             {"device_id": "FLIK3", "liveness_enabled": True},
         ],
-        latest={},
+        latest_heartbeats_fn=lambda ids: {},
+        now_fn=lambda: NOW,
     )
+    channel = mon.notifier.channels[0]
     summary = mon.sweep()
     assert summary["devices"] == 1
     assert [n for n in channel.sent if "FLIK1" in n.title or "FLIK2" in n.title] == []
@@ -567,6 +609,29 @@ def test_digest_reports_new_track_count_per_device_on_general_route():
     assert titles == {"FLIK1: 7 new track(s)", "FLIK2: 0 new track(s)"}
 
 
+def test_digest_skips_devices_without_liveness_enabled():
+    """digest() used to iterate the raw roster with no gate at all -- every
+    device ever registered (test/scratch entries included) got an "0 new
+    track(s)" notification every window, forever. Now shares the same
+    liveness_enabled gate as every other notification path."""
+    mon = Monitoring(
+        cfg=CFG,
+        state_store=FakeStateStore(),
+        notifier=Notifier([RecordingChannel()]),
+        roster_fn=lambda: [
+            {"device_id": "FLIK1", "liveness_enabled": True},
+            {"device_id": "test-scratch-device"},  # liveness_enabled absent
+        ],
+        latest_heartbeats_fn=lambda ids: {},
+        track_count_fn=lambda device_id, window_start, now: 0,
+        now_fn=lambda: NOW,
+    )
+    channel = mon.notifier.channels[0]
+    summary = mon.digest()
+    assert summary == {"devices": 1}
+    assert channel.sent and all("FLIK1" in n.title for n in channel.sent)
+
+
 def test_digest_window_is_configurable():
     seen_windows = []
 
@@ -578,7 +643,7 @@ def test_digest_window_is_configurable():
         cfg=MonitorConfig(digest_window_hours=4.0),
         state_store=FakeStateStore(),
         notifier=Notifier([RecordingChannel()]),
-        roster_fn=lambda: [{"device_id": "FLIK1"}],
+        roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
         latest_heartbeats_fn=lambda ids: {},
         track_count_fn=track_count_fn,
         now_fn=lambda: NOW,
@@ -608,6 +673,95 @@ def test_post_backdrops_silent_when_no_device_has_a_background():
     summary = mon.post_backdrops()
     assert summary == {"devices": 0}
     assert channel.sent == []
+
+
+def test_post_backdrops_skips_devices_without_liveness_enabled():
+    mon = Monitoring(
+        cfg=CFG,
+        state_store=FakeStateStore(),
+        notifier=Notifier([RecordingChannel()]),
+        roster_fn=lambda: [
+            {"device_id": "FLIK1", "liveness_enabled": True},
+            {"device_id": "test-scratch-device"},  # liveness_enabled absent
+        ],
+        latest_heartbeats_fn=lambda ids: {},
+        backdrop_key_fn=lambda device_id: f"v1/{device_id}/dot/DOT1/x_background.jpg",
+        presign_fn=lambda key: f"https://presigned.example/{key}",
+        now_fn=lambda: NOW,
+    )
+    channel = mon.notifier.channels[0]
+    summary = mon.post_backdrops()
+    assert summary == {"devices": 1}
+    assert channel.sent and all("FLIK1" in n.title for n in channel.sent)
+
+
+class TestIsMonitored:
+    """_is_monitored() is the single gate shared by on_heartbeat, on_log_digest,
+    on_capture_report, digest(), and post_backdrops() -- it must require
+    liveness_enabled specifically, not just roster membership, or any one of
+    those paths silently reverts to notifying for every registered device."""
+
+    def test_requires_liveness_enabled_true_not_just_roster_membership(self):
+        mon = Monitoring(
+            cfg=CFG,
+            state_store=FakeStateStore(),
+            notifier=Notifier([RecordingChannel()]),
+            roster_fn=lambda: [
+                {"device_id": "FLIK1", "liveness_enabled": True},
+                {"device_id": "FLIK2", "liveness_enabled": False},
+                {"device_id": "FLIK3"},  # absent
+            ],
+            now_fn=lambda: NOW,
+        )
+        assert mon._is_monitored("FLIK1") is True
+        assert mon._is_monitored("FLIK2") is False
+        assert mon._is_monitored("FLIK3") is False
+
+    def test_dot_child_inherits_parent_liveness_enabled(self):
+        """Enabling a FLIK should reasonably cover its DOT children too --
+        without this, digest()/post_backdrops() (which now share this gate)
+        would go silent for every DOT under an enabled FLIK, since DOT rows
+        never get their own liveness_enabled set individually in practice."""
+        mon = Monitoring(
+            cfg=CFG,
+            state_store=FakeStateStore(),
+            notifier=Notifier([RecordingChannel()]),
+            roster_fn=lambda: [
+                {"device_id": "FLIK1", "liveness_enabled": True},
+                {"device_id": "FLIK1-dot01", "parent_device_id": "FLIK1"},  # own flag absent
+                {"device_id": "FLIK2"},  # parent not enabled
+                {"device_id": "FLIK2-dot01", "parent_device_id": "FLIK2"},
+            ],
+            now_fn=lambda: NOW,
+        )
+        assert mon._is_monitored("FLIK1-dot01") is True
+        assert mon._is_monitored("FLIK2-dot01") is False
+
+    def test_dot_child_explicit_false_overrides_parent(self):
+        """A DOT explicitly disabled on its own stays disabled even if its
+        parent FLIK is enabled -- lets you silence one problem DOT without
+        touching the rest of the fleet."""
+        mon = Monitoring(
+            cfg=CFG,
+            state_store=FakeStateStore(),
+            notifier=Notifier([RecordingChannel()]),
+            roster_fn=lambda: [
+                {"device_id": "FLIK1", "liveness_enabled": True},
+                {"device_id": "FLIK1-dot01", "parent_device_id": "FLIK1", "liveness_enabled": False},
+            ],
+            now_fn=lambda: NOW,
+        )
+        assert mon._is_monitored("FLIK1-dot01") is False
+
+    def test_device_not_on_roster_at_all_is_not_monitored(self):
+        mon = Monitoring(
+            cfg=CFG,
+            state_store=FakeStateStore(),
+            notifier=Notifier([RecordingChannel()]),
+            roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
+            now_fn=lambda: NOW,
+        )
+        assert mon._is_monitored("GHOST") is False
 
 
 def test_latest_dot_background_key_picks_newest_by_last_modified(monkeypatch):

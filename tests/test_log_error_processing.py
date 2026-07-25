@@ -209,7 +209,7 @@ class TestOnLogDigest:
             cfg=cfg or MonitorConfig(),
             state_store=store,
             notifier=Notifier([channel]),
-            roster_fn=lambda: [{"device_id": "FLIK1"}],
+            roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
             latest_heartbeats_fn=lambda ids: {},
             now_fn=lambda: clock["now"],
         )
