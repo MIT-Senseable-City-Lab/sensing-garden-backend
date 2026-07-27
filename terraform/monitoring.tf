@@ -10,7 +10,7 @@ variable "monitor_ntfy_emergency_url" {
 }
 
 variable "monitor_ntfy_general_url" {
-  description = "ntfy topic URL for general notifications: warnings, digests, backdrop images (empty = channel disabled)"
+  description = "ntfy topic URL for general notifications: warnings, digests (empty = channel disabled)"
   type        = string
   default     = ""
 }
@@ -119,24 +119,4 @@ resource "aws_lambda_permission" "eventbridge_invoke_trigger_digest" {
   function_name = aws_lambda_function.trigger_handler_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.monitoring_digest.arn
-}
-
-resource "aws_cloudwatch_event_rule" "monitoring_backdrop" {
-  name                = "sensing-garden-monitoring-backdrop"
-  description         = "Periodic DOT backdrop image post via the trigger Lambda (general route)"
-  schedule_expression = "rate(3 hours)"
-}
-
-resource "aws_cloudwatch_event_target" "monitoring_backdrop" {
-  rule  = aws_cloudwatch_event_rule.monitoring_backdrop.name
-  arn   = aws_lambda_function.trigger_handler_function.arn
-  input = jsonencode({ source = "aws.events", task = "backdrop" })
-}
-
-resource "aws_lambda_permission" "eventbridge_invoke_trigger_backdrop" {
-  statement_id  = "AllowEventBridgeInvokeBackdrop"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.trigger_handler_function.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.monitoring_backdrop.arn
 }
