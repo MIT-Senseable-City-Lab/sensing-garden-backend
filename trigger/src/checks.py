@@ -73,10 +73,20 @@ def extract_samples(heartbeat: Dict[str, Any]) -> Dict[str, float]:
     ts = parse_timestamp(heartbeat.get("timestamp"))
     if ts is not None:
         samples["ts"] = ts.timestamp()
-    for field in ("storage_free_bytes", "cpu_temperature_celsius", "uptime_seconds"):
+    for field in ("storage_free_bytes", "cpu_temperature_celsius"):
         value = _number(heartbeat.get(field))
         if value is not None:
             samples[field] = value
+    # uptime_seconds comes from the pipeline process's own monotonic clock
+    # (heartbeat["pipeline"]["uptime_seconds"]), not the top-level field the
+    # device also sends -- that one is host /proc/uptime, which keeps
+    # climbing straight through a bugcam service restart and so can never
+    # detect one. check_restart needs the process-lifetime value.
+    pipeline = heartbeat.get("pipeline")
+    if isinstance(pipeline, dict):
+        value = _number(pipeline.get("uptime_seconds"))
+        if value is not None:
+            samples["uptime_seconds"] = value
     upload = heartbeat.get("upload")
     if isinstance(upload, dict):
         for src, dst in (

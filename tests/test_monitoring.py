@@ -38,7 +38,8 @@ def _heartbeat(device_id: str = "FLIK1", *, age_seconds: float = 0, **extra) -> 
         "cpu_temperature_celsius": 55.0,
         "storage_free_bytes": 50 * 1024**3,
         "storage_total_bytes": 100 * 1024**3,
-        "uptime_seconds": 3600.0,
+        "uptime_seconds": 3600.0,  # host OS uptime (/proc/uptime) -- check_restart ignores this
+        "pipeline": {"uptime_seconds": 3600.0},  # process-lifetime uptime -- what check_restart reads
         "dot_status": [{"dot_id": "DOT1", "last_modified": (NOW - timedelta(minutes=5)).isoformat()}],
     }
     payload.update(extra)
@@ -310,21 +311,21 @@ def test_bandwidth_requires_minimum_points_within_window():
 
 
 def test_restart_needs_a_prior_sample():
-    first = _heartbeat(uptime_seconds=3600.0)
+    first = _heartbeat(pipeline={"uptime_seconds": 3600.0})
     history = [checks.extract_samples(first)]
     assert checks.check_restart("FLIK1", first, history, NOW, CFG) == []
 
 
 def test_restart_fires_on_uptime_drop_and_clears_on_growth():
-    history = [checks.extract_samples(_heartbeat(uptime_seconds=3600.0))]
+    history = [checks.extract_samples(_heartbeat(pipeline={"uptime_seconds": 3600.0}))]
 
-    restarted = _heartbeat(uptime_seconds=45.0)
+    restarted = _heartbeat(pipeline={"uptime_seconds": 45.0})
     history.append(checks.extract_samples(restarted))
     (finding,) = checks.check_restart("FLIK1", restarted, history, NOW, CFG)
     assert finding.status == checks.BAD
     assert "restart" in finding.title.lower()
 
-    recovered = _heartbeat(uptime_seconds=120.0)
+    recovered = _heartbeat(pipeline={"uptime_seconds": 120.0})
     history.append(checks.extract_samples(recovered))
     (finding,) = checks.check_restart("FLIK1", recovered, history, NOW, CFG)
     assert finding.status == checks.OK
@@ -335,8 +336,8 @@ def test_restart_ignores_a_tiny_drop_that_is_not_a_real_reboot():
     into "days" territory isn't a reboot, it's measurement noise (observed
     live: "Process uptime dropped from 10.8d to 10.8d", which is not a real
     10.8-day uptime reappearing within one heartbeat interval)."""
-    history = [checks.extract_samples(_heartbeat(uptime_seconds=933120.0))]  # 10.8d
-    jittered = _heartbeat(uptime_seconds=933119.0)  # 10.8d, 1s "lower"
+    history = [checks.extract_samples(_heartbeat(pipeline={"uptime_seconds": 933120.0}))]  # 10.8d
+    jittered = _heartbeat(pipeline={"uptime_seconds": 933119.0})  # 10.8d, 1s "lower"
     history.append(checks.extract_samples(jittered))
     (finding,) = checks.check_restart("FLIK1", jittered, history, NOW, CFG)
     assert finding.status == checks.OK
@@ -344,9 +345,31 @@ def test_restart_ignores_a_tiny_drop_that_is_not_a_real_reboot():
 
 def test_restart_dormant_without_uptime_field():
     beat = _heartbeat()
-    del beat["uptime_seconds"]
+    del beat["pipeline"]
     history = [checks.extract_samples(beat), checks.extract_samples(beat)]
     assert checks.check_restart("FLIK1", beat, history, NOW, CFG) == []
+
+
+def test_restart_ignores_top_level_uptime_seconds_reads_pipeline_instead():
+    """Regression: uptime_seconds at the top level is host /proc/uptime, which
+    keeps climbing straight through a bugcam service restart -- only
+    pipeline.uptime_seconds (the process's own monotonic clock) actually
+    resets. A device whose OS uptime keeps growing while its pipeline uptime
+    collapses must still be flagged as restarted."""
+    history = [checks.extract_samples(
+        _heartbeat(uptime_seconds=933120.0, pipeline={"uptime_seconds": 3600.0})
+    )]
+    restarted = _heartbeat(uptime_seconds=933180.0, pipeline={"uptime_seconds": 10.0})
+    history.append(checks.extract_samples(restarted))
+    (finding,) = checks.check_restart("FLIK1", restarted, history, NOW, CFG)
+    assert finding.status == checks.BAD
+
+
+def test_extract_samples_ignores_missing_pipeline_field():
+    beat = _heartbeat()
+    del beat["pipeline"]
+    samples = checks.extract_samples(beat)
+    assert "uptime_seconds" not in samples
 
 
 # ---------------------------------------------------------------------------
@@ -431,10 +454,10 @@ def test_warning_repages_after_cooldown_but_not_before():
 
 def test_on_heartbeat_notifies_every_restart_not_just_the_first():
     mon, store, channel = _monitoring()
-    mon.on_heartbeat(_heartbeat(uptime_seconds=3600.0))
-    mon.on_heartbeat(_heartbeat(uptime_seconds=50.0))  # restart 1
-    mon.on_heartbeat(_heartbeat(uptime_seconds=200.0))  # stayed up
-    mon.on_heartbeat(_heartbeat(uptime_seconds=40.0))  # restart 2 (crash loop)
+    mon.on_heartbeat(_heartbeat(pipeline={"uptime_seconds": 3600.0}))
+    mon.on_heartbeat(_heartbeat(pipeline={"uptime_seconds": 50.0}))  # restart 1
+    mon.on_heartbeat(_heartbeat(pipeline={"uptime_seconds": 200.0}))  # stayed up
+    mon.on_heartbeat(_heartbeat(pipeline={"uptime_seconds": 40.0}))  # restart 2 (crash loop)
     restarts = [n for n in channel.sent if "restarted" in n.title]
     assert len(restarts) == 2
 
