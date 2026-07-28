@@ -78,12 +78,16 @@ class RecordingMonitor:
     def __init__(self):
         self.digests = []
         self.heartbeats = []
+        self.capture_reports = []
 
     def on_log_digest(self, digest):
         self.digests.append(digest)
 
     def on_heartbeat(self, record):
         self.heartbeats.append(record)
+
+    def on_capture_report(self, record):
+        self.capture_reports.append(record)
 
 
 class TestProcessLogObject:
@@ -198,6 +202,44 @@ class TestProcessLogObject:
         assert summary["heartbeats"] == 1
         (record,) = monitor.heartbeats
         assert record["device_id"] == "FLIK1"
+
+    def test_archive_member_capture_report_reaches_monitor(self, tmp_path):
+        """Capture (sampling-effort) reports ride the tar with --archive-batch
+        (capture_report.py: 'each one lands in the per-device tar next to the
+        results it describes'), so this is their only real delivery path in
+        production -- process_archive_object's member classifier previously
+        had no branch for ProcessingKind.CAPTURE at all, so every capture
+        report shipped this way was silently dropped."""
+        member_key = "v1/FLIK1/captures/20260713_120000.json"
+        archive_key = "v2/archives/FLIK1/20260713_120000.tar"
+        payload = json.dumps({
+            "device_id": "FLIK1",
+            "period_start": "2026-07-13T11:00:00+00:00",
+            "period_end": "2026-07-13T12:00:00+00:00",
+            "sample_count": 3,
+            "total_duration_seconds": 90.0,
+        }).encode("utf-8")
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            info = tarfile.TarInfo(name=member_key)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+        target = tmp_path / archive_key
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(buffer.getvalue())
+
+        monitor = RecordingMonitor()
+        summary = trigger_handler.process_archive_object(
+            trigger_handler.LocalStorageAdapter(tmp_path),
+            trigger_handler.CollectingWriter(),
+            "bucket",
+            archive_key,
+            monitor=monitor,
+        )
+        assert summary["capture_reports"] == 1
+        (record,) = monitor.capture_reports
+        assert record["device_id"] == "FLIK1"
+        assert record["sample_count"] == 3
 
 
 class TestOnLogDigest:

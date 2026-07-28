@@ -1222,6 +1222,7 @@ def process_archive_object(
     json_object_names: List[str] = []
     video_names: List[str] = []
     log_names: List[str] = []
+    capture_names: List[str] = []
     for name in adapter.member_names():
         if name.endswith("/results.json"):
             results_names.append(name)
@@ -1231,6 +1232,8 @@ def process_archive_object(
             json_object_names.append(name)
         elif _processing_kind(name) == ProcessingKind.LOG:
             log_names.append(name)
+        elif _processing_kind(name) == ProcessingKind.CAPTURE:
+            capture_names.append(name)
 
     for name in sorted(results_names):
         try:
@@ -1282,6 +1285,19 @@ def process_archive_object(
             summary["skipped_members"] += 1
             log_s3_trigger(
                 S3TriggerAction.FAILED, bucket, name, kind=member_kind.value,
+                reason="archive_member_failed", archive_key=key, error=str(exc),
+            )
+
+    # Capture (sampling-effort) reports: with --archive-batch these ride the
+    # tar next to the results they describe rather than landing as standalone
+    # objects, so they only ever reach the monitor from here.
+    for name in sorted(capture_names):
+        try:
+            _merge_summary(summary, process_capture_object(adapter, index_writer, bucket, name, monitor=monitor))
+        except Exception as exc:
+            summary["skipped_members"] += 1
+            log_s3_trigger(
+                S3TriggerAction.FAILED, bucket, name, kind=ProcessingKind.CAPTURE.value,
                 reason="archive_member_failed", archive_key=key, error=str(exc),
             )
 
