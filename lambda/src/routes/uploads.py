@@ -108,3 +108,45 @@ def handle_upload_url(
     except Exception as exc:
         _record_upload_url(device_id, s3_key, 500)
         return json_response(500, {"error": str(exc)})
+
+def handle_batch_upload_url(
+    event: Dict[str, Any],
+    authenticated_device: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    device_id = str((authenticated_device or {}).get("device_id") or "")
+    try:
+        if not authenticated_device:
+            raise PermissionError("Authenticated device context is required")
+        body = _parse_request(event)
+        raw_keys = body.get("s3_keys")
+        if not isinstance(raw_keys, list) or not raw_keys:
+            raise ValueError("s3_keys must be a non-empty list")
+        if len(raw_keys) > 200:
+            raise ValueError("s3_keys must contain 200 or fewer keys per request")
+
+        results = []
+        for s3_key in raw_keys:
+            validated_key = _validate_s3_key(s3_key)
+            _validate_device_scope(validated_key, authenticated_device)
+            upload_url = generate_presigned_put_url(validated_key, OUTPUT_BUCKET, PRESIGNED_URL_EXPIRY)
+            if not upload_url:
+                raise RuntimeError(f"Failed to generate upload URL for {validated_key}")
+            results.append({"s3_key": validated_key, "upload_url": upload_url})
+
+        _record_upload_url(device_id, f"batch:{len(raw_keys)}", 200)
+        return json_response(
+            200,
+            {
+                "upload_urls": results,
+                "expires_in": PRESIGNED_URL_EXPIRY,
+            },
+        )
+    except ValueError as exc:
+        _record_upload_url(device_id, "batch", 400)
+        return json_response(400, {"error": str(exc)})
+    except PermissionError as exc:
+        _record_upload_url(device_id, "batch", 403)
+        return json_response(403, {"error": str(exc)})
+    except Exception as exc:
+        _record_upload_url(device_id, "batch", 500)
+        return json_response(500, {"error": str(exc)})
