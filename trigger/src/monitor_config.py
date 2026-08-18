@@ -60,6 +60,12 @@ class MonitorConfig:
     # (dormant until devices send upload.bytes_uploaded; 0 = cap disabled)
     bandwidth_daily_cap_bytes: float = 0.0
     bandwidth_monthly_cap_bytes: float = 0.0
+    # capture silence: emergency page once capture reports (bugcam's hourly
+    # rotate()) have shown 0s recorded continuously for this many hours --
+    # a single empty period is unremarkable, but a whole day of them means
+    # the camera stopped recording. Wall-clock, not periods-missed: report
+    # gaps or delayed delivery must not reset the streak.
+    capture_silence_max_hours: float = 24.0
     # re-page cadence for criticals that stay bad
     critical_repage_seconds: float = 6 * 3600.0
     # re-page cadence for warnings that stay bad (longer than critical -- a
@@ -114,6 +120,9 @@ class MonitorConfig:
             bandwidth_daily_cap_bytes=_env_float("MONITOR_BANDWIDTH_DAILY_CAP_BYTES", cls.bandwidth_daily_cap_bytes),
             bandwidth_monthly_cap_bytes=_env_float(
                 "MONITOR_BANDWIDTH_MONTHLY_CAP_BYTES", cls.bandwidth_monthly_cap_bytes
+            ),
+            capture_silence_max_hours=_env_float(
+                "MONITOR_CAPTURE_SILENCE_MAX_HOURS", cls.capture_silence_max_hours
             ),
             critical_repage_seconds=_env_float("MONITOR_CRITICAL_REPAGE_SECONDS", cls.critical_repage_seconds),
             warning_repage_seconds=_env_float("MONITOR_WARNING_REPAGE_SECONDS", cls.warning_repage_seconds),

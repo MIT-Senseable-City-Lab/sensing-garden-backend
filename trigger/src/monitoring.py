@@ -39,7 +39,7 @@ ROSTER_CACHE_SECONDS = 300
 # Route is a policy decision independent of severity: a warning-level check can
 # still be an emergency (log errors), and "still failing"/recovery notices for
 # a check always follow that check's route. Unlisted checks default to general.
-EMERGENCY_CHECKS = frozenset({"liveness", "disk_space", "log_errors", "bandwidth_cap"})
+EMERGENCY_CHECKS = frozenset({"liveness", "disk_space", "log_errors", "bandwidth_cap", "capture_silence"})
 
 
 def _route_for(check: str) -> str:
@@ -314,12 +314,19 @@ class Monitoring:
 
     def on_capture_report(self, record: Dict[str, Any]) -> None:
         """Sampling-effort report (CaptureLog.rotate(), capture_report.py):
-        informational, always sends -- no OK/BAD episode, no cooldown, same
-        as digest(). The file itself is left exactly where Pollen already
-        put it in S3; this only notifies."""
+        the per-period digest itself is informational, always sends -- no
+        OK/BAD episode, no cooldown, same as digest(). Alongside it,
+        capture_silence is a real OK/BAD check (via _apply, same as the
+        content checks) that escalates to the emergency route once
+        0s-recorded periods have run unbroken for capture_silence_max_hours --
+        a single empty period is unremarkable (maintenance window, device
+        off), but a whole day of them means the camera stopped recording,
+        and nobody would otherwise be paged since this digest always sends
+        'successfully' regardless of what it reports."""
         device_id = str(record.get("device_id", ""))
         if not device_id or not self._is_monitored(device_id):
             return
+        now = self._now_fn()
         duration = record.get("total_duration_seconds") or 0.0
         samples = record.get("sample_count") or 0
         self.notifier.notify(
@@ -330,6 +337,29 @@ class Monitoring:
                 key=f"{device_id}/capture_report/{record.get('period_end')}",
                 route="general",
             )
+        )
+        state = self.state_store.get(device_id)
+        finding = self._capture_silence_finding(device_id, duration, state, now)
+        self._apply([finding], state, now)
+        self.state_store.put(state, now)
+
+    def _capture_silence_finding(
+        self, device_id: str, duration_seconds: float, state: DeviceState, now: datetime
+    ) -> Finding:
+        """Rolls each capture report into a wall-clock silence streak on
+        DeviceState (record_capture_silence), independent of the state's own
+        sample history -- report gaps or delayed delivery must not reset it."""
+        silent_seconds = state.record_capture_silence(duration_seconds, now)
+        threshold_seconds = self.cfg.capture_silence_max_hours * 3600
+        if silent_seconds is not None and silent_seconds >= threshold_seconds:
+            return Finding(
+                device_id, "capture_silence", BAD, CRITICAL,
+                f"{device_id}: no recordings for {_human_duration(silent_seconds)}",
+                f"Capture reports have shown 0s recorded since {state.capture.get('silent_since')}",
+            )
+        return Finding(
+            device_id, "capture_silence", OK, CRITICAL, f"{device_id}: recording OK",
+            f"{_human_duration(silent_seconds)} silent" if silent_seconds else "recording normally",
         )
 
     # -- notification policy -----------------------------------------------

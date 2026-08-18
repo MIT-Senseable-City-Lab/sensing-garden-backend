@@ -57,7 +57,8 @@ class FakeStateStore:
             return DeviceState(device_id)
         return DeviceState(device_id, checks=json.loads(json.dumps(state.checks)),
                            samples=json.loads(json.dumps(state.samples)),
-                           bandwidth=json.loads(json.dumps(state.bandwidth)))
+                           bandwidth=json.loads(json.dumps(state.bandwidth)),
+                           capture=json.loads(json.dumps(state.capture)))
 
     def put(self, state: DeviceState, now: datetime) -> None:
         self.put_count += 1
@@ -567,6 +568,55 @@ def test_video_backlog_routes_general_bandwidth_cap_routes_emergency():
     assert cap and all(n.route == "emergency" for n in cap)
 
 
+def test_capture_silence_routes_emergency_after_streak_exceeds_threshold():
+    """A single empty capture period is unremarkable; capture_silence only
+    escalates once 0s-recorded periods have run unbroken past
+    capture_silence_max_hours (FLIK9's actual failure mode: recording
+    stopped for a whole day and nobody was paged, since on_capture_report's
+    per-period summary always sends 'successfully' regardless of content)."""
+    cfg = MonitorConfig(capture_silence_max_hours=2.0)
+    clock = {"now": NOW}
+    store = FakeStateStore()
+    channel = RecordingChannel()
+    mon = Monitoring(
+        cfg=cfg,
+        state_store=store,
+        notifier=Notifier([channel]),
+        roster_fn=lambda: [{"device_id": "FLIK1", "liveness_enabled": True}],
+        latest_heartbeats_fn=lambda ids: {},
+        now_fn=lambda: clock["now"],
+    )
+
+    def empty_report(end: datetime) -> dict:
+        return {
+            "device_id": "FLIK1",
+            "period_start": (end - timedelta(hours=1)).isoformat(),
+            "period_end": end.isoformat(),
+            "sample_count": 0,
+            "total_duration_seconds": 0.0,
+        }
+
+    mon.on_capture_report(empty_report(NOW))
+    assert not any(n.route == "emergency" for n in channel.sent)
+
+    clock["now"] = NOW + timedelta(hours=1)
+    mon.on_capture_report(empty_report(clock["now"]))
+    assert not any(n.route == "emergency" for n in channel.sent)  # 1h silent, threshold is 2h
+
+    clock["now"] = NOW + timedelta(hours=3)
+    mon.on_capture_report(empty_report(clock["now"]))
+    emergency = [n for n in channel.sent if n.route == "emergency"]
+    assert len(emergency) == 1
+    assert "no recordings" in emergency[0].title
+    assert emergency[0].severity == "critical"
+
+    # recording resumes -- resolved notice on the same (emergency) route
+    clock["now"] = NOW + timedelta(hours=4)
+    mon.on_capture_report({**empty_report(clock["now"]), "total_duration_seconds": 45.0, "sample_count": 2})
+    resolved = [n for n in channel.sent if n.route == "emergency" and n.title.startswith("Resolved:")]
+    assert len(resolved) == 1
+
+
 # ---------------------------------------------------------------------------
 # cumulative bandwidth: DeviceState rollup + the on_heartbeat cap check
 # ---------------------------------------------------------------------------
@@ -603,6 +653,23 @@ def test_record_bandwidth_usage_ignores_negative_delta():
     state.record_bandwidth_usage(500.0, NOW)
     daily, monthly = state.record_bandwidth_usage(-100.0, NOW + timedelta(minutes=1))
     assert (daily, monthly) == (500.0, 500.0)
+
+
+def test_record_capture_silence_accumulates_wall_clock_not_report_count():
+    """Elapsed time since the streak began, not periods elapsed -- a delayed
+    or dropped capture report must not reset the streak, and it must not
+    matter how many (or how few) empty reports arrived in between."""
+    state = DeviceState("FLIK1")
+    assert state.record_capture_silence(0.0, NOW) == 0.0
+    assert state.record_capture_silence(0.0, NOW + timedelta(hours=30)) == 30 * 3600.0
+
+
+def test_record_capture_silence_resets_on_nonzero_duration():
+    state = DeviceState("FLIK1")
+    state.record_capture_silence(0.0, NOW)
+    state.record_capture_silence(0.0, NOW + timedelta(hours=2))
+    assert state.record_capture_silence(45.0, NOW + timedelta(hours=3)) is None
+    assert state.record_capture_silence(0.0, NOW + timedelta(hours=4)) == 0.0  # streak starts over
 
 
 def test_bandwidth_cap_dormant_without_upload_bytes():

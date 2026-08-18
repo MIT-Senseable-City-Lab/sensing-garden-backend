@@ -28,11 +28,13 @@ MAX_SAMPLES = 60
 class DeviceState:
     def __init__(self, device_id: str, checks: Optional[Dict[str, Dict[str, Any]]] = None,
                  samples: Optional[List[Dict[str, float]]] = None,
-                 bandwidth: Optional[Dict[str, Any]] = None) -> None:
+                 bandwidth: Optional[Dict[str, Any]] = None,
+                 capture: Optional[Dict[str, Any]] = None) -> None:
         self.device_id = device_id
         self.checks: Dict[str, Dict[str, Any]] = checks or {}
         self.samples: List[Dict[str, float]] = samples or []
         self.bandwidth: Dict[str, Any] = bandwidth or {}
+        self.capture: Dict[str, Any] = capture or {}
 
     # -- check status ------------------------------------------------------
     def status(self, check: str) -> Optional[str]:
@@ -89,6 +91,29 @@ class DeviceState:
         }
         return daily_bytes, monthly_bytes
 
+    # -- capture-report silence streak (wall-clock, not periods-missed) ----
+    def record_capture_silence(self, duration_seconds: float, now: datetime) -> Optional[float]:
+        """Tracks how long capture reports have come back with 0s recorded, in
+        a row. Wall-clock elapsed time since the streak began, not a count of
+        empty periods -- a delayed or dropped report must not reset it, and a
+        shorter/longer-than-usual report interval must not change what "a
+        day" means. Returns the streak's elapsed seconds, or None if this
+        report broke it (recording resumed)."""
+        if duration_seconds > 0:
+            self.capture = {}
+            return None
+        since = self.capture.get("silent_since")
+        since_dt = None
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+            except ValueError:
+                since_dt = None
+        if since_dt is None:
+            self.capture = {"silent_since": now.isoformat()}
+            return 0.0
+        return (now - since_dt).total_seconds()
+
 
 class MonitorStateStore:
     """Thin persistence for DeviceState. Table resource injectable for tests."""
@@ -112,7 +137,8 @@ class MonitorStateStore:
         except (TypeError, ValueError):
             payload = {}
         return DeviceState(
-            device_id, checks=payload.get("checks"), samples=payload.get("samples"), bandwidth=payload.get("bandwidth")
+            device_id, checks=payload.get("checks"), samples=payload.get("samples"),
+            bandwidth=payload.get("bandwidth"), capture=payload.get("capture"),
         )
 
     def put(self, state: DeviceState, now: datetime) -> None:
@@ -120,7 +146,12 @@ class MonitorStateStore:
             Item={
                 "device_id": state.device_id,
                 "state_json": json.dumps(
-                    {"checks": state.checks, "samples": state.samples, "bandwidth": state.bandwidth}
+                    {
+                        "checks": state.checks,
+                        "samples": state.samples,
+                        "bandwidth": state.bandwidth,
+                        "capture": state.capture,
+                    }
                 ),
                 "updated_at": now.isoformat(),
             }
