@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 import dynamodb
-from s3 import OUTPUT_BUCKET, _presign_media
+from s3 import OUTPUT_BUCKET, _media_range, _presign_media
 from utils import (
     DEFAULT_PAGE_LIMIT,
     HeatmapPeriod,
@@ -25,6 +25,9 @@ def _add_composite_url(item: Dict[str, object]) -> Dict[str, object]:
         normalized["composite_url"] = _presign_media(
             normalized, "composite_key", "composite", default_bucket=OUTPUT_BUCKET
         )
+        composite_range = _media_range(normalized, "composite")
+        if composite_range is not None:
+            normalized["composite_range"] = composite_range
     return normalized
 
 

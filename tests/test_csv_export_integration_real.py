@@ -132,37 +132,23 @@ class TestCSVExportIntegrationReal:
             f"Got {response.status_code}: {response.text[:200]}"
         )
     
-    def test_export_detections_csv(self):
-        """Test CSV export for detections table."""
+    def test_export_detections_table_rejected(self):
+        """detections is a dead table (07-legacy-and-cleanup.md #C) -- export must 400, not 200."""
         url = f"{self.base_url}/export"
         params = {
             'table': 'detections',
             'start_time': '2025-01-01T00:00:00Z',
             'end_time': '2025-12-31T23:59:59Z',
             'limit': 10,
-            'filename': 'test_detections_export.csv'
         }
-        
+
         response = self._make_request_with_retry('GET', url, headers=self.headers, params=params)
-        
-        # This will fail initially - endpoint doesn't exist
+
         if response.status_code == 404:
             pytest.skip(f"Export endpoint not implemented yet: {response.status_code}")
-        
-        # Expected behavior once implemented
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text[:200]}"
-        
-        # Validate CSV response
-        assert response.headers.get('Content-Type') == 'text/csv', "Response should be CSV content type"
-        assert 'test_detections_export.csv' in response.headers.get('Content-Disposition', ''), "Filename should be in response headers"
-        
-        # Validate CSV content structure
-        expected_columns = ['device_id', 'timestamp', 'model_id', 'image_key', 'bbox_xmin', 'bbox_ymin', 'bbox_xmax', 'bbox_ymax']
-        rows = self._validate_csv_format(response.text, expected_columns)
-        
-        # Should have header + data rows (or just header if no data)
-        assert len(rows) >= 1, "Should have at least header row"
-    
+
+        assert response.status_code == 400, f"Expected 400 for removed table, got {response.status_code}: {response.text[:200]}"
+
     def test_export_classifications_csv(self):
         """Test CSV export for classifications table."""
         url = f"{self.base_url}/export"
@@ -761,70 +747,6 @@ class TestCSVExportIntegrationRealWithData:
         
         raise last_exception
     
-    @pytest.mark.skipif(
-        not os.getenv('RUN_DATA_DEPENDENT_TESTS'), 
-        reason="Skipping tests that require actual data unless RUN_DATA_DEPENDENT_TESTS=1"
-    )
-    def test_export_detections_with_real_data(self):
-        """Test CSV export with real detection data in system."""
-        # First check if there's data available
-        detections_response = self._make_request_with_retry(
-            'GET', 
-            f"{self.base_url}/detections", 
-            headers={'X-Api-Key': self.api_key},
-            params={'limit': 1}
-        )
-        
-        if detections_response.status_code != 200:
-            pytest.skip(f"Cannot verify detection data availability: {detections_response.status_code}")
-        
-        detections_data = detections_response.json()
-        if not detections_data.get('data') or len(detections_data['data']) == 0:
-            pytest.skip("No detection data available for real data test")
-        
-        # Now test export
-        url = f"{self.base_url}/export"
-        params = {
-            'table': 'detections',
-            'start_time': '2025-01-01T00:00:00Z',
-            'end_time': '2025-12-31T23:59:59Z',
-            'limit': 5
-        }
-        
-        response = self._make_request_with_retry('GET', url, headers=self.headers, params=params)
-        
-        if response.status_code == 404:
-            pytest.skip(f"Export endpoint not implemented yet: {response.status_code}")
-        
-        assert response.status_code == 200
-        
-        # Parse CSV and verify data content
-        csv_reader = csv.reader(io.StringIO(response.text))
-        rows = list(csv_reader)
-        
-        assert len(rows) >= 2, "Should have header + at least one data row"
-        
-        # Verify data row contains expected values
-        header = rows[0]
-        data_row = rows[1]
-        
-        # Basic validation that data row has values
-        assert len(data_row) == len(header), "Data row should have same number of columns as header"
-        
-        # Check for non-empty values in key columns
-        device_id_idx = header.index('device_id')
-        timestamp_idx = header.index('timestamp')
-        
-        assert data_row[device_id_idx], "device_id should not be empty"
-        assert data_row[timestamp_idx], "timestamp should not be empty"
-        
-        # Validate timestamp format
-        timestamp_str = data_row[timestamp_idx]
-        try:
-            datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-        except ValueError:
-            pytest.fail(f"Invalid timestamp format: {timestamp_str}")
-
 
 if __name__ == '__main__':
     # Run with specific verbosity for integration tests

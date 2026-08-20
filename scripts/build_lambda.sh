@@ -25,10 +25,13 @@ build_package() {
         --no-cache-dir \
         --quiet
 
-    # Copy source files
-    cp -r "$src_dir"/*.py "$build_dir/"
+    # Copy source files. -L: dereference symlinks (schemas.py is symlinked to
+    # shared/schemas.py -- plain `cp -r` preserves symlinks as-is for recursive
+    # copies, which would ship a broken relative link inside the zip instead of
+    # the file).
+    cp -rL "$src_dir"/*.py "$build_dir/"
     if [ -d "$src_dir/routes" ]; then
-        cp -r "$src_dir/routes" "$build_dir/"
+        cp -rL "$src_dir/routes" "$build_dir/"
     fi
 
     # Remove unnecessary files
