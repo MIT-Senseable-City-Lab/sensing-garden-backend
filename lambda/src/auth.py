@@ -23,8 +23,6 @@ AuthContext = Dict[str, Any]
 
 READ_ONLY_ALLOWED_GET_PATHS = (
     "/devices",
-    "/detections",
-    "/detections/count",
     "/classifications",
     "/classifications/count",
     "/classifications/taxa_count",

@@ -16,7 +16,6 @@ from utils import HeatmapPeriod, IntervalUnit, json_response
 
 dynamodb = boto3.resource("dynamodb")
 
-DETECTIONS_TABLE = "sensing-garden-detections"
 CLASSIFICATIONS_TABLE = "sensing-garden-classifications"
 MODELS_TABLE = "sensing-garden-models"
 VIDEOS_TABLE = "sensing-garden-videos"
@@ -119,7 +118,6 @@ def get_device_api_key_by_device_id(device_id: str) -> Optional[Dict[str, Any]]:
 
 def _delete_device_table_data(device_id: str, summary: Dict[str, Any]) -> None:
     for table_name, label in (
-        (DETECTIONS_TABLE, "detections"),
         (CLASSIFICATIONS_TABLE, "classifications"),
         (VIDEOS_TABLE, "videos"),
         (ENVIRONMENTAL_READINGS_TABLE, "environmental_readings"),
@@ -307,8 +305,6 @@ def get_devices(
 def store_model_data(data: Dict[str, Any]) -> Dict[str, Any]:
     if "id" not in data:
         raise ValueError("Model data must contain an 'id' field")
-    if "type" not in data:
-        data["type"] = "model"
     dynamodb.Table(MODELS_TABLE).put_item(Item=data)
     return json_response(200, {"message": "Model data stored successfully", "data": data})
 
@@ -386,12 +382,19 @@ def _sort_items(items: List[Dict[str, Any]], sort_by: Optional[str], sort_desc: 
     if not sort_by:
         return items
 
-    def sort_key(item: Dict[str, Any]) -> Any:
-        if sort_by == "timestamp":
-            return _parse_time(item.get("timestamp")) or datetime.min
-        return item.get(sort_by)
+    if sort_by == "timestamp":
+        return sorted(items, key=lambda item: _parse_time(item.get("timestamp")) or datetime.min, reverse=sort_desc)
 
-    return sorted(items, key=sort_key, reverse=sort_desc)
+    # Sparse fields (video_size/image_size/composite_size -- only stamped on
+    # archived rows) mix None with Decimal/str across items. A bare `item.get(sort_by)`
+    # key raises TypeError from Python comparing None to a real value, and folding
+    # "missing" into the sort key via reverse=sort_desc flips whether missing lands
+    # first or last depending on direction -- neither is what a user picking "sort by
+    # size" wants. Sort what has a value, put rows without one at the end either way.
+    present = [item for item in items if item.get(sort_by) is not None]
+    missing = [item for item in items if item.get(sort_by) is None]
+    present.sort(key=lambda item: item[sort_by], reverse=sort_desc)
+    return present + missing
 
 
 def _parse_offset_token(next_token: Optional[str]) -> int:
@@ -1172,7 +1175,6 @@ def put_heartbeat(item: Dict[str, Any]) -> None:
 
 def _load_items_for_query_data(table_type: str, device_id: Optional[str], model_id: Optional[str]) -> List[Dict[str, Any]]:
     table_name = {
-        "detection": DETECTIONS_TABLE,
         "classification": CLASSIFICATIONS_TABLE,
         "model": MODELS_TABLE,
         "video": VIDEOS_TABLE,
@@ -1180,7 +1182,7 @@ def _load_items_for_query_data(table_type: str, device_id: Optional[str], model_
     }[table_type]
     table = dynamodb.Table(table_name)
 
-    if table_type in {"detection", "classification", "video", "environmental_reading"} and device_id:
+    if table_type in {"classification", "video", "environmental_reading"} and device_id:
         return _paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(device_id))
 
     if table_type == "model" and model_id:
@@ -1191,7 +1193,7 @@ def _load_items_for_query_data(table_type: str, device_id: Optional[str], model_
             item = table.get_item(Key={"id": model_id}).get("Item")
             return [item] if item else []
 
-    if table_type in {"detection", "classification", "video", "environmental_reading"}:
+    if table_type in {"classification", "video", "environmental_reading"}:
         all_items: List[Dict[str, Any]] = []
         for known_device_id in _list_all_device_ids():
             all_items.extend(_paginate_all(table, "query", KeyConditionExpression=Key("device_id").eq(known_device_id)))
@@ -1215,7 +1217,7 @@ def _filter_items_for_query_data(
                 continue
             if model_id and item.get("id") != model_id:
                 continue
-        elif table_type in {"detection", "classification", "video"}:
+        elif table_type in {"classification", "video"}:
             if device_id and item.get("device_id") != device_id:
                 continue
             if model_id and item.get("model_id") != model_id:
@@ -1236,7 +1238,7 @@ def count_data(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
 ) -> Dict[str, Any]:
-    if table_type not in ["detection", "classification", "model", "video", "environmental_reading"]:
+    if table_type not in ["classification", "model", "video", "environmental_reading"]:
         raise ValueError(f"Invalid table_type: {table_type}")
     items = _load_items_for_query_data(table_type, device_id, model_id)
     items = _filter_items_for_query_data(table_type, items, device_id, model_id, start_time, end_time)
@@ -1254,7 +1256,7 @@ def query_data(
     sort_by: Optional[str] = None,
     sort_desc: bool = False,
 ) -> Dict[str, Any]:
-    if table_type not in ["detection", "classification", "model", "video", "environmental_reading"]:
+    if table_type not in ["classification", "model", "video", "environmental_reading"]:
         raise ValueError(f"Invalid table_type: {table_type}")
 
     items = _load_items_for_query_data(table_type, device_id, model_id)

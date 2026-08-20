@@ -7,7 +7,6 @@ from utils import CSV_EXPORT_LIMIT, _get_bool_param, _get_query_params, json_res
 
 
 TABLE_MAPPING = {
-    "detections": "detection",
     "classifications": "classification",
     "models": "model",
     "videos": "video",

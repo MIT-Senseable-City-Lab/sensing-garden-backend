@@ -1,4 +1,20 @@
-# Create detections table
+# sensing-garden-detections: DEAD TABLE, staged for removal (see
+# Internal planning/reports/07-legacy-and-cleanup.md §C -- nothing has written to
+# this table since the trigger moved to tracks + classifications).
+#
+# BEFORE APPLYING ANY OF THIS: back it up.
+#   scripts/backup_table_cli.sh --table sensing-garden-detections --bucket scl-sensing-garden
+# Writes gzip NDJSON to s3://scl-sensing-garden/backups/dynamodb/, deliberately
+# outside the v1/v2 prefixes the trigger watches.
+#
+# APPLY IN TWO PASSES:
+#   1. Apply this commit as-is (prevent_destroy already off below) to confirm
+#      Terraform is willing to touch the resource without erroring.
+#   2. Once confirmed, delete this resource block entirely (and its state entry
+#      via `terraform apply` picking up the removal) in a follow-up commit.
+# Do not delete the block in the same apply that first disables prevent_destroy --
+# Terraform's plan for a resource being both unprotected and destroyed in one
+# pass has caused surprises before; two passes keeps each step inspectable.
 resource "aws_dynamodb_table" "sensor_detections" {
   name         = "sensing-garden-detections"
   billing_mode = "PAY_PER_REQUEST"
@@ -28,10 +44,11 @@ resource "aws_dynamodb_table" "sensor_detections" {
     projection_type = "ALL"
   }
 
+  deletion_protection_enabled = false
+
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     ignore_changes = [
-      deletion_protection_enabled,
       read_capacity,
       write_capacity,
     ]
@@ -79,41 +96,10 @@ resource "aws_dynamodb_table" "sensor_classifications" {
     type = "S"
   }
 
-  attribute {
-    name = "model_id"
-    type = "S"
-  }
-
-  attribute {
-    name = "species"
-    type = "S"
-  }
-
-  attribute {
-    name = "track_id"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name            = "model_id_index"
-    hash_key        = "model_id"
-    range_key       = null
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "species_index"
-    hash_key        = "species"
-    range_key       = null
-    projection_type = "ALL"
-  }
-
-  global_secondary_index {
-    name            = "track_id_index"
-    hash_key        = "track_id"
-    range_key       = "timestamp"
-    projection_type = "ALL"
-  }
+  # model_id, species, track_id are still written on every item -- they just no
+  # longer back a GSI (model_id_index/species_index/track_id_index dropped below:
+  # populated correctly but never queried by any route -- pure write-cost with no
+  # read benefit, see the 2026-08 DB audit).
 
   deletion_protection_enabled = true
 
@@ -145,17 +131,9 @@ resource "aws_dynamodb_table" "models" {
     type = "S"
   }
 
-  attribute {
-    name = "type"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name            = "type_index"
-    hash_key        = "type"
-    range_key       = null
-    projection_type = "ALL"
-  }
+  # type_index dropped: writer patches a constant "model" onto every row
+  # (dynamodb.py store_model_data), so the index never had more than one
+  # partition value and was never queried by IndexName anyway.
 
   lifecycle {
     prevent_destroy = true
@@ -185,17 +163,9 @@ resource "aws_dynamodb_table" "videos" {
     type = "S"
   }
 
-  attribute {
-    name = "type"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name            = "type_index"
-    hash_key        = "type"
-    range_key       = null
-    projection_type = "ALL"
-  }
+  # type_index dropped: the Video schema (schemas.py) has no `type` field and no
+  # writer has ever stamped one -- this index has been empty since the table's
+  # inception, and nothing queried it by IndexName either.
 
   lifecycle {
     prevent_destroy = true
