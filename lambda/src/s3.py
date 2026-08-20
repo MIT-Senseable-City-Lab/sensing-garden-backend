@@ -58,7 +58,11 @@ def _presign_media(
 
     A row whose media was mapped into a batch tar carries archive_key/archive_bucket
     (the intra-tar member path in `key_field` is not a real object at its own bucket)
-    -- presign the archive instead, so the caller can range-read the member out of it.
+    -- presign the archive itself, unmodified, at its normal TTL. No Range is baked
+    into the signature: S3 honors a Range header on any authorized GET, presigned or
+    not, so the caller sends its own Range against this URL using the offset/length
+    from _media_range instead of us encoding a fixed window into the URL. See
+    _media_range for that pairing.
     """
     archive_key = item.get("archive_key")
     archive_bucket = item.get("archive_bucket")
@@ -72,12 +76,36 @@ def _presign_media(
     return None
 
 
+def _media_range(item: Dict[str, Any], prefix: str) -> Optional[Dict[str, int]]:
+    """Byte range of this item's media within its archive.
+
+    The trigger stamps `<prefix>_offset`/`<prefix>_size` on every item whose media
+    landed in a tar (ArchiveIndexWriter in trigger_handler.py) -- this just surfaces
+    them under a stable, documented pair of keys. None when the media isn't archived
+    (the item's `<prefix>_url` already points at a standalone object and needs no
+    Range at all).
+    """
+    if not (item.get("archive_key") and item.get("archive_bucket")):
+        return None
+    offset = item.get(f"{prefix}_offset")
+    length = item.get(f"{prefix}_size")
+    if offset is None or length is None:
+        return None
+    return {"offset": int(offset), "length": int(length)}
+
+
 def _add_presigned_urls(result: Dict[str, Any]) -> Dict[str, Any]:
     for item in result.get("items", []):
         if "image_key" in item and "image_bucket" in item:
             item["image_url"] = _presign_media(item, "image_key", "image")
+            image_range = _media_range(item, "image")
+            if image_range is not None:
+                item["image_range"] = image_range
         if "video_key" in item and "video_bucket" in item:
             item["video_url"] = _presign_media(item, "video_key", "video")
+            video_range = _media_range(item, "video")
+            if video_range is not None:
+                item["video_range"] = video_range
     return result
 
 
