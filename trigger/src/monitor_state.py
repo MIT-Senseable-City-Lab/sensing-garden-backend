@@ -1,0 +1,158 @@
+"""Per-device monitoring state, one DynamoDB item per device.
+
+Per-device items (not one fleet blob) because trigger invocations run
+concurrently: two heartbeats arriving together must not race a shared
+read-modify-write. The check/sample payload is stored as a single JSON string
+attribute — state is opaque to DynamoDB, and floats never meet Decimal.
+"""
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+import boto3
+
+MONITOR_STATE_TABLE = os.environ.get("MONITOR_STATE_TABLE", "sensing-garden-monitor-state")
+
+# Bandwidth trend checks look back bandwidth_trend_window_hours (default 2h) by
+# elapsed time, anchored to each sample's own timestamp -- at the real ~5min
+# heartbeat interval, the old cap of 8 held well under an hour of history,
+# so a multi-hour window could never have enough data to evaluate. Generous
+# headroom here (60 samples ~= 5h at 5min intervals) covers the default window
+# with room to spare if it's later widened.
+MAX_SAMPLES = 60
+
+
+class DeviceState:
+    def __init__(self, device_id: str, checks: Optional[Dict[str, Dict[str, Any]]] = None,
+                 samples: Optional[List[Dict[str, float]]] = None,
+                 bandwidth: Optional[Dict[str, Any]] = None,
+                 capture: Optional[Dict[str, Any]] = None) -> None:
+        self.device_id = device_id
+        self.checks: Dict[str, Dict[str, Any]] = checks or {}
+        self.samples: List[Dict[str, float]] = samples or []
+        self.bandwidth: Dict[str, Any] = bandwidth or {}
+        self.capture: Dict[str, Any] = capture or {}
+
+    # -- check status ------------------------------------------------------
+    def status(self, check: str) -> Optional[str]:
+        entry = self.checks.get(check)
+        return entry.get("status") if entry else None
+
+    def since(self, check: str) -> Optional[str]:
+        entry = self.checks.get(check)
+        return entry.get("since") if entry else None
+
+    def transition(self, check: str, status: str, now: datetime) -> None:
+        self.checks[check] = {"status": status, "since": now.isoformat(), "last_notified_at": None}
+
+    def last_notified(self, check: str) -> Optional[datetime]:
+        entry = self.checks.get(check)
+        raw = entry.get("last_notified_at") if entry else None
+        if not raw:
+            return None
+        try:
+            return datetime.fromisoformat(raw)
+        except ValueError:
+            return None
+
+    def mark_notified(self, check: str, now: datetime) -> None:
+        self.checks.setdefault(check, {"status": None, "since": now.isoformat()})["last_notified_at"] = now.isoformat()
+
+    # -- sample history ----------------------------------------------------
+    def record_sample(self, sample: Dict[str, float]) -> None:
+        if sample:
+            self.samples.append(sample)
+            self.samples = self.samples[-MAX_SAMPLES:]
+
+    # -- cumulative bandwidth (daily/monthly, unbounded by the sample window) --
+    def record_bandwidth_usage(self, delta_bytes: float, now: datetime) -> Tuple[float, float]:
+        """Rolls the device's own already-windowed delta (bytes transferred
+        since its last heartbeat -- Pollen.stats()'s TransferStats.drain()
+        resets on every call, so bytes_uploaded is never a lifetime total to
+        diff ourselves) into running daily/monthly totals. A negative delta
+        (shouldn't happen; the device's own accumulator can't go backwards)
+        is floored at zero rather than subtracted, so a bad sample can't
+        silently erase real recorded usage."""
+        delta_bytes = max(delta_bytes, 0.0)
+        today = now.date().isoformat()
+        month = now.strftime("%Y-%m")
+        daily_bytes = self.bandwidth.get("daily_bytes", 0.0) if self.bandwidth.get("daily_date") == today else 0.0
+        monthly_bytes = self.bandwidth.get("monthly_bytes", 0.0) if self.bandwidth.get("monthly_month") == month else 0.0
+        daily_bytes += delta_bytes
+        monthly_bytes += delta_bytes
+        self.bandwidth = {
+            "daily_date": today,
+            "daily_bytes": daily_bytes,
+            "monthly_month": month,
+            "monthly_bytes": monthly_bytes,
+        }
+        return daily_bytes, monthly_bytes
+
+    # -- capture-report silence streak (wall-clock, not periods-missed) ----
+    def record_capture_silence(self, duration_seconds: float, now: datetime) -> Optional[float]:
+        """Tracks how long capture reports have come back with 0s recorded, in
+        a row. Wall-clock elapsed time since the streak began, not a count of
+        empty periods -- a delayed or dropped report must not reset it, and a
+        shorter/longer-than-usual report interval must not change what "a
+        day" means. Returns the streak's elapsed seconds, or None if this
+        report broke it (recording resumed)."""
+        if duration_seconds > 0:
+            self.capture = {}
+            return None
+        since = self.capture.get("silent_since")
+        since_dt = None
+        if since:
+            try:
+                since_dt = datetime.fromisoformat(since)
+            except ValueError:
+                since_dt = None
+        if since_dt is None:
+            self.capture = {"silent_since": now.isoformat()}
+            return 0.0
+        return (now - since_dt).total_seconds()
+
+
+class MonitorStateStore:
+    """Thin persistence for DeviceState. Table resource injectable for tests."""
+
+    def __init__(self, table: Any = None) -> None:
+        self._table = table
+
+    @property
+    def table(self) -> Any:
+        if self._table is None:
+            self._table = boto3.resource("dynamodb").Table(MONITOR_STATE_TABLE)
+        return self._table
+
+    def get(self, device_id: str) -> DeviceState:
+        response = self.table.get_item(Key={"device_id": device_id})
+        item = response.get("Item")
+        if not item:
+            return DeviceState(device_id)
+        try:
+            payload = json.loads(item.get("state_json", "{}"))
+        except (TypeError, ValueError):
+            payload = {}
+        return DeviceState(
+            device_id, checks=payload.get("checks"), samples=payload.get("samples"),
+            bandwidth=payload.get("bandwidth"), capture=payload.get("capture"),
+        )
+
+    def put(self, state: DeviceState, now: datetime) -> None:
+        self.table.put_item(
+            Item={
+                "device_id": state.device_id,
+                "state_json": json.dumps(
+                    {
+                        "checks": state.checks,
+                        "samples": state.samples,
+                        "bandwidth": state.bandwidth,
+                        "capture": state.capture,
+                    }
+                ),
+                "updated_at": now.isoformat(),
+            }
+        )
